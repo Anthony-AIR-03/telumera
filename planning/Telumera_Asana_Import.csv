@@ -1,0 +1,333 @@
+﻿Name,Description,Section,Assignee,Collaborators,Due Date,Start Date,Parent Task,Dependencies,Module,Work Type,Priority,Estimate,Milestone,Status
+M00 Milestone – Platform foundation ready,"The shared platform can register sites, authenticate users, exchange events and run locally or on Azure.",M00 – Platform Foundation,,,,,,,M00,Milestone,High,,M00 Complete,Backlog
+Epic M00.1 – Product and architecture decisions,Define the platform boundaries before implementation.,M00 – Platform Foundation,,,,,,,M00,Epic,High,3 days,,Backlog
+Write product vision and scope,"Document target users, core problem, non-goals and the relationship between analytics, observability and AI.",M00 – Platform Foundation,,,,,Epic M00.1 – Product and architecture decisions,,M00,Task,High,,,Backlog
+Create C4 context diagram,"Show tracked websites, users, external identity, AI provider and hosting environments.",M00 – Platform Foundation,,,,,Epic M00.1 – Product and architecture decisions,,M00,Task,High,,,Backlog
+Create C4 container diagram,"Show dashboard, gateway, platform services, collectors, workers, brokers and databases.",M00 – Platform Foundation,,,,,Epic M00.1 – Product and architecture decisions,,M00,Task,High,,,Backlog
+Define bounded contexts and data ownership,State which service owns each entity and forbid direct access to another service's tables.,M00 – Platform Foundation,,,,,Epic M00.1 – Product and architecture decisions,,M00,Task,High,,,Backlog
+Create ADR: service-oriented modular platform,Explain why modules are independently deployable but may share one monorepo.,M00 – Platform Foundation,,,,,Epic M00.1 – Product and architecture decisions,,M00,Task,High,,,Backlog
+Create ADR: Dapr pub/sub abstraction,Document broker portability between local self-hosting and Azure.,M00 – Platform Foundation,,,,,Epic M00.1 – Product and architecture decisions,,M00,Task,High,,,Backlog
+Create ADR: PostgreSQL plus ClickHouse,Document metadata versus event-analytics storage responsibilities.,M00 – Platform Foundation,,,,,Epic M00.1 – Product and architecture decisions,,M00,Task,High,,,Backlog
+Create privacy threat model,"Identify identifiers, IP handling, referrers, URLs, query strings and sensitive DOM content risks.",M00 – Platform Foundation,,,,,Epic M00.1 – Product and architecture decisions,,M00,Task,High,,,Backlog
+Epic M00.2 – Repository and service templates,Create repeatable project templates for services and workers.,M00 – Platform Foundation,,,,,,,M00,Epic,High,3 days,,Backlog
+Create monorepo structure,"Add apps, services, packages, infrastructure, tests and docs folders.",M00 – Platform Foundation,,,,,Epic M00.2 – Repository and service templates,,M00,Task,Medium,,,Backlog
+Create ASP.NET Core API template,"Include health checks, ProblemDetails, validation, logging and OpenTelemetry.",M00 – Platform Foundation,,,,,Epic M00.2 – Repository and service templates,,M00,Task,Medium,,,Backlog
+Create .NET worker template,"Include graceful shutdown, retries, idempotency hooks and tracing.",M00 – Platform Foundation,,,,,Epic M00.2 – Repository and service templates,,M00,Task,Medium,,,Backlog
+Create Vue 3 dashboard shell,"Configure TypeScript, Pinia, Router, i18n, API client and authentication boundaries.",M00 – Platform Foundation,,,,,Epic M00.2 – Repository and service templates,,M00,Task,Medium,,,Backlog
+Create shared event-contract package,Store versioned JSON schemas or strongly typed contracts without sharing domain models.,M00 – Platform Foundation,,,,,Epic M00.2 – Repository and service templates,,M00,Task,Medium,,,Backlog
+Add code formatting and linting,Use consistent .NET and TypeScript formatting in local and CI workflows.,M00 – Platform Foundation,,,,,Epic M00.2 – Repository and service templates,,M00,Task,Medium,,,Backlog
+Create contribution and branching guide,"Define issue, branch, commit, pull request and release conventions.",M00 – Platform Foundation,,,,,Epic M00.2 – Repository and service templates,,M00,Task,Medium,,,Backlog
+Epic M00.3 – Local self-hosted runtime,Run the entire development platform without paid cloud dependencies.,M00 – Platform Foundation,,,,,,,M00,Epic,High,4 days,,Backlog
+Create Docker Compose stack,"Run gateway, services, PostgreSQL, ClickHouse, RabbitMQ, Redis and MinIO as required.",M00 – Platform Foundation,,,,,Epic M00.3 – Local self-hosted runtime,,M00,Task,High,,,Backlog
+Configure Dapr self-hosted sidecars,Use local pub/sub and service invocation components.,M00 – Platform Foundation,,,,,Epic M00.3 – Local self-hosted runtime,,M00,Task,High,,,Backlog
+Add database initialization scripts,"Create service-owned databases, schemas and local users.",M00 – Platform Foundation,,,,,Epic M00.3 – Local self-hosted runtime,,M00,Task,High,,,Backlog
+Add local secret management,Document development-only secrets and prevent committing them.,M00 – Platform Foundation,,,,,Epic M00.3 – Local self-hosted runtime,,M00,Task,High,,,Backlog
+Add health overview command,Provide one command or script to verify all containers and dependencies.,M00 – Platform Foundation,,,,,Epic M00.3 – Local self-hosted runtime,,M00,Task,High,,,Backlog
+Create seed data workflow,"Create a demo workspace, site and representative events.",M00 – Platform Foundation,,,,,Epic M00.3 – Local self-hosted runtime,,M00,Task,High,,,Backlog
+Document NAS deployment profile,"Describe volumes, backups, reverse proxy, TLS and resource limits for the user's NAS.",M00 – Platform Foundation,,,,,Epic M00.3 – Local self-hosted runtime,,M00,Task,High,,,Backlog
+"Epic M00.4 – Identity, workspaces and sites",Provide the shared control plane for all modules.,M00 – Platform Foundation,,,,,,,M00,Epic,High,1 week,,Backlog
+Integrate Microsoft Entra ID authentication,Authenticate dashboard users and validate API access tokens.,M00 – Platform Foundation,,,,,"Epic M00.4 – Identity, workspaces and sites",,M00,Task,High,,,Backlog
+Implement workspace entity,Create a tenant boundary even when only one personal workspace exists.,M00 – Platform Foundation,,,,,"Epic M00.4 – Identity, workspaces and sites",,M00,Task,High,,,Backlog
+Implement membership and roles,"Add Owner, Admin, Developer and Viewer policies.",M00 – Platform Foundation,,,,,"Epic M00.4 – Identity, workspaces and sites",,M00,Task,High,,,Backlog
+Implement site registration,"Store name, canonical domain, allowed origins, timezone and environment.",M00 – Platform Foundation,,,,,"Epic M00.4 – Identity, workspaces and sites",,M00,Task,High,,,Backlog
+Implement site SDK key issuance,Generate scoped publish keys that cannot read analytics.,M00 – Platform Foundation,,,,,"Epic M00.4 – Identity, workspaces and sites",,M00,Task,High,,,Backlog
+Implement key rotation,Allow overlapping keys during safe migration.,M00 – Platform Foundation,,,,,"Epic M00.4 – Identity, workspaces and sites",,M00,Task,High,,,Backlog
+Implement module enablement settings,"Allow analytics, performance, errors and later modules to be toggled independently.",M00 – Platform Foundation,,,,,"Epic M00.4 – Identity, workspaces and sites",,M00,Task,High,,,Backlog
+Build workspace and site settings UI,Create the first usable dashboard settings screens.,M00 – Platform Foundation,,,,,"Epic M00.4 – Identity, workspaces and sites",,M00,Task,High,,,Backlog
+"Epic M00.5 – Messaging, observability and CI/CD",Create reliable integration and delivery foundations.,M00 – Platform Foundation,,,,,,,M00,Epic,High,1 week,,Backlog
+Define CloudEvent envelope conventions,"Standardize event ID, type, version, time, source, tenant and correlation fields.",M00 – Platform Foundation,,,,,"Epic M00.5 – Messaging, observability and CI/CD",,M00,Task,High,,,Backlog
+Implement event publisher abstraction,Services publish through Dapr rather than a broker-specific SDK.,M00 – Platform Foundation,,,,,"Epic M00.5 – Messaging, observability and CI/CD",,M00,Task,High,,,Backlog
+Implement consumer idempotency pattern,Persist processed event IDs or use safe natural keys.,M00 – Platform Foundation,,,,,"Epic M00.5 – Messaging, observability and CI/CD",,M00,Task,High,,,Backlog
+Configure distributed tracing,Propagate correlation and trace identifiers through HTTP and pub/sub.,M00 – Platform Foundation,,,,,"Epic M00.5 – Messaging, observability and CI/CD",,M00,Task,High,,,Backlog
+Create pull-request CI workflow,"Build, lint and test .NET and TypeScript projects.",M00 – Platform Foundation,,,,,"Epic M00.5 – Messaging, observability and CI/CD",,M00,Task,High,,,Backlog
+Create container build workflow,Produce versioned images for independently deployable services.,M00 – Platform Foundation,,,,,"Epic M00.5 – Messaging, observability and CI/CD",,M00,Task,High,,,Backlog
+Create Bicep baseline,"Provision Container Apps environment, registry, observability and secret resources.",M00 – Platform Foundation,,,,,"Epic M00.5 – Messaging, observability and CI/CD",,M00,Task,High,,,Backlog
+Create Azure development deployment,Deploy the control plane and one sample service.,M00 – Platform Foundation,,,,,"Epic M00.5 – Messaging, observability and CI/CD",,M00,Task,High,,,Backlog
+Document rollback and database migration rules,Separate backward-compatible rollout from destructive migrations.,M00 – Platform Foundation,,,,,"Epic M00.5 – Messaging, observability and CI/CD",,M00,Task,High,,,Backlog
+M01 Milestone – Portfolio analytics live,"anthony-air.nl sends real traffic to the self-hosted platform and the dashboard reports trusted page, visitor and acquisition metrics.",M01 – Product Analytics,,,,,,M00 Milestone – Platform foundation ready,M01,Milestone,High,,M01 Complete,Backlog
+Epic M01.1 – Analytics definitions and privacy model,Define exactly what each metric means before collecting data.,M01 – Product Analytics,,,,,,,M01,Epic,High,3 days,,Backlog
+Define page-view rules,"Document SPA navigation, reloads, redirects, excluded routes and canonical URL handling.",M01 – Product Analytics,,,,,Epic M01.1 – Analytics definitions and privacy model,,M01,Task,High,,,Backlog
+Define session rules,"Choose inactivity timeout, cross-tab behavior and when a session restarts.",M01 – Product Analytics,,,,,Epic M01.1 – Analytics definitions and privacy model,,M01,Task,High,,,Backlog
+Define visitor rules,Use privacy-preserving daily or configurable identifiers and explain limitations.,M01 – Product Analytics,,,,,Epic M01.1 – Analytics definitions and privacy model,,M01,Task,High,,,Backlog
+Define bounce and engagement rules,Avoid copying ambiguous Google Analytics terms without a clear formula.,M01 – Product Analytics,,,,,Epic M01.1 – Analytics definitions and privacy model,,M01,Task,High,,,Backlog
+Define active-time measurement,Pause timers when the page is hidden or the user is inactive.,M01 – Product Analytics,,,,,Epic M01.1 – Analytics definitions and privacy model,,M01,Task,High,,,Backlog
+Define URL and query-string policy,Allowlist campaign parameters and strip tokens or personal information.,M01 – Product Analytics,,,,,Epic M01.1 – Analytics definitions and privacy model,,M01,Task,High,,,Backlog
+Define IP and geography policy,Use IP only transiently for coarse enrichment and avoid persistent raw IP storage.,M01 – Product Analytics,,,,,Epic M01.1 – Analytics definitions and privacy model,,M01,Task,High,,,Backlog
+Define retention and deletion rules,"Specify raw-event, aggregate and audit retention per site.",M01 – Product Analytics,,,,,Epic M01.1 – Analytics definitions and privacy model,,M01,Task,High,,,Backlog
+Epic M01.2 – Browser tracking SDK,"Create a small, reliable and privacy-aware TypeScript SDK.",M01 – Product Analytics,,,,,,,M01,Epic,High,1 week,,Backlog
+Create SDK package and build pipeline,"Publish browser, ESM and optional npm outputs with versioning.",M01 – Product Analytics,,,,,Epic M01.2 – Browser tracking SDK,,M01,Task,High,,,Backlog
+Implement initialization and configuration,"Accept site key, endpoint, environment, consent state and sampling options.",M01 – Product Analytics,,,,,Epic M01.2 – Browser tracking SDK,,M01,Task,High,,,Backlog
+Implement SPA page-view tracking,Track Vue Router navigation without double-counting initial loads.,M01 – Product Analytics,,,,,Epic M01.2 – Browser tracking SDK,,M01,Task,High,,,Backlog
+Implement referrer and campaign parsing,"Normalize direct, search, social, referral and UTM acquisition data.",M01 – Product Analytics,,,,,Epic M01.2 – Browser tracking SDK,,M01,Task,High,,,Backlog
+Implement session identifier,Use session-scoped storage and reset based on documented rules.,M01 – Product Analytics,,,,,Epic M01.2 – Browser tracking SDK,,M01,Task,High,,,Backlog
+Implement privacy-preserving visitor identifier,Avoid fingerprinting and make persistence an explicit configuration decision.,M01 – Product Analytics,,,,,Epic M01.2 – Browser tracking SDK,,M01,Task,High,,,Backlog
+Implement engagement and active-time tracking,Send bounded heartbeats or a final summary using resilient browser APIs.,M01 – Product Analytics,,,,,Epic M01.2 – Browser tracking SDK,,M01,Task,High,,,Backlog
+Implement custom event API,"Expose track(name, properties) with schema limits and blocked property names.",M01 – Product Analytics,,,,,Epic M01.2 – Browser tracking SDK,,M01,Task,High,,,Backlog
+Implement batching and retry,"Batch events, cap memory and tolerate temporary network failure.",M01 – Product Analytics,,,,,Epic M01.2 – Browser tracking SDK,,M01,Task,High,,,Backlog
+Implement consent and opt-out API,Do not send events until the configured privacy condition is satisfied.,M01 – Product Analytics,,,,,Epic M01.2 – Browser tracking SDK,,M01,Task,High,,,Backlog
+Implement SDK debug mode,Show payloads and validation errors without sending production data.,M01 – Product Analytics,,,,,Epic M01.2 – Browser tracking SDK,,M01,Task,High,,,Backlog
+Add SDK unit and browser tests,"Test navigation, visibility changes, batching, opt-out and malformed input.",M01 – Product Analytics,,,,,Epic M01.2 – Browser tracking SDK,,M01,Task,High,,,Backlog
+Epic M01.3 – Collection API,Accept events rapidly without performing analytics queries or heavy processing.,M01 – Product Analytics,,,,,,,M01,Epic,High,4 days,,Backlog
+Create POST /v1/events endpoint,"Accept batched, versioned browser events.",M01 – Product Analytics,,,,,Epic M01.3 – Collection API,,M01,Task,High,,,Backlog
+Validate site key and allowed origin,"Reject unknown sites, disabled modules and unauthorized origins.",M01 – Product Analytics,,,,,Epic M01.3 – Collection API,,M01,Task,High,,,Backlog
+Validate event schemas,Return useful development errors while keeping production responses minimal.,M01 – Product Analytics,,,,,Epic M01.3 – Collection API,,M01,Task,High,,,Backlog
+Apply payload and rate limits,Protect the collector from oversized or abusive requests.,M01 – Product Analytics,,,,,Epic M01.3 – Collection API,,M01,Task,High,,,Backlog
+Generate trusted server metadata,"Assign receive time, request ID and coarse network metadata server-side.",M01 – Product Analytics,,,,,Epic M01.3 – Collection API,,M01,Task,High,,,Backlog
+Publish accepted events,Send validated CloudEvents through the pub/sub abstraction.,M01 – Product Analytics,,,,,Epic M01.3 – Collection API,,M01,Task,High,,,Backlog
+Implement duplicate request protection,Use event IDs to safely handle client retries.,M01 – Product Analytics,,,,,Epic M01.3 – Collection API,,M01,Task,High,,,Backlog
+Add collector load test,Measure throughput and latency using realistic event batches.,M01 – Product Analytics,,,,,Epic M01.3 – Collection API,,M01,Task,High,,,Backlog
+Epic M01.4 – Analytics processing pipeline,Turn accepted browser events into trusted analytics records.,M01 – Product Analytics,,,,,,,M01,Epic,High,1 week,,Backlog
+Create analytics event consumer,"Consume page views, engagement events and custom events independently.",M01 – Product Analytics,,,,,Epic M01.4 – Analytics processing pipeline,,M01,Task,High,,,Backlog
+Normalize URLs and page titles,Apply site rules before persistence.,M01 – Product Analytics,,,,,Epic M01.4 – Analytics processing pipeline,,M01,Task,High,,,Backlog
+Normalize referrer and campaign data,"Create stable channel, source, medium and campaign fields.",M01 – Product Analytics,,,,,Epic M01.4 – Analytics processing pipeline,,M01,Task,High,,,Backlog
+Enrich device and browser categories,Use bounded categories rather than storing full high-entropy fingerprints.,M01 – Product Analytics,,,,,Epic M01.4 – Analytics processing pipeline,,M01,Task,High,,,Backlog
+Enrich coarse geography,Map transient network data to allowed country or region fields.,M01 – Product Analytics,,,,,Epic M01.4 – Analytics processing pipeline,,M01,Task,High,,,Backlog
+Implement bot filtering,Mark rather than silently delete suspicious events so quality can be inspected.,M01 – Product Analytics,,,,,Epic M01.4 – Analytics processing pipeline,,M01,Task,High,,,Backlog
+Implement event deduplication,Prevent retry duplicates from affecting metrics.,M01 – Product Analytics,,,,,Epic M01.4 – Analytics processing pipeline,,M01,Task,High,,,Backlog
+Persist normalized events to ClickHouse,Use partitioning and ordering suited to site and time queries.,M01 – Product Analytics,,,,,Epic M01.4 – Analytics processing pipeline,,M01,Task,High,,,Backlog
+Publish analytics.processed event,"Allow funnels, alerts and AI to subscribe later.",M01 – Product Analytics,,,,,Epic M01.4 – Analytics processing pipeline,,M01,Task,High,,,Backlog
+Create dead-letter recovery command,"Inspect, fix and replay failed messages safely.",M01 – Product Analytics,,,,,Epic M01.4 – Analytics processing pipeline,,M01,Task,High,,,Backlog
+Epic M01.5 – Analytics storage and aggregation,Create a queryable analytics model with transparent calculations.,M01 – Product Analytics,,,,,,,M01,Epic,High,1 week,,Backlog
+Design raw analytics event table,Store normalized immutable events with site and event version.,M01 – Product Analytics,,,,,Epic M01.5 – Analytics storage and aggregation,,M01,Task,High,,,Backlog
+Design session aggregation,"Calculate session start, end, duration, landing and exit pages.",M01 – Product Analytics,,,,,Epic M01.5 – Analytics storage and aggregation,,M01,Task,High,,,Backlog
+Design daily site rollup,Pre-aggregate common overview metrics by site and date.,M01 – Product Analytics,,,,,Epic M01.5 – Analytics storage and aggregation,,M01,Task,High,,,Backlog
+Design page rollup,"Aggregate views, visitors, engagement and exits by page.",M01 – Product Analytics,,,,,Epic M01.5 – Analytics storage and aggregation,,M01,Task,High,,,Backlog
+Design acquisition rollup,"Aggregate channels, referrers and campaigns.",M01 – Product Analytics,,,,,Epic M01.5 – Analytics storage and aggregation,,M01,Task,High,,,Backlog
+Design technology rollup,"Aggregate device, browser, OS and viewport categories.",M01 – Product Analytics,,,,,Epic M01.5 – Analytics storage and aggregation,,M01,Task,High,,,Backlog
+Design geography rollup,Aggregate only the configured geographic granularity.,M01 – Product Analytics,,,,,Epic M01.5 – Analytics storage and aggregation,,M01,Task,High,,,Backlog
+Implement late-event handling,Recalculate affected windows when delayed events arrive.,M01 – Product Analytics,,,,,Epic M01.5 – Analytics storage and aggregation,,M01,Task,High,,,Backlog
+Implement data reconciliation job,"Compare accepted, processed, filtered and stored event counts.",M01 – Product Analytics,,,,,Epic M01.5 – Analytics storage and aggregation,,M01,Task,High,,,Backlog
+Add retention and partition cleanup,Delete expired data without blocking normal queries.,M01 – Product Analytics,,,,,Epic M01.5 – Analytics storage and aggregation,,M01,Task,High,,,Backlog
+Epic M01.6 – Analytics query API,Expose stable metric APIs rather than allowing the dashboard to query ClickHouse directly.,M01 – Product Analytics,,,,,,,M01,Epic,High,4 days,,Backlog
+Create overview metrics endpoint,"Return visitors, sessions, views, engagement, bounce and duration with definitions.",M01 – Product Analytics,,,,,Epic M01.6 – Analytics query API,,M01,Task,High,,,Backlog
+Create time-series endpoint,"Support hour, day, week and month intervals.",M01 – Product Analytics,,,,,Epic M01.6 – Analytics query API,,M01,Task,High,,,Backlog
+Create page metrics endpoint,"Support search, sorting, pagination and route filters.",M01 – Product Analytics,,,,,Epic M01.6 – Analytics query API,,M01,Task,High,,,Backlog
+Create acquisition endpoint,"Return channels, sources, referrers and campaigns.",M01 – Product Analytics,,,,,Epic M01.6 – Analytics query API,,M01,Task,High,,,Backlog
+Create technology endpoint,"Return device, browser, OS and screen categories.",M01 – Product Analytics,,,,,Epic M01.6 – Analytics query API,,M01,Task,High,,,Backlog
+Create geography endpoint,Return country or configured regional aggregates.,M01 – Product Analytics,,,,,Epic M01.6 – Analytics query API,,M01,Task,High,,,Backlog
+Create custom-event endpoint,"Return event counts, unique sessions and allowed properties.",M01 – Product Analytics,,,,,Epic M01.6 – Analytics query API,,M01,Task,High,,,Backlog
+Implement comparison periods,Return current and previous values using explicit periods.,M01 – Product Analytics,,,,,Epic M01.6 – Analytics query API,,M01,Task,High,,,Backlog
+Add site and workspace authorization,Enforce ownership in every query.,M01 – Product Analytics,,,,,Epic M01.6 – Analytics query API,,M01,Task,High,,,Backlog
+Add query cache and timeout limits,Protect ClickHouse from repeated expensive dashboard requests.,M01 – Product Analytics,,,,,Epic M01.6 – Analytics query API,,M01,Task,High,,,Backlog
+Epic M01.7 – Analytics dashboard,Build a useful Vue dashboard for real portfolio traffic.,M01 – Product Analytics,,,,,,,M01,Epic,High,1 week,,Backlog
+Create site and date-range selector,Persist dashboard state in the route so views are shareable.,M01 – Product Analytics,,,,,Epic M01.7 – Analytics dashboard,,M01,Task,High,,,Backlog
+Create overview metric cards,"Show values, comparison and metric definitions.",M01 – Product Analytics,,,,,Epic M01.7 – Analytics dashboard,,M01,Task,High,,,Backlog
+Create traffic time-series view,"Support views, visitors and sessions without misleading scales.",M01 – Product Analytics,,,,,Epic M01.7 – Analytics dashboard,,M01,Task,High,,,Backlog
+Create top pages table,"Show views, visitors, engagement and exit metrics.",M01 – Product Analytics,,,,,Epic M01.7 – Analytics dashboard,,M01,Task,High,,,Backlog
+Create acquisition views,"Show channels, referrers and campaigns.",M01 – Product Analytics,,,,,Epic M01.7 – Analytics dashboard,,M01,Task,High,,,Backlog
+Create technology views,"Show device, browser and OS breakdowns.",M01 – Product Analytics,,,,,Epic M01.7 – Analytics dashboard,,M01,Task,High,,,Backlog
+Create geography view,Show a table first; add a map only when it improves interpretation.,M01 – Product Analytics,,,,,Epic M01.7 – Analytics dashboard,,M01,Task,High,,,Backlog
+Create custom-event explorer,Filter named events and inspect allowed property breakdowns.,M01 – Product Analytics,,,,,Epic M01.7 – Analytics dashboard,,M01,Task,High,,,Backlog
+Create filters and segments,"Support page, source, device and country filters.",M01 – Product Analytics,,,,,Epic M01.7 – Analytics dashboard,,M01,Task,High,,,Backlog
+Create metric glossary drawer,"Explain visitor, session, bounce, duration and comparison calculations.",M01 – Product Analytics,,,,,Epic M01.7 – Analytics dashboard,,M01,Task,High,,,Backlog
+Add responsive and accessible states,"Support keyboard use, readable tables, loading, errors and empty data.",M01 – Product Analytics,,,,,Epic M01.7 – Analytics dashboard,,M01,Task,High,,,Backlog
+"Epic M01.8 – Live analytics, quality and launch",Finish the module with trustworthy operation and a real deployment.,M01 – Product Analytics,,,,,,,M01,Epic,High,4 days,,Backlog
+Implement live visitor projection,Maintain a short-lived count and current-page list without treating it as durable truth.,M01 – Product Analytics,,,,,"Epic M01.8 – Live analytics, quality and launch",,M01,Task,High,,,Backlog
+Add SignalR live updates,Update the live panel without polling the main query APIs.,M01 – Product Analytics,,,,,"Epic M01.8 – Live analytics, quality and launch",,M01,Task,High,,,Backlog
+Create data-quality dashboard,"Show accepted, rejected, duplicate, bot, delayed and failed events.",M01 – Product Analytics,,,,,"Epic M01.8 – Live analytics, quality and launch",,M01,Task,High,,,Backlog
+Create site installation snippet,Generate a copyable SDK integration for anthony-air.nl.,M01 – Product Analytics,,,,,"Epic M01.8 – Live analytics, quality and launch",,M01,Task,High,,,Backlog
+Install SDK on portfolio staging,"Verify routes, referrers, events and privacy behavior.",M01 – Product Analytics,,,,,"Epic M01.8 – Live analytics, quality and launch",,M01,Task,High,,,Backlog
+Run synthetic acceptance traffic,Use known test journeys and reconcile expected metrics.,M01 – Product Analytics,,,,,"Epic M01.8 – Live analytics, quality and launch",,M01,Task,High,,,Backlog
+Deploy analytics module to self-hosted environment,Use the NAS profile and production TLS.,M01 – Product Analytics,,,,,"Epic M01.8 – Live analytics, quality and launch",,M01,Task,High,,,Backlog
+Create backup and restore test,Verify metadata and analytics data recovery procedures.,M01 – Product Analytics,,,,,"Epic M01.8 – Live analytics, quality and launch",,M01,Task,High,,,Backlog
+Write module runbook,"Document health checks, replay, retention and common failures.",M01 – Product Analytics,,,,,"Epic M01.8 – Live analytics, quality and launch",,M01,Task,High,,,Backlog
+Publish portfolio case study,"Explain architecture, trade-offs, privacy, screenshots and real findings.",M01 – Product Analytics,,,,,"Epic M01.8 – Live analytics, quality and launch",,M01,Task,High,,,Backlog
+M02 Milestone – Performance Monitoring ready,"The performance monitoring module is independently deployable, observable and available in the shared dashboard.",M02 – Performance Monitoring,,,,,,,M02,Milestone,High,,M02 Complete,Backlog
+Epic M02.1 – Performance event collection,Collect real-user measurements without slowing the website.,M02 – Performance Monitoring,,,,,,,M02,Epic,High,1 week,,Backlog
+Extend SDK with Web Vitals,"Collect LCP, INP and CLS with page and navigation context.",M02 – Performance Monitoring,,,,,Epic M02.1 – Performance event collection,,M02,Task,Medium,,,Backlog
+Collect navigation timing,"Capture TTFB, DNS, connection and DOM timing fields that are stable and useful.",M02 – Performance Monitoring,,,,,Epic M02.1 – Performance event collection,,M02,Task,Medium,,,Backlog
+Add configurable sampling,"Limit volume per site, page and device class.",M02 – Performance Monitoring,,,,,Epic M02.1 – Performance event collection,,M02,Task,Medium,,,Backlog
+Publish performance events,Route performance payloads through the existing collector and versioned contracts.,M02 – Performance Monitoring,,,,,Epic M02.1 – Performance event collection,,M02,Task,Medium,,,Backlog
+Test SDK overhead,"Measure bundle size, execution time and network impact.",M02 – Performance Monitoring,,,,,Epic M02.1 – Performance event collection,,M02,Task,Medium,,,Backlog
+Epic M02.2 – Processing and storage,Create independent performance data ownership.,M02 – Performance Monitoring,,,,,,,M02,Epic,High,1 week,,Backlog
+Create Performance Service,"Own processing, storage, queries and budgets for performance data.",M02 – Performance Monitoring,,,,,Epic M02.2 – Processing and storage,,M02,Task,Medium,,,Backlog
+Create performance ClickHouse schema,"Optimize percentiles by site, page, device, release and time.",M02 – Performance Monitoring,,,,,Epic M02.2 – Processing and storage,,M02,Task,Medium,,,Backlog
+Implement outlier and invalid-sample filtering,Preserve quality flags for diagnostics.,M02 – Performance Monitoring,,,,,Epic M02.2 – Processing and storage,,M02,Task,Medium,,,Backlog
+Implement percentile rollups,"Calculate p50, p75, p90 and p95 rather than relying only on averages.",M02 – Performance Monitoring,,,,,Epic M02.2 – Processing and storage,,M02,Task,Medium,,,Backlog
+Subscribe to deployment events,Attach known release versions without direct database access.,M02 – Performance Monitoring,,,,,Epic M02.2 – Processing and storage,,M02,Task,Medium,,,Backlog
+Epic M02.3 – Performance dashboard and regressions,Turn measurements into decisions.,M02 – Performance Monitoring,,,,,,,M02,Epic,High,1 week,,Backlog
+Create Core Web Vitals overview,Show distributions and pass/needs-improvement/poor categories.,M02 – Performance Monitoring,,,,,Epic M02.3 – Performance dashboard and regressions,,M02,Task,Medium,,,Backlog
+Create page performance table,Compare pages and sample counts.,M02 – Performance Monitoring,,,,,Epic M02.3 – Performance dashboard and regressions,,M02,Task,Medium,,,Backlog
+Create device and browser segments,Identify mobile or browser-specific slowdowns.,M02 – Performance Monitoring,,,,,Epic M02.3 – Performance dashboard and regressions,,M02,Task,Medium,,,Backlog
+Create release comparison,Compare before and after deployment windows.,M02 – Performance Monitoring,,,,,Epic M02.3 – Performance dashboard and regressions,,M02,Task,Medium,,,Backlog
+Implement performance budgets,Allow per-site and per-page thresholds.,M02 – Performance Monitoring,,,,,Epic M02.3 – Performance dashboard and regressions,,M02,Task,Medium,,,Backlog
+Create regression event,Publish a typed event when a sustained budget regression occurs.,M02 – Performance Monitoring,,,,,Epic M02.3 – Performance dashboard and regressions,,M02,Task,Medium,,,Backlog
+M03 Milestone – Error Tracking ready,"The error tracking module is independently deployable, observable and available in the shared dashboard.",M03 – Error Tracking,,,,,,,M03,Milestone,High,,M03 Complete,Backlog
+Epic M03.1 – Error capture,Capture failures safely from browser and backend applications.,M03 – Error Tracking,,,,,,,M03,Epic,High,1 week,,Backlog
+Add window error capture,Collect uncaught browser errors with bounded context.,M03 – Error Tracking,,,,,Epic M03.1 – Error capture,,M03,Task,Medium,,,Backlog
+Add unhandled rejection capture,Capture rejected promises and normalized reasons.,M03 – Error Tracking,,,,,Epic M03.1 – Error capture,,M03,Task,Medium,,,Backlog
+Create server SDK proof of concept,Send ASP.NET Core exception occurrences through a protected endpoint.,M03 – Error Tracking,,,,,Epic M03.1 – Error capture,,M03,Task,Medium,,,Backlog
+Implement sensitive-data scrubbing,"Redact tokens, credentials, form values and configured patterns.",M03 – Error Tracking,,,,,Epic M03.1 – Error capture,,M03,Task,Medium,,,Backlog
+Add environment and release fields,Attach deployment identity to each occurrence.,M03 – Error Tracking,,,,,Epic M03.1 – Error capture,,M03,Task,Medium,,,Backlog
+Epic M03.2 – Grouping and issue lifecycle,Turn many occurrences into manageable issues.,M03 – Error Tracking,,,,,,,M03,Epic,High,1 week,,Backlog
+Design occurrence storage,Store high-volume occurrences separately from issue metadata.,M03 – Error Tracking,,,,,Epic M03.2 – Grouping and issue lifecycle,,M03,Task,Medium,,,Backlog
+Implement error fingerprinting,"Group by normalized type, stack and configured fingerprint.",M03 – Error Tracking,,,,,Epic M03.2 – Grouping and issue lifecycle,,M03,Task,Medium,,,Backlog
+Implement issue states,"Support unresolved, investigating, ignored and resolved.",M03 – Error Tracking,,,,,Epic M03.2 – Grouping and issue lifecycle,,M03,Task,Medium,,,Backlog
+Detect regressions,Reopen or flag an issue that returns after resolution.,M03 – Error Tracking,,,,,Epic M03.2 – Grouping and issue lifecycle,,M03,Task,Medium,,,Backlog
+Implement source-map upload,Associate uploaded maps with site and release.,M03 – Error Tracking,,,,,Epic M03.2 – Grouping and issue lifecycle,,M03,Task,Medium,,,Backlog
+Resolve stack traces,Produce readable frames without exposing private source maps publicly.,M03 – Error Tracking,,,,,Epic M03.2 – Grouping and issue lifecycle,,M03,Task,Medium,,,Backlog
+Epic M03.3 – Error dashboard,Show impact and trends.,M03 – Error Tracking,,,,,,,M03,Epic,High,1 week,,Backlog
+Create issue inbox,"Sort by newness, frequency, affected sessions and severity.",M03 – Error Tracking,,,,,Epic M03.3 – Error dashboard,,M03,Task,Medium,,,Backlog
+Create issue detail page,"Show stack, occurrences, releases, pages and browser segments.",M03 – Error Tracking,,,,,Epic M03.3 – Error dashboard,,M03,Task,Medium,,,Backlog
+Create affected-user estimates,Use privacy-safe identifiers and explain the counting window.,M03 – Error Tracking,,,,,Epic M03.3 – Error dashboard,,M03,Task,Medium,,,Backlog
+Create error trend charts,Compare occurrence rates over time.,M03 – Error Tracking,,,,,Epic M03.3 – Error dashboard,,M03,Task,Medium,,,Backlog
+Publish issue change events,Enable alerting and AI without direct service coupling.,M03 – Error Tracking,,,,,Epic M03.3 – Error dashboard,,M03,Task,Medium,,,Backlog
+M04 Milestone – Deployment Intelligence ready,"The deployment intelligence module is independently deployable, observable and available in the shared dashboard.",M04 – Deployment Intelligence,,,,,,,M04,Milestone,High,,M04 Complete,Backlog
+Epic M04.1 – Deployment ingestion,Create a provider-neutral release and deployment model.,M04 – Deployment Intelligence,,,,,,,M04,Epic,High,1 week,,Backlog
+Design release and deployment entities,Separate immutable release identity from environment deployment.,M04 – Deployment Intelligence,,,,,Epic M04.1 – Deployment ingestion,,M04,Task,Medium,,,Backlog
+Create generic deployment webhook,Validate signed provider-neutral events.,M04 – Deployment Intelligence,,,,,Epic M04.1 – Deployment ingestion,,M04,Task,Medium,,,Backlog
+Create GitHub Actions integration,"Publish repository, commit, environment, result and timestamps.",M04 – Deployment Intelligence,,,,,Epic M04.1 – Deployment ingestion,,M04,Task,Medium,,,Backlog
+Create deployment status workflow,"Support started, succeeded, failed and rolled-back states.",M04 – Deployment Intelligence,,,,,Epic M04.1 – Deployment ingestion,,M04,Task,Medium,,,Backlog
+Publish deployment events,Notify other modules through versioned contracts.,M04 – Deployment Intelligence,,,,,Epic M04.1 – Deployment ingestion,,M04,Task,Medium,,,Backlog
+Epic M04.2 – Release correlation,Relate data-module events to releases.,M04 – Deployment Intelligence,,,,,,,M04,Epic,High,1 week,,Backlog
+Add release field to browser SDK configuration,Expose the deployed version without coupling to GitHub.,M04 – Deployment Intelligence,,,,,Epic M04.2 – Release correlation,,M04,Task,Medium,,,Backlog
+Subscribe analytics to release metadata,Allow release filtering through service APIs.,M04 – Deployment Intelligence,,,,,Epic M04.2 – Release correlation,,M04,Task,Medium,,,Backlog
+Subscribe performance to release metadata,Enable regressions by release.,M04 – Deployment Intelligence,,,,,Epic M04.2 – Release correlation,,M04,Task,Medium,,,Backlog
+Subscribe error tracking to release metadata,Identify new and regressed issues.,M04 – Deployment Intelligence,,,,,Epic M04.2 – Release correlation,,M04,Task,Medium,,,Backlog
+Create before-and-after comparison API,Use consistent windows and minimum sample checks.,M04 – Deployment Intelligence,,,,,Epic M04.2 – Release correlation,,M04,Task,Medium,,,Backlog
+Epic M04.3 – Deployment dashboard,Provide a clear release history.,M04 – Deployment Intelligence,,,,,,,M04,Epic,High,1 week,,Backlog
+Create deployment timeline,"Show environment, commit, actor, status and links.",M04 – Deployment Intelligence,,,,,Epic M04.3 – Deployment dashboard,,M04,Task,Medium,,,Backlog
+Create release health summary,"Compose analytics, performance and errors through APIs.",M04 – Deployment Intelligence,,,,,Epic M04.3 – Deployment dashboard,,M04,Task,Medium,,,Backlog
+Create suspected regression badge,Use explicit rules rather than AI-only judgement.,M04 – Deployment Intelligence,,,,,Epic M04.3 – Deployment dashboard,,M04,Task,Medium,,,Backlog
+Create rollback annotation,Show rollback and recovery effects.,M04 – Deployment Intelligence,,,,,Epic M04.3 – Deployment dashboard,,M04,Task,Medium,,,Backlog
+M05 Milestone – Goals and Funnels ready,"The goals and funnels module is independently deployable, observable and available in the shared dashboard.",M05 – Goals and Funnels,,,,,,,M05,Milestone,High,,M05 Complete,Backlog
+Epic M05.1 – Goal configuration,Define conversions independently from website code.,M05 – Goals and Funnels,,,,,,,M05,Epic,High,1 week,,Backlog
+Create goal entity and versioning,Preserve historical meaning after a goal changes.,M05 – Goals and Funnels,,,,,Epic M05.1 – Goal configuration,,M05,Task,Medium,,,Backlog
+Support page-based goals,Match normalized page rules.,M05 – Goals and Funnels,,,,,Epic M05.1 – Goal configuration,,M05,Task,Medium,,,Backlog
+Support custom-event goals,Match named events and allowlisted properties.,M05 – Goals and Funnels,,,,,Epic M05.1 – Goal configuration,,M05,Task,Medium,,,Backlog
+Add goal management UI,"Create, test, enable and archive goals.",M05 – Goals and Funnels,,,,,Epic M05.1 – Goal configuration,,M05,Task,Medium,,,Backlog
+Publish goal configuration events,Update processors without shared database access.,M05 – Goals and Funnels,,,,,Epic M05.1 – Goal configuration,,M05,Task,Medium,,,Backlog
+Epic M05.2 – Funnel engine,Calculate ordered journeys.,M05 – Goals and Funnels,,,,,,,M05,Epic,High,1 week,,Backlog
+Create funnel definition model,"Define steps, ordering, window and optionality.",M05 – Goals and Funnels,,,,,Epic M05.2 – Funnel engine,,M05,Task,Medium,,,Backlog
+Implement funnel processor,"Calculate entry, completion and drop-off from analytics events.",M05 – Goals and Funnels,,,,,Epic M05.2 – Funnel engine,,M05,Task,Medium,,,Backlog
+Implement attribution window,Document how conversions are associated with acquisition data.,M05 – Goals and Funnels,,,,,Epic M05.2 – Funnel engine,,M05,Task,Medium,,,Backlog
+Add segment support,"Filter funnels by source, device, country and page.",M05 – Goals and Funnels,,,,,Epic M05.2 – Funnel engine,,M05,Task,Medium,,,Backlog
+Create reconciliation tests,Use deterministic event journeys and expected outcomes.,M05 – Goals and Funnels,,,,,Epic M05.2 – Funnel engine,,M05,Task,Medium,,,Backlog
+Epic M05.3 – Conversion dashboard,Make conversion analysis useful.,M05 – Goals and Funnels,,,,,,,M05,Epic,High,1 week,,Backlog
+Create goal overview,"Show conversions, rate and trend.",M05 – Goals and Funnels,,,,,Epic M05.3 – Conversion dashboard,,M05,Task,Medium,,,Backlog
+Create funnel visualization,Show counts and drop-off per step.,M05 – Goals and Funnels,,,,,Epic M05.3 – Conversion dashboard,,M05,Task,Medium,,,Backlog
+Create acquisition conversion view,Compare channels and campaigns.,M05 – Goals and Funnels,,,,,Epic M05.3 – Conversion dashboard,,M05,Task,Medium,,,Backlog
+Create device conversion view,Identify device-specific friction.,M05 – Goals and Funnels,,,,,Epic M05.3 – Conversion dashboard,,M05,Task,Medium,,,Backlog
+Add CSV export,"Export aggregated, permission-checked results.",M05 – Goals and Funnels,,,,,Epic M05.3 – Conversion dashboard,,M05,Task,Medium,,,Backlog
+M06 Milestone – SEO and Content Quality ready,"The seo and content quality module is independently deployable, observable and available in the shared dashboard.",M06 – SEO and Content Quality,,,,,,,M06,Milestone,High,,M06 Complete,Backlog
+Epic M06.1 – Safe crawler,Crawl registered sites with explicit limits.,M06 – SEO and Content Quality,,,,,,,M06,Epic,High,1 week,,Backlog
+Create crawl scheduler,Queue recurring and manual scans.,M06 – SEO and Content Quality,,,,,Epic M06.1 – Safe crawler,,M06,Task,Medium,,,Backlog
+Implement robots and sitemap discovery,Respect configured crawl boundaries.,M06 – SEO and Content Quality,,,,,Epic M06.1 – Safe crawler,,M06,Task,Medium,,,Backlog
+Implement URL normalization and deduplication,Avoid loops and repeated content.,M06 – SEO and Content Quality,,,,,Epic M06.1 – Safe crawler,,M06,Task,Medium,,,Backlog
+Implement rate and depth limits,Protect both the target site and the scanner.,M06 – SEO and Content Quality,,,,,Epic M06.1 – Safe crawler,,M06,Task,Medium,,,Backlog
+Store crawl evidence,"Keep status, headers and selected metadata without full private page content.",M06 – SEO and Content Quality,,,,,Epic M06.1 – Safe crawler,,M06,Task,Medium,,,Backlog
+Epic M06.2 – SEO checks,Generate actionable technical findings.,M06 – SEO and Content Quality,,,,,,,M06,Epic,High,1 week,,Backlog
+Check titles and descriptions,"Detect missing, duplicate or unreasonable metadata.",M06 – SEO and Content Quality,,,,,Epic M06.2 – SEO checks,,M06,Task,Medium,,,Backlog
+Check canonical and index directives,Report conflicting or missing signals.,M06 – SEO and Content Quality,,,,,Epic M06.2 – SEO checks,,M06,Task,Medium,,,Backlog
+Check heading structure,Report evidence without pretending automated checks prove quality.,M06 – SEO and Content Quality,,,,,Epic M06.2 – SEO checks,,M06,Task,Medium,,,Backlog
+Check broken internal links,Record source and target URLs.,M06 – SEO and Content Quality,,,,,Epic M06.2 – SEO checks,,M06,Task,Medium,,,Backlog
+Check sitemap and robots consistency,Identify unreachable or blocked important URLs.,M06 – SEO and Content Quality,,,,,Epic M06.2 – SEO checks,,M06,Task,Medium,,,Backlog
+Run Lighthouse CLI job,Store report summaries and selected raw artifacts.,M06 – SEO and Content Quality,,,,,Epic M06.2 – SEO checks,,M06,Task,Medium,,,Backlog
+Epic M06.3 – SEO dashboard,Show issues and progress over time.,M06 – SEO and Content Quality,,,,,,,M06,Epic,High,1 week,,Backlog
+Create SEO overview,"Show issue counts, affected pages and scan history.",M06 – SEO and Content Quality,,,,,Epic M06.3 – SEO dashboard,,M06,Task,Medium,,,Backlog
+Create issue detail view,"Show evidence, severity and remediation guidance.",M06 – SEO and Content Quality,,,,,Epic M06.3 – SEO dashboard,,M06,Task,Medium,,,Backlog
+Create page inventory,"Filter by status, indexability and issue count.",M06 – SEO and Content Quality,,,,,Epic M06.3 – SEO dashboard,,M06,Task,Medium,,,Backlog
+Create historical comparison,Compare issue changes between scans.,M06 – SEO and Content Quality,,,,,Epic M06.3 – SEO dashboard,,M06,Task,Medium,,,Backlog
+Publish scan result events,Enable alerting and AI subscriptions.,M06 – SEO and Content Quality,,,,,Epic M06.3 – SEO dashboard,,M06,Task,Medium,,,Backlog
+M07 Milestone – Heatmaps and Session Insights ready,"The heatmaps and session insights module is independently deployable, observable and available in the shared dashboard.",M07 – Heatmaps and Session Insights,,,,,,,M07,Milestone,High,,M07 Complete,Backlog
+Epic M07.1 – Interaction collection,Collect minimal interaction data with strong privacy defaults.,M07 – Heatmaps and Session Insights,,,,,,,M07,Epic,High,1 week,,Backlog
+Define blocked elements and attributes,"Never collect input values, passwords or sensitive marked content.",M07 – Heatmaps and Session Insights,,,,,Epic M07.1 – Interaction collection,,M07,Task,Medium,,,Backlog
+Collect normalized click positions,Store element-independent coordinates and viewport context.,M07 – Heatmaps and Session Insights,,,,,Epic M07.1 – Interaction collection,,M07,Task,Medium,,,Backlog
+Collect scroll-depth summaries,Send bounded percentage milestones rather than continuous raw motion.,M07 – Heatmaps and Session Insights,,,,,Epic M07.1 – Interaction collection,,M07,Task,Medium,,,Backlog
+Implement sampling and caps,Limit sessions and events per session.,M07 – Heatmaps and Session Insights,,,,,Epic M07.1 – Interaction collection,,M07,Task,Medium,,,Backlog
+Create privacy test pages,Verify masking and blocked-data behavior.,M07 – Heatmaps and Session Insights,,,,,Epic M07.1 – Interaction collection,,M07,Task,Medium,,,Backlog
+Epic M07.2 – Heatmap processing,Aggregate interactions across responsive layouts.,M07 – Heatmaps and Session Insights,,,,,,,M07,Epic,High,1 week,,Backlog
+Create interaction storage schema,"Partition by site, page, viewport class and date.",M07 – Heatmaps and Session Insights,,,,,Epic M07.2 – Heatmap processing,,M07,Task,Medium,,,Backlog
+Normalize responsive viewport groups,Avoid combining incompatible layouts.,M07 – Heatmaps and Session Insights,,,,,Epic M07.2 – Heatmap processing,,M07,Task,Medium,,,Backlog
+Aggregate click density,Produce queryable bins or points.,M07 – Heatmaps and Session Insights,,,,,Epic M07.2 – Heatmap processing,,M07,Task,Medium,,,Backlog
+Aggregate scroll reach,Calculate reach by page depth.,M07 – Heatmaps and Session Insights,,,,,Epic M07.2 – Heatmap processing,,M07,Task,Medium,,,Backlog
+Implement retention cleanup,Use shorter defaults than ordinary page analytics.,M07 – Heatmaps and Session Insights,,,,,Epic M07.2 – Heatmap processing,,M07,Task,Medium,,,Backlog
+Epic M07.3 – Heatmap dashboard,Render useful interaction views.,M07 – Heatmaps and Session Insights,,,,,,,M07,Epic,High,1 week,,Backlog
+Create screenshot/version strategy,Avoid overlaying events on a changed page without warning.,M07 – Heatmaps and Session Insights,,,,,Epic M07.3 – Heatmap dashboard,,M07,Task,Medium,,,Backlog
+Create click heatmap renderer,Support viewport and date filters.,M07 – Heatmaps and Session Insights,,,,,Epic M07.3 – Heatmap dashboard,,M07,Task,Medium,,,Backlog
+Create scroll heatmap renderer,Show percentage of sessions reaching page regions.,M07 – Heatmaps and Session Insights,,,,,Epic M07.3 – Heatmap dashboard,,M07,Task,Medium,,,Backlog
+Create element click table,Show safe selector summaries where available.,M07 – Heatmaps and Session Insights,,,,,Epic M07.3 – Heatmap dashboard,,M07,Task,Medium,,,Backlog
+Add privacy and sample warnings,"Display masking, sample count and page-version limitations.",M07 – Heatmaps and Session Insights,,,,,Epic M07.3 – Heatmap dashboard,,M07,Task,Medium,,,Backlog
+Epic M07.4 – Optional session replay proof of concept,Treat replay as a separate high-risk slice.,M07 – Heatmaps and Session Insights,,,,,,,M07,Epic,High,1 week,,Backlog
+Write replay privacy design,Define exact captured mutations and masking behavior.,M07 – Heatmaps and Session Insights,,,,,Epic M07.4 – Optional session replay proof of concept,,M07,Task,Medium,,,Backlog
+Store encrypted replay chunks,Use object storage with short retention.,M07 – Heatmaps and Session Insights,,,,,Epic M07.4 – Optional session replay proof of concept,,M07,Task,Medium,,,Backlog
+Create controlled replay player,Restrict access and log every viewing action.,M07 – Heatmaps and Session Insights,,,,,Epic M07.4 – Optional session replay proof of concept,,M07,Task,Medium,,,Backlog
+Run privacy review before release,Do not enable replay by default.,M07 – Heatmaps and Session Insights,,,,,Epic M07.4 – Optional session replay proof of concept,,M07,Task,Medium,,,Backlog
+M08 Milestone – AI Insights ready,"The ai insights module is independently deployable, observable and available in the shared dashboard.",M08 – AI Insights,,,,,,,M08,Milestone,High,,M08 Complete,Backlog
+Epic M08.1 – AI safety and architecture,"Keep Claude behind explicit, auditable application tools.",M08 – AI Insights,,,,,,,M08,Epic,High,1 week,,Backlog
+Create AI provider interface,Support Claude and a deterministic fake provider.,M08 – AI Insights,,,,,Epic M08.1 – AI safety and architecture,,M08,Task,Medium,,,Backlog
+Define typed metric tools,Expose only approved query shapes and limits.,M08 – AI Insights,,,,,Epic M08.1 – AI safety and architecture,,M08,Task,Medium,,,Backlog
+Implement workspace authorization per tool,Check every tool call independently.,M08 – AI Insights,,,,,Epic M08.1 – AI safety and architecture,,M08,Task,Medium,,,Backlog
+Implement prompt and tool versioning,Make generated output reproducible enough to audit.,M08 – AI Insights,,,,,Epic M08.1 – AI safety and architecture,,M08,Task,Medium,,,Backlog
+Implement usage budgets,Limit requests and tokens by workspace and module.,M08 – AI Insights,,,,,Epic M08.1 – AI safety and architecture,,M08,Task,Medium,,,Backlog
+Implement AI audit records,"Store request purpose, tools, metrics, result and reviewer feedback.",M08 – AI Insights,,,,,Epic M08.1 – AI safety and architecture,,M08,Task,Medium,,,Backlog
+Epic M08.2 – Insight generation,Generate evidence-based explanations.,M08 – AI Insights,,,,,,,M08,Epic,High,1 week,,Backlog
+Create weekly site summary,Compare explicit periods and highlight material changes.,M08 – AI Insights,,,,,Epic M08.2 – Insight generation,,M08,Task,Medium,,,Backlog
+Create traffic-change analysis,"Use acquisition, page and device tools.",M08 – AI Insights,,,,,Epic M08.2 – Insight generation,,M08,Task,Medium,,,Backlog
+Create performance-regression analysis,Use percentile and release data when available.,M08 – AI Insights,,,,,Epic M08.2 – Insight generation,,M08,Task,Medium,,,Backlog
+Create error-spike analysis,Use issue and release data when available.,M08 – AI Insights,,,,,Epic M08.2 – Insight generation,,M08,Task,Medium,,,Backlog
+Create SEO scan summary,Summarize evidence from completed scans.,M08 – AI Insights,,,,,Epic M08.2 – Insight generation,,M08,Task,Medium,,,Backlog
+Create unsupported-claim guard,Require metric evidence and express uncertainty.,M08 – AI Insights,,,,,Epic M08.2 – Insight generation,,M08,Task,Medium,,,Backlog
+Epic M08.3 – AI dashboard experience,Make insights reviewable rather than magical.,M08 – AI Insights,,,,,,,M08,Epic,High,1 week,,Backlog
+Create AI insights feed,"Show period, sources, confidence and generation time.",M08 – AI Insights,,,,,Epic M08.3 – AI dashboard experience,,M08,Task,Medium,,,Backlog
+Create ask-data workflow,Offer constrained questions and follow-ups.,M08 – AI Insights,,,,,Epic M08.3 – AI dashboard experience,,M08,Task,Medium,,,Backlog
+Show tool evidence,List the metrics and filters used for each conclusion.,M08 – AI Insights,,,,,Epic M08.3 – AI dashboard experience,,M08,Task,Medium,,,Backlog
+Add feedback and correction,"Let the user mark useful, wrong or missing context.",M08 – AI Insights,,,,,Epic M08.3 – AI dashboard experience,,M08,Task,Medium,,,Backlog
+Create scheduled insight job,Generate only when enough new data exists.,M08 – AI Insights,,,,,Epic M08.3 – AI dashboard experience,,M08,Task,Medium,,,Backlog
+M09 Milestone – Alerts and Uptime ready,"The alerts and uptime module is independently deployable, observable and available in the shared dashboard.",M09 – Alerts and Uptime,,,,,,,M09,Milestone,High,,M09 Complete,Backlog
+Epic M09.1 – Uptime monitoring,Run independent availability checks.,M09 – Alerts and Uptime,,,,,,,M09,Epic,High,1 week,,Backlog
+Create monitor configuration,"Support HTTP URL, interval, timeout and expected status.",M09 – Alerts and Uptime,,,,,Epic M09.1 – Uptime monitoring,,M09,Task,Medium,,,Backlog
+Create scheduled check worker,Run checks independently per monitor.,M09 – Alerts and Uptime,,,,,Epic M09.1 – Uptime monitoring,,M09,Task,Medium,,,Backlog
+Store check results,"Keep latency, status and failure reason.",M09 – Alerts and Uptime,,,,,Epic M09.1 – Uptime monitoring,,M09,Task,Medium,,,Backlog
+Implement consecutive-failure rule,Avoid alerting on one transient failure.,M09 – Alerts and Uptime,,,,,Epic M09.1 – Uptime monitoring,,M09,Task,Medium,,,Backlog
+Create uptime dashboard,"Show current status, history and availability.",M09 – Alerts and Uptime,,,,,Epic M09.1 – Uptime monitoring,,M09,Task,Medium,,,Backlog
+Epic M09.2 – Cross-module alert engine,Evaluate metrics without querying module databases.,M09 – Alerts and Uptime,,,,,,,M09,Epic,High,1 week,,Backlog
+Create alert-rule model,"Support threshold, comparison, duration and cooldown.",M09 – Alerts and Uptime,,,,,Epic M09.2 – Cross-module alert engine,,M09,Task,Medium,,,Backlog
+Create metric provider contracts,Read approved metrics from module APIs or published summaries.,M09 – Alerts and Uptime,,,,,Epic M09.2 – Cross-module alert engine,,M09,Task,Medium,,,Backlog
+Implement evaluation worker,Evaluate enabled rules on schedule or event.,M09 – Alerts and Uptime,,,,,Epic M09.2 – Cross-module alert engine,,M09,Task,Medium,,,Backlog
+Implement deduplication and recovery,"Create open, repeated and recovered alert states.",M09 – Alerts and Uptime,,,,,Epic M09.2 – Cross-module alert engine,,M09,Task,Medium,,,Backlog
+Create silence and maintenance windows,Prevent expected deployment noise.,M09 – Alerts and Uptime,,,,,Epic M09.2 – Cross-module alert engine,,M09,Task,Medium,,,Backlog
+Epic M09.3 – Notification delivery,Deliver alerts reliably.,M09 – Alerts and Uptime,,,,,,,M09,Epic,High,1 week,,Backlog
+Create email channel,Send templated notifications and record outcomes.,M09 – Alerts and Uptime,,,,,Epic M09.3 – Notification delivery,,M09,Task,Medium,,,Backlog
+Create Microsoft Teams channel,Send adaptive-card or webhook notifications.,M09 – Alerts and Uptime,,,,,Epic M09.3 – Notification delivery,,M09,Task,Medium,,,Backlog
+Create generic webhook channel,Sign outgoing payloads.,M09 – Alerts and Uptime,,,,,Epic M09.3 – Notification delivery,,M09,Task,Medium,,,Backlog
+Implement retry and dead-letter handling,Recover transient delivery failures.,M09 – Alerts and Uptime,,,,,Epic M09.3 – Notification delivery,,M09,Task,Medium,,,Backlog
+Create alert history and acknowledgement UI,"Show status, evidence and delivery attempts.",M09 – Alerts and Uptime,,,,,Epic M09.3 – Notification delivery,,M09,Task,Medium,,,Backlog
+M10 Milestone – Multi-site and Team Hardening ready,"The multi-site and team hardening module is independently deployable, observable and available in the shared dashboard.",M10 – Multi-site and Team Hardening,,,,,,,M10,Milestone,High,,M10 Complete,Backlog
+Epic M10.1 – Workspace security,Strengthen tenant isolation and access.,M10 – Multi-site and Team Hardening,,,,,,,M10,Epic,High,1 week,,Backlog
+Create invitation workflow,Invite and remove members safely.,M10 – Multi-site and Team Hardening,,,,,Epic M10.1 – Workspace security,,M10,Task,Medium,,,Backlog
+Add module-level permissions,Restrict sensitive modules such as replay and errors.,M10 – Multi-site and Team Hardening,,,,,Epic M10.1 – Workspace security,,M10,Task,Medium,,,Backlog
+Add authorization integration tests,Prove cross-workspace access is rejected.,M10 – Multi-site and Team Hardening,,,,,Epic M10.1 – Workspace security,,M10,Task,Medium,,,Backlog
+Add audit-log viewer,Show security and configuration changes.,M10 – Multi-site and Team Hardening,,,,,Epic M10.1 – Workspace security,,M10,Task,Medium,,,Backlog
+Add API key scopes,"Separate event publishing, administration and integrations.",M10 – Multi-site and Team Hardening,,,,,Epic M10.1 – Workspace security,,M10,Task,Medium,,,Backlog
+Epic M10.2 – Usage and lifecycle,Control cost and data lifecycle.,M10 – Multi-site and Team Hardening,,,,,,,M10,Epic,High,1 week,,Backlog
+Implement event quotas,Enforce per-site daily or monthly volume.,M10 – Multi-site and Team Hardening,,,,,Epic M10.2 – Usage and lifecycle,,M10,Task,Medium,,,Backlog
+Implement adaptive sampling,Reduce optional event types when approaching limits.,M10 – Multi-site and Team Hardening,,,,,Epic M10.2 – Usage and lifecycle,,M10,Task,Medium,,,Backlog
+Create usage dashboard,"Show accepted, sampled and rejected volume.",M10 – Multi-site and Team Hardening,,,,,Epic M10.2 – Usage and lifecycle,,M10,Task,Medium,,,Backlog
+Create site data export,Export permission-checked data in documented formats.,M10 – Multi-site and Team Hardening,,,,,Epic M10.2 – Usage and lifecycle,,M10,Task,Medium,,,Backlog
+Create site deletion workflow,Delete service-owned data through events and completion tracking.,M10 – Multi-site and Team Hardening,,,,,Epic M10.2 – Usage and lifecycle,,M10,Task,Medium,,,Backlog
+Epic M10.3 – Operations,Make self-hosting and upgrades safe.,M10 – Multi-site and Team Hardening,,,,,,,M10,Epic,High,1 week,,Backlog
+Create versioned deployment manifests,Pin service and infrastructure versions.,M10 – Multi-site and Team Hardening,,,,,Epic M10.3 – Operations,,M10,Task,Medium,,,Backlog
+Create backup schedule and verification,"Test restore, not just backup creation.",M10 – Multi-site and Team Hardening,,,,,Epic M10.3 – Operations,,M10,Task,Medium,,,Backlog
+Create upgrade runbook,"Document order, migrations and rollback.",M10 – Multi-site and Team Hardening,,,,,Epic M10.3 – Operations,,M10,Task,Medium,,,Backlog
+Create resource monitoring,"Show CPU, memory, storage and queue depth.",M10 – Multi-site and Team Hardening,,,,,Epic M10.3 – Operations,,M10,Task,Medium,,,Backlog
+Create disaster recovery exercise,Recover a development copy from backups.,M10 – Multi-site and Team Hardening,,,,,Epic M10.3 – Operations,,M10,Task,Medium,,,Backlog
+M11 Milestone – C++ Edge Agent ready,"The c++ edge agent module is independently deployable, observable and available in the shared dashboard.",M11 – C++ Edge Agent,,,,,,,M11,Milestone,High,,M11 Complete,Backlog
+Epic M11.1 – Agent core,Build a small and portable native agent.,M11 – C++ Edge Agent,,,,,,,M11,Epic,High,1 week,,Backlog
+Create CMake project and CI matrix,Build supported operating-system targets.,M11 – C++ Edge Agent,,,,,Epic M11.1 – Agent core,,M11,Task,Medium,,,Backlog
+Implement configuration model,"Read endpoint, enrollment, probes and intervals securely.",M11 – C++ Edge Agent,,,,,Epic M11.1 – Agent core,,M11,Task,Medium,,,Backlog
+Implement HTTP client,Send authenticated batched observations.,M11 – C++ Edge Agent,,,,,Epic M11.1 – Agent core,,M11,Task,Medium,,,Backlog
+Implement encrypted local queue,Buffer measurements during network loss.,M11 – C++ Edge Agent,,,,,Epic M11.1 – Agent core,,M11,Task,Medium,,,Backlog
+Implement graceful shutdown,Flush bounded data and close cleanly.,M11 – C++ Edge Agent,,,,,Epic M11.1 – Agent core,,M11,Task,Medium,,,Backlog
+Epic M11.2 – System and network probes,Collect useful host observations.,M11 – C++ Edge Agent,,,,,,,M11,Epic,High,1 week,,Backlog
+Collect CPU and memory metrics,Use platform abstractions and normalized units.,M11 – C++ Edge Agent,,,,,Epic M11.2 – System and network probes,,M11,Task,Medium,,,Backlog
+Collect disk usage,Track configured mounts only.,M11 – C++ Edge Agent,,,,,Epic M11.2 – System and network probes,,M11,Task,Medium,,,Backlog
+Implement HTTP probe,"Measure status, DNS, connection and total latency.",M11 – C++ Edge Agent,,,,,Epic M11.2 – System and network probes,,M11,Task,Medium,,,Backlog
+Implement TCP probe,Test endpoint reachability without application-specific logic.,M11 – C++ Edge Agent,,,,,Epic M11.2 – System and network probes,,M11,Task,Medium,,,Backlog
+Implement backoff and jitter,Avoid synchronized retry storms.,M11 – C++ Edge Agent,,,,,Epic M11.2 – System and network probes,,M11,Task,Medium,,,Backlog
+Epic M11.3 – Enrollment and dashboard,Operate agents safely.,M11 – C++ Edge Agent,,,,,,,M11,Epic,High,1 week,,Backlog
+Create one-time enrollment token,Exchange a short-lived token for an agent credential.,M11 – C++ Edge Agent,,,,,Epic M11.3 – Enrollment and dashboard,,M11,Task,Medium,,,Backlog
+Create agent registry API,"Track version, last seen, site and assigned checks.",M11 – C++ Edge Agent,,,,,Epic M11.3 – Enrollment and dashboard,,M11,Task,Medium,,,Backlog
+Create agent status dashboard,"Show online state, version and buffered failures.",M11 – C++ Edge Agent,,,,,Epic M11.3 – Enrollment and dashboard,,M11,Task,Medium,,,Backlog
+Create remote configuration pull,"Fetch signed, scoped configuration.",M11 – C++ Edge Agent,,,,,Epic M11.3 – Enrollment and dashboard,,M11,Task,Medium,,,Backlog
+Create package and install documentation,Provide an understandable demo installation.,M11 – C++ Edge Agent,,,,,Epic M11.3 – Enrollment and dashboard,,M11,Task,Medium,,,Backlog

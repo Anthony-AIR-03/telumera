@@ -1,0 +1,8 @@
+{
+  "name": "telumera",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ]
+}
