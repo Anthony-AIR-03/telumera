@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/packages/" />
+  <Folder Name="/packages/dotnet-service-defaults/">
+    <Project Path="packages/dotnet-service-defaults/Telumera.ServiceDefaults.csproj" />
+  </Folder>
+  <Folder Name="/templates/" />
+  <Folder Name="/templates/api-service/">
+    <Project Path="templates/api-service/ApiServiceTemplate.csproj" />
+  </Folder>
+  <Folder Name="/templates/worker-service/">
+    <Project Path="templates/worker-service/WorkerServiceTemplate.csproj" />
+  </Folder>
+</Solution>

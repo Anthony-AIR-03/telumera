@@ -1,0 +1,14 @@
+{
+  "$schema": "http://json.schemastore.org/template",
+  "author": "Telumera",
+  "classifications": ["Web", "ASP.NET Core", "API", "Telumera"],
+  "identity": "Telumera.Templates.ApiService",
+  "name": "Telumera ASP.NET Core API Service",
+  "shortName": "telumera-api",
+  "sourceName": "ApiServiceTemplate",
+  "preferNameDirectory": true,
+  "tags": {
+    "language": "C#",
+    "type": "project"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "$schema": "http://json.schemastore.org/template",
+  "author": "Telumera",
+  "classifications": ["Worker", "Background Service", "Telumera"],
+  "identity": "Telumera.Templates.WorkerService",
+  "name": "Telumera .NET Worker Service",
+  "shortName": "telumera-worker",
+  "sourceName": "WorkerServiceTemplate",
+  "preferNameDirectory": true,
+  "tags": {
+    "language": "C#",
+    "type": "project"
+  }
+}

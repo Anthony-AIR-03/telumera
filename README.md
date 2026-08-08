@@ -24,6 +24,7 @@ belongs there and which milestone populates it:
 - `services/` — one folder per bounded-context service
 - `agents/` — the optional C++ edge agent (M11)
 - `packages/` — shared libraries used across services and apps
+- `templates/` — installable `dotnet new` templates for scaffolding new services
 - `infrastructure/` — Docker Compose, Dapr components, Bicep, observability config
 - `docs/` — architecture, ADRs, privacy, contracts, runbooks
 - `tests/` — contract, integration, load and e2e tests
