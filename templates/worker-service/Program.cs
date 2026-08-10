@@ -1,4 +1,5 @@
 using Telumera.ServiceDefaults;
+
 using WorkerServiceTemplate;
 
 var builder = Host.CreateApplicationBuilder(args);

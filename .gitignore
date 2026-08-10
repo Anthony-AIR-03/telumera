@@ -9,6 +9,7 @@ node_modules/
 dist/
 .vite/
 *.tsbuildinfo
+.eslintcache
 
 # Env / secrets
 .env

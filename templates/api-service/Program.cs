@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+
 using Telumera.ServiceDefaults;
 
 var builder = WebApplication.CreateBuilder(args);
