@@ -1,0 +1,17 @@
+{
+  "app": {
+    "name": "Telumera"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "logout": "Log out"
+  },
+  "login": {
+    "title": "Sign in",
+    "description": "Authentication is not wired up yet — this is a placeholder for the M00 identity module.",
+    "action": "Continue"
+  },
+  "dashboard": {
+    "placeholder": "Dashboard shell — modules will render here as they ship."
+  }
+}
