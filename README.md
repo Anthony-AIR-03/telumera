@@ -4,6 +4,7 @@ Self-hosted, modular analytics and developer-intelligence platform — a privacy
 PostHog/Plausible/Sentry combined, built module-by-module.
 
 - Full project context, principles and working conventions: [CLAUDE.md](./CLAUDE.md)
+- Branch, commit, PR and release conventions: [CONTRIBUTING.md](./CONTRIBUTING.md)
 - Roadmap and module plan: [planning/Telumera_Modular_Project_Plan.md](./planning/Telumera_Modular_Project_Plan.md)
 - Accepted architecture decisions: [docs/adr](./docs/adr)
 - Architecture diagrams and data ownership: [docs/architecture](./docs/architecture)
@@ -11,8 +12,8 @@ PostHog/Plausible/Sentry combined, built module-by-module.
 
 ## Status
 
-Early scaffolding — M00 (Platform Foundation) in progress. M00.1 (architecture decisions) is complete;
-M00.2 (repository and service templates) is underway. No services are deployable yet.
+Early scaffolding — M00 (Platform Foundation) in progress. M00.1 (architecture decisions) and M00.2
+(repository and service templates) are complete. No services are deployable yet.
 
 ## Repository layout
 

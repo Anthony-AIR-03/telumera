@@ -89,8 +89,13 @@ decision that isn't already covered by them, rather than re-deriving it from the
 - `docs/privacy/privacy-threat-model.md` — privacy risks and mitigations; check any module touching
   identifiers, IP, URLs, DOM content, or AI access against this before implementing.
 
-Next up per the roadmap: M00.2 (repo/service templates) — monorepo skeleton, ASP.NET Core/worker/Vue
-templates, shared event-contract package. Not started yet.
+M00.2 (repo/service templates) is complete: monorepo skeleton, ASP.NET Core/worker/Vue templates,
+shared event-contract package, .editorconfig/.gitattributes + ESLint/Prettier, CONTRIBUTING.md.
+
+Next up per the roadmap: M00.3 (local self-hosted runtime) — Docker Compose stack (gateway, services,
+PostgreSQL, ClickHouse, RabbitMQ, Redis, MinIO), Dapr self-hosted sidecars, DB init scripts, local
+secret management, a one-command health check, seed data workflow, and NAS deployment docs. Not
+started yet.
 
 ## Planning artifacts (`planning/`)
 
