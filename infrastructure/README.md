@@ -8,5 +8,5 @@ Deployment and local-runtime infrastructure, portable between self-hosted (Docke
 - `bicep/` — Azure Bicep templates (Container Apps, Service Bus, Postgres, Blob Storage, Key Vault).
 - `observability/` — OpenTelemetry collector config and local dashboards.
 
-All populated starting in M00.3 (Local self-hosted runtime) and M00.5 (Messaging, observability, CI/CD).
-Not yet created.
+`compose/` and `dapr/` are built (M00.3 — local self-hosted runtime). `bicep/` and `observability/` are
+not yet created (M00.3's Azure counterpart and M00.5, respectively).

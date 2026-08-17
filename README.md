@@ -12,8 +12,11 @@ PostHog/Plausible/Sentry combined, built module-by-module.
 
 ## Status
 
-Early scaffolding — M00 (Platform Foundation) in progress. M00.1 (architecture decisions) and M00.2
-(repository and service templates) are complete. No services are deployable yet.
+Early scaffolding — M00 (Platform Foundation) in progress. M00.1 (architecture decisions), M00.2
+(repository and service templates), and M00.3 (local self-hosted runtime — see
+`infrastructure/compose/README.md`) are complete. No application services are deployable yet;
+M00.3's Docker Compose stack is infrastructure only (`gateway/` and `services/*` are still empty
+scaffolds, next up in M00.4).
 
 ## Repository layout
 

@@ -85,17 +85,31 @@ decision that isn't already covered by them, rather than re-deriving it from the
 - `docs/architecture/bounded-contexts-and-data-ownership.md` — per-service data ownership table; the
   source of truth for "which service owns this, and how may another module read it."
 - `docs/adr/0001-service-oriented-modular-platform.md`, `0002-dapr-pubsub-abstraction.md`,
-  `0003-postgresql-plus-clickhouse.md` — accepted architecture decisions with rationale.
+  `0003-postgresql-plus-clickhouse.md`, `0004-transactional-outbox-and-idempotent-consumers.md`,
+  `0005-context-level-data-isolation.md`, `0006-public-browser-ingestion-tokens.md` — accepted
+  architecture decisions with rationale.
 - `docs/privacy/privacy-threat-model.md` — privacy risks and mitigations; check any module touching
   identifiers, IP, URLs, DOM content, or AI access against this before implementing.
 
 M00.2 (repo/service templates) is complete: monorepo skeleton, ASP.NET Core/worker/Vue templates,
 shared event-contract package, .editorconfig/.gitattributes + ESLint/Prettier, CONTRIBUTING.md.
 
-Next up per the roadmap: M00.3 (local self-hosted runtime) — Docker Compose stack (gateway, services,
-PostgreSQL, ClickHouse, RabbitMQ, Redis, MinIO), Dapr self-hosted sidecars, DB init scripts, local
-secret management, a one-command health check, seed data workflow, and NAS deployment docs. Not
-started yet.
+M00.3 (local self-hosted runtime) is complete: `infrastructure/compose/docker-compose.yml` runs
+PostgreSQL, ClickHouse, RabbitMQ, Redis, MinIO, a Dapr placement service, and a headless Dapr sidecar
+used to validate pub/sub end to end — infrastructure only, since `gateway/` and `services/*` are still
+empty scaffolds (M00.4+). Per-context database/user provisioning (`docs/adr/0005`) is scripted in
+`infrastructure/compose/db-init/`. Dapr components (RabbitMQ pub/sub, env-based secret store, bounded
+retry/backoff + dead-letter resiliency policy) live in `infrastructure/dapr/`, per
+`docs/adr/0002-dapr-pubsub-abstraction.md`. `infrastructure/compose/scripts/health-check.{sh,ps1}` is
+the one-command verification; `seed-demo-data.{sh,ps1}` seeds a demo workspace/site/events (explicitly
+temporary bootstrap tables, not the real service schemas). NAS deployment plan (reverse proxy/TLS,
+resource limits, backups, network exposure) is documented in
+`docs/architecture/nas-deployment-profile.md`, not yet deployed. Debugging guide:
+`docs/runbooks/local-environment.md`. `infrastructure/bicep/` (Azure counterpart) is still open.
+
+Next up per the roadmap: M00.4 — build the first real services (`gateway/`, `services/identity-workspace/`,
+`services/site-registry/`, `services/event-collector/`) on top of the M00.3 runtime, working toward the
+vertical slice in `docs/architecture/vision-and-scope.md` §7. Not started yet.
 
 ## Planning artifacts (`planning/`)
 
