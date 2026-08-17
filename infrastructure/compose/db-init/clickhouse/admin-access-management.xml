@@ -1,0 +1,14 @@
+<!--
+  The official clickhouse-server image creates the CLICKHOUSE_USER/CLICKHOUSE_PASSWORD admin account
+  without user-management rights (access_management defaults to 0), so 00-init-context-databases.sh's
+  CREATE USER statements fail without this override. Mounted into /etc/clickhouse-server/users.d/ (not
+  /docker-entrypoint-initdb.d/, which only runs *.sh/*.sql) as a filename that sorts after the image's own
+  generated users.d/default-user.xml, so this value wins when ClickHouse merges the users.d/ directory.
+-->
+<clickhouse>
+  <users>
+    <admin>
+      <access_management>1</access_management>
+    </admin>
+  </users>
+</clickhouse>
