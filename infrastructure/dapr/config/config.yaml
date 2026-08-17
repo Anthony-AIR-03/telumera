@@ -1,0 +1,20 @@
+# Dapr sidecar Configuration for the local self-hosted runtime. Kept
+# deliberately minimal: tracing is on (cheap locally, and exercises the same
+# OTLP path services already read via OTEL_EXPORTER_OTLP_ENDOINT, see
+# packages/dotnet-service-defaults) but points nowhere until
+# infrastructure/observability/ exists (M00.5) and is harmless meanwhile.
+# mTLS between sidecars is intentionally left at Dapr's self-hosted default
+# (disabled) — this is a local-dev-only relaxation, not a NAS/production
+# posture; revisit in docs/runbooks/local-environment.md before anything
+# beyond localhost can reach these sidecars.
+apiVersion: dapr.io/v1alpha1
+kind: Configuration
+metadata:
+  name: telumera-local
+spec:
+  tracing:
+    samplingRate: "1"
+    otel:
+      endpointAddress: "" # left unset until M00.5's OTel collector exists
+      isSecure: false
+      protocol: http

@@ -1,0 +1,39 @@
+# RabbitMQ-backed Dapr pub/sub building block for local self-hosted
+# development, per docs/adr/0002-dapr-pubsub-abstraction.md. Azure deployments
+# swap this one file for an Azure Service Bus Topics component — application
+# code never changes.
+#
+# Every service publishes/subscribes through this component under the name
+# "pubsub" (never imports amqp/RabbitMQ client libraries directly). The
+# CloudEvents envelope fields (id/type/source/subject/data) are supplied by
+# application code on publish per ADR 0002; Dapr owns the transport envelope.
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: pubsub
+spec:
+  type: pubsub.rabbitmq
+  version: v1
+  metadata:
+    - name: connectionString
+      secretKeyRef:
+        name: RABBITMQ_CONNECTION_STRING
+        key: RABBITMQ_CONNECTION_STRING
+    - name: durable
+      value: "true"
+    - name: deletedWhenUnused
+      value: "false"
+    - name: autoAck
+      value: "false"
+    - name: deliveryMode
+      value: "2" # persistent messages, survive a RabbitMQ restart
+    - name: requeueInFailure
+      value: "false" # let Dapr resiliency (resiliency.yaml) own retries, not RabbitMQ's own infinite requeue
+    - name: enableDeadLetter
+      value: "true" # after resiliency retries are exhausted, message goes to a per-queue dead-letter queue/exchange
+    - name: prefetchCount
+      value: "10"
+    - name: reconnectWait
+      value: "5"
+auth:
+  secretStore: local-env-secret-store

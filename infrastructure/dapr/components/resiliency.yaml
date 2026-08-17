@@ -1,0 +1,37 @@
+# Bounded retry/backoff + circuit breaker policy for the RabbitMQ pub/sub
+# component, satisfying docs/adr/0002-dapr-pubsub-abstraction.md's explicit
+# rule that "retries are bounded and configured per subscription (retry
+# count/backoff set in Dapr component config, not left at silent defaults)".
+# Dapr loads Resiliency resources from the same --resources-path directory as
+# Components (see infrastructure/compose/docker-compose.yml), so this file
+# lives directly in components/ even though it isn't a Component itself.
+apiVersion: dapr.io/v1alpha1
+kind: Resiliency
+metadata:
+  name: pubsub-resiliency
+scopes:
+  - smoke-test
+  # Add each real service's app-id here once it subscribes through "pubsub"
+  # (see infrastructure/dapr/README.md).
+spec:
+  policies:
+    retries:
+      pubsub-retry:
+        policy: exponential
+        maxInterval: 30s
+        maxRetries: 5
+    circuitBreakers:
+      pubsub-circuit-breaker:
+        maxRequests: 1
+        interval: 30s
+        timeout: 10s
+        trip: consecutiveFailures >= 5
+  targets:
+    components:
+      pubsub:
+        inbound:
+          retry: pubsub-retry
+          circuitBreaker: pubsub-circuit-breaker
+        outbound:
+          retry: pubsub-retry
+          circuitBreaker: pubsub-circuit-breaker
