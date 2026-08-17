@@ -11,8 +11,9 @@ metadata:
   name: pubsub-resiliency
 scopes:
   - smoke-test
-  # Add each real service's app-id here once it subscribes through "pubsub"
-  # (see infrastructure/dapr/README.md).
+  - site-registry
+  # Add each real service's app-id here once it publishes or subscribes through
+  # "pubsub" (see infrastructure/dapr/README.md).
 spec:
   policies:
     retries:

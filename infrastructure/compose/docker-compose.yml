@@ -1,12 +1,9 @@
-# Local self-hosted runtime for Telumera (M00.3). Brings up shared platform
-# infrastructure only — Postgres, ClickHouse, RabbitMQ, Redis, MinIO, and a
-# Dapr placement service + one headless "smoke-test" Dapr sidecar used to
-# validate pub/sub connectivity end to end.
-#
-# No application services are included yet: gateway/ and services/* are still
-# empty scaffolds (see their READMEs) and get their own compose entries, each
-# with its own Dapr sidecar attached the same way the smoke-test sidecar is
-# attached here, once M00.4+ actually builds them.
+# Local self-hosted runtime for Telumera (M00.3+). Brings up shared platform
+# infrastructure — Postgres, ClickHouse, RabbitMQ, Redis, MinIO, a Dapr
+# placement service + one headless "smoke-test" Dapr sidecar — plus the first
+# two real application services (M00.4): identity-workspace and
+# site-registry. gateway/ and the rest of services/* are still empty
+# scaffolds and get their own compose entries the same way, once built.
 #
 # Usage: see infrastructure/compose/README.md. Quick start:
 #   cp .env.example .env   # then fill in local values
@@ -167,3 +164,69 @@ services:
         condition: service_healthy
     networks:
       - telumera-net
+
+  # First two real M00.4 services. identity-workspace has no Dapr sidecar (yet) —
+  # per docs/architecture/bounded-contexts-and-data-ownership.md it's a read-API-only
+  # context right now, publishing/subscribing nothing, so an idle sidecar would be
+  # unneeded complexity. Add one the same way site-registry has its own below, if/when
+  # identity-workspace starts publishing or subscribing to something.
+  identity-workspace:
+    build:
+      context: ../..
+      dockerfile: services/identity-workspace/Dockerfile
+    restart: unless-stopped
+    environment:
+      ConnectionStrings__IdentityWorkspace: "Host=postgres;Port=5432;Database=telumera_access;Username=svc_access;Password=${APP_DB_PASSWORD}"
+    ports:
+      - "5101:8080" # HTTP API
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - telumera-net
+
+  site-registry:
+    build:
+      context: ../..
+      dockerfile: services/site-registry/Dockerfile
+    restart: unless-stopped
+    environment:
+      ConnectionStrings__SiteRegistry: "Host=postgres;Port=5432;Database=telumera_sites;Username=svc_sites;Password=${APP_DB_PASSWORD}"
+      DAPR_HTTP_PORT: "3500" # matches site-registry-dapr's -dapr-http-port below (shared network namespace)
+    ports:
+      - "5102:8080" # HTTP API
+      - "3502:3500" # site-registry-dapr's HTTP API (shared namespace; published here since network_mode: service:x sidecars can't publish their own ports)
+      - "50003:50001" # site-registry-dapr's gRPC API
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - telumera-net
+
+  # site-registry's own sidecar — it publishes site.created.v1 through the "pubsub"
+  # component (see OutboxPublisher in services/site-registry/), following the pattern
+  # docs/runbooks/local-environment.md documents under "Adding a real service's sidecar".
+  site-registry-dapr:
+    image: daprio/daprd:1.14.4
+    restart: unless-stopped
+    command:
+      - "./daprd"
+      - "-app-id=site-registry"
+      - "-dapr-http-port=3500"
+      - "-dapr-grpc-port=50001"
+      - "-placement-host-address=dapr-placement:50006"
+      - "-resources-path=/components"
+      - "-config=/config/config.yaml"
+    environment:
+      RABBITMQ_CONNECTION_STRING: "amqp://${RABBITMQ_DEFAULT_USER}:${RABBITMQ_DEFAULT_PASS}@rabbitmq:5672"
+    volumes:
+      - ../dapr/components:/components:ro
+      - ../dapr/config:/config:ro
+    network_mode: "service:site-registry"
+    depends_on:
+      site-registry:
+        condition: service_started
+      dapr-placement:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy

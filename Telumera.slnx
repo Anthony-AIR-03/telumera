@@ -13,4 +13,15 @@
   <Folder Name="/templates/worker-service/">
     <Project Path="templates/worker-service/WorkerServiceTemplate.csproj" />
   </Folder>
+  <Folder Name="/services/" />
+  <Folder Name="/services/identity-workspace/">
+    <Project Path="services/identity-workspace/Telumera.Services.IdentityWorkspace.Api.csproj" />
+  </Folder>
+  <Folder Name="/services/site-registry/">
+    <Project Path="services/site-registry/Telumera.Services.SiteRegistry.Api.csproj" />
+  </Folder>
+  <Folder Name="/tests/" />
+  <Folder Name="/tests/integration/">
+    <Project Path="tests/integration/Telumera.Tests.Integration/Telumera.Tests.Integration.csproj" />
+  </Folder>
 </Solution>

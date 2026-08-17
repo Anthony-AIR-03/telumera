@@ -1,0 +1,9 @@
+# Keeps host-built bin/obj (and other local-only artifacts) out of Docker build contexts —
+# mirrors .gitignore's bin//obj/ exclusion; without this, COPY would ship stale host binaries
+# into the image instead of letting dotnet restore/publish build cleanly inside the container.
+bin/
+obj/
+node_modules/
+.git/
+.vs/
+.vscode/
