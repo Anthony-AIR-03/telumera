@@ -8,4 +8,12 @@ Folder naming follows the bounded-context names in that doc (kebab-case), e.g. `
 `site-registry/`, `event-collector/`, `analytics/`.
 
 Service folders are created one at a time as each module is implemented, not pre-scaffolded — see
-CLAUDE.md's "expand from there rather than building out every shared service up front." None exist yet.
+CLAUDE.md's "expand from there rather than building out every shared service up front."
+
+- `identity-workspace/` — owns the `Workspace` entity only so far (M00.4 first cut); membership,
+  roles, and the Entra ID binding are deferred to a later M00.4 task.
+- `site-registry/` — site registration + browser ingestion token issuance (M00.4 first cut), publishing
+  `site.created.v1` via a per-service transactional outbox. See its own `README.md` for the outbox topic
+  choice.
+
+Everything else in the bounded-contexts table doesn't exist yet.

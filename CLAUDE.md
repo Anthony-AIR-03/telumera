@@ -107,9 +107,15 @@ resource limits, backups, network exposure) is documented in
 `docs/architecture/nas-deployment-profile.md`, not yet deployed. Debugging guide:
 `docs/runbooks/local-environment.md`. `infrastructure/bicep/` (Azure counterpart) is still open.
 
-Next up per the roadmap: M00.4 — build the first real services (`gateway/`, `services/identity-workspace/`,
-`services/site-registry/`, `services/event-collector/`) on top of the M00.3 runtime, working toward the
-vertical slice in `docs/architecture/vision-and-scope.md` §7. Not started yet.
+M00.4 (Identity, workspaces and sites) is **started, first cut only**: `services/identity-workspace/`
+(a bare `Workspace` entity, `POST`/`GET /workspaces`) and `services/site-registry/` (`POST`/`GET /sites`,
+browser token issuance per `docs/adr/0006`, publishing `site.created.v1` through a per-service
+transactional outbox per `docs/adr/0004` — see `services/site-registry/README.md`). Both are wired into
+`infrastructure/compose/docker-compose.yml` and covered by
+`tests/integration/Telumera.Tests.Integration/`. Deliberately deferred within M00.4: Entra ID auth,
+membership/roles, key rotation, module-enablement toggles, the dashboard settings UI, and the `gateway/`
+and `services/event-collector/` scaffolds. No auth is enforced on either service's endpoints yet — a
+direct consequence of deferring Entra ID, not an oversight.
 
 ## Planning artifacts (`planning/`)
 
