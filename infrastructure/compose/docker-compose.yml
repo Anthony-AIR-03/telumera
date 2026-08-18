@@ -177,6 +177,8 @@ services:
     restart: unless-stopped
     environment:
       ConnectionStrings__IdentityWorkspace: "Host=postgres;Port=5432;Database=telumera_access;Username=svc_access;Password=${APP_DB_PASSWORD}"
+      AzureAd__TenantId: "${AZURE_AD_TENANT_ID}"
+      AzureAd__ClientId: "${AZURE_AD_API_CLIENT_ID}"
     ports:
       - "5101:8080" # HTTP API
     depends_on:
@@ -193,6 +195,8 @@ services:
     environment:
       ConnectionStrings__SiteRegistry: "Host=postgres;Port=5432;Database=telumera_sites;Username=svc_sites;Password=${APP_DB_PASSWORD}"
       DAPR_HTTP_PORT: "3500" # matches site-registry-dapr's -dapr-http-port below (shared network namespace)
+      AzureAd__TenantId: "${AZURE_AD_TENANT_ID}"
+      AzureAd__ClientId: "${AZURE_AD_API_CLIENT_ID}"
     ports:
       - "5102:8080" # HTTP API
       - "3502:3500" # site-registry-dapr's HTTP API (shared namespace; published here since network_mode: service:x sidecars can't publish their own ports)
