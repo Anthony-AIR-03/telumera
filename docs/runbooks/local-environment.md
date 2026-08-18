@@ -24,10 +24,11 @@ against a completely empty data volume.
 
 ## What's running, and what isn't yet
 
-This stack is shared platform infrastructure only: PostgreSQL, ClickHouse, RabbitMQ, Redis, MinIO, a Dapr
-placement service, and one headless `dapr-smoke-test-sidecar` used to prove pub/sub works end to end.
-`gateway/` and `services/*` are still empty scaffolds (M00.4+) — there is nothing to attach a real sidecar
-to yet. See `infrastructure/compose/README.md` for the full port/credential reference and
+Shared platform infrastructure (PostgreSQL, ClickHouse, RabbitMQ, Redis, MinIO, a Dapr placement service,
+one headless `dapr-smoke-test-sidecar`), plus the first two real M00.4 services:
+`identity-workspace` (`http://localhost:5101`) and `site-registry` (`http://localhost:5102`, with its own
+`site-registry-dapr` sidecar). `gateway/` and the rest of `services/*` are still empty scaffolds. See
+`infrastructure/compose/README.md` for the full port/credential reference and
 `infrastructure/dapr/README.md` for how to add a real service's sidecar once one exists.
 
 ## Secrets model
@@ -45,9 +46,35 @@ to yet. See `infrastructure/compose/README.md` for the full port/credential refe
   production secrets are Docker secrets/environment files (not committed, not the same values as local
   dev), Azure uses Key Vault + managed identity. Neither is built yet — see
   `docs/architecture/nas-deployment-profile.md` for the NAS plan.
-- **Not a secret at all**: the public browser ingestion token the Site Registry will issue per site
-  (M00.4+) is deliberately public by design — see `docs/adr/0006-public-browser-ingestion-tokens.md`. It
-  is never stored in `.env` or a Dapr secret store.
+- **Not a secret at all**: the public browser ingestion token Site Registry issues per site is
+  deliberately public by design — see `docs/adr/0006-public-browser-ingestion-tokens.md`. It is never
+  stored in `.env` or a Dapr secret store.
+
+## Auth
+
+`identity-workspace` and `site-registry` both require a valid Entra ID bearer token (the
+`access_as_user` delegated scope on the `Telumera API` app registration) on every endpoint except
+`/health/live` and `/health/ready`. `AzureAd__TenantId` / `AzureAd__ClientId` must be set in `.env`
+(from `AZURE_AD_TENANT_ID` / `AZURE_AD_API_CLIENT_ID`) or Microsoft.Identity.Web fails fast at startup —
+see `.env.example` for where these come from in the Entra admin center.
+
+There's no dashboard sign-in flow yet (`apps/dashboard-web/src/stores/auth.ts`'s `login()` is still a
+placeholder — that's a separate, later task), so to get a real token for manual testing:
+
+```bash
+./scripts/get-dev-token.sh   # or scripts/get-dev-token.ps1 on Windows PowerShell
+```
+
+This runs the OAuth2 device code flow against a second, separate app registration (`Telumera CLI Test
+Client` — public client, no secret, `AZURE_AD_TEST_CLIENT_ID` in `.env`) that exists purely for this —
+open the printed URL, enter the code, and the access token prints to stdout once you've signed in. Export
+it and use it directly, or feed it to the integration test:
+
+```bash
+export TELUMERA_TEST_ACCESS_TOKEN=$(./scripts/get-dev-token.sh)
+curl -H "Authorization: Bearer $TELUMERA_TEST_ACCESS_TOKEN" -X POST http://localhost:5101/workspaces \
+  -H "Content-Type: application/json" -d '{"Name":"Test Workspace"}'
+```
 
 ## Debugging "why isn't my event arriving"
 

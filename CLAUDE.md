@@ -111,11 +111,20 @@ M00.4 (Identity, workspaces and sites) is **started, first cut only**: `services
 (a bare `Workspace` entity, `POST`/`GET /workspaces`) and `services/site-registry/` (`POST`/`GET /sites`,
 browser token issuance per `docs/adr/0006`, publishing `site.created.v1` through a per-service
 transactional outbox per `docs/adr/0004` — see `services/site-registry/README.md`). Both are wired into
-`infrastructure/compose/docker-compose.yml` and covered by
-`tests/integration/Telumera.Tests.Integration/`. Deliberately deferred within M00.4: Entra ID auth,
-membership/roles, key rotation, module-enablement toggles, the dashboard settings UI, and the `gateway/`
-and `services/event-collector/` scaffolds. No auth is enforced on either service's endpoints yet — a
-direct consequence of deferring Entra ID, not an oversight.
+`infrastructure/compose/docker-compose.yml` and covered by `tests/integration/Telumera.Tests.Integration/`.
+
+Both services now require a valid Entra ID bearer token (`access_as_user` scope on the `Telumera API` app
+registration) on every business endpoint — Microsoft.Identity.Web, config via `AzureAd__TenantId`/
+`AzureAd__ClientId` in `.env`. See `docs/runbooks/local-environment.md`'s "Auth" section. There's a
+second, separate app registration (`Telumera CLI Test Client`, public client, device-code flow) used only
+by `infrastructure/compose/scripts/get-dev-token.sh`/`.ps1` to get a real token for manual testing —
+`apps/dashboard-web`'s actual sign-in flow (`src/stores/auth.ts`) is still a placeholder, deliberately
+deferred since the dashboard can't call through to these services end-to-end without a gateway anyway.
+
+Deliberately still deferred within M00.4: membership/roles, key rotation, module-enablement toggles, the
+dashboard settings UI (including real sign-in), and the `gateway/`/`services/event-collector/` scaffolds.
+`site-registry`'s `WorkspaceId` is still trusted as given rather than checked against caller membership —
+that's what the membership/roles task adds, not this one.
 
 ## Planning artifacts (`planning/`)
 
