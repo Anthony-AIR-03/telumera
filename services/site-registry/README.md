@@ -7,9 +7,15 @@ Site Registry (M00.4 first cut) — site registration and browser ingestion toke
 ## Scope of this cut
 
 `POST /sites` (register a site, issue its browser token) and `GET /sites/{id}`. `WorkspaceId` is stored
-as a plain value, not validated against identity-workspace's API — real validation arrives once an
-authenticated caller puts a trusted workspace context on the request (Entra ID integration is deferred to
-a later M00.4 task, so no auth is enforced on these endpoints yet either).
+as a plain value, not validated against identity-workspace's API — real validation arrives once the
+membership/roles task lets this check "does the caller actually belong to this workspace," not just "is
+the caller authenticated at all."
+
+## Auth
+
+Both endpoints require a valid Entra ID bearer token with the `access_as_user` scope (`Telumera API` app
+registration) — see `docs/runbooks/local-environment.md`'s "Auth" section for how to get one for manual
+testing. `/health/live` and `/health/ready` stay open.
 
 ## Outbox and event publishing
 

@@ -2,7 +2,9 @@ using System.ComponentModel.DataAnnotations;
 using System.Security.Cryptography;
 using System.Text.Json;
 
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Identity.Web;
 
 using Telumera.EventContracts;
 using Telumera.ServiceDefaults;
@@ -12,6 +14,15 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.AddApiServiceDefaults();
 builder.Services.AddOpenApi();
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddMicrosoftIdentityWebApi(builder.Configuration.GetSection("AzureAd"));
+
+// Requires the access_as_user delegated scope (docs/adr — Telumera API app registration's "Expose an
+// API" page) rather than a fallback policy, so /health/live and /health/ready (MapDefaultEndpoints,
+// packages/dotnet-service-defaults) stay open for container healthchecks.
+builder.Services.AddAuthorization(options => options.AddPolicy("ApiScope", policy =>
+    policy.RequireClaim(ClaimConstants.Scope, "access_as_user")));
 
 var connectionString = builder.Configuration.GetConnectionString("SiteRegistry")
     ?? throw new InvalidOperationException("ConnectionStrings:SiteRegistry is not configured.");
@@ -40,9 +51,13 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-// No auth is enforced on these endpoints yet — Entra ID integration is deferred to a later
-// M00.4 task, and WorkspaceId below is trusted as given rather than validated against
-// identity-workspace (see the doc comment on Site.WorkspaceId). Known, explicitly temporary gaps.
+app.UseAuthentication();
+app.UseAuthorization();
+
+// WorkspaceId below is trusted as given, not yet validated against identity-workspace (see the
+// doc comment on Site.WorkspaceId) — membership/roles (a separate M00.4 task) is what will let
+// this check "does the caller actually belong to this workspace," not just "is the caller
+// authenticated at all."
 app.MapPost("/sites", async (CreateSiteRequest request, SiteRegistryDbContext db) =>
 {
     var context = new ValidationContext(request);
@@ -93,14 +108,16 @@ app.MapPost("/sites", async (CreateSiteRequest request, SiteRegistryDbContext db
 
     return Results.Created($"/sites/{site.Id}", site);
 })
-.WithName("CreateSite");
+.WithName("CreateSite")
+.RequireAuthorization("ApiScope");
 
 app.MapGet("/sites/{id:guid}", async (Guid id, SiteRegistryDbContext db) =>
 {
     var site = await db.Sites.FindAsync(id);
     return site is null ? Results.NotFound() : Results.Ok(site);
 })
-.WithName("GetSite");
+.WithName("GetSite")
+.RequireAuthorization("ApiScope");
 
 app.Run();
 
