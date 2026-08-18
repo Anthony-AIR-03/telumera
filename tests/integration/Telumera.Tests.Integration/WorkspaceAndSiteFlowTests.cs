@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http.Json;
 
 using Npgsql;
@@ -23,18 +24,28 @@ public sealed class WorkspaceAndSiteFlowTests
     private static readonly string SitesConnectionString =
         $"Host=localhost;Port=5432;Database=telumera_sites;Username=svc_sites;Password={Environment.GetEnvironmentVariable("APP_DB_PASSWORD") ?? "change-me-local-dev"}";
 
-    [Fact]
+    // Both services require a valid Entra ID bearer token (access_as_user scope) since the auth
+    // cut of M00.4. There's no automated way to complete an interactive device-code sign-in from
+    // a test run, so this reads a token obtained ahead of time via
+    // infrastructure/compose/scripts/get-dev-token.sh/.ps1 rather than acquiring one itself.
+    private static readonly string? AccessToken = Environment.GetEnvironmentVariable("TELUMERA_TEST_ACCESS_TOKEN");
+
+    [SkippableFact]
     public async Task CreateWorkspace_ThenCreateSite_RoundTripsAndPublishesOutboxEvent()
     {
-        var workspaceResponse = await IdentityWorkspace.PostAsJsonAsync("/workspaces", new { Name = "Test Workspace" });
+        Skip.If(string.IsNullOrWhiteSpace(AccessToken),
+            "TELUMERA_TEST_ACCESS_TOKEN not set — run infrastructure/compose/scripts/get-dev-token.sh " +
+            "(or .ps1) and export the result to run this test.");
+
+        var workspaceResponse = await PostAsync(IdentityWorkspace, "/workspaces", new { Name = "Test Workspace" });
         workspaceResponse.EnsureSuccessStatusCode();
         var workspace = await workspaceResponse.Content.ReadFromJsonAsync<WorkspaceDto>();
         Assert.NotNull(workspace);
 
-        var getWorkspaceResponse = await IdentityWorkspace.GetAsync($"/workspaces/{workspace!.Id}");
+        var getWorkspaceResponse = await GetAsync(IdentityWorkspace, $"/workspaces/{workspace!.Id}");
         getWorkspaceResponse.EnsureSuccessStatusCode();
 
-        var siteResponse = await SiteRegistry.PostAsJsonAsync("/sites", new
+        var siteResponse = await PostAsync(SiteRegistry, "/sites", new
         {
             WorkspaceId = workspace.Id,
             Name = "Test Site",
@@ -47,13 +58,44 @@ public sealed class WorkspaceAndSiteFlowTests
         Assert.NotNull(site);
         Assert.False(string.IsNullOrWhiteSpace(site!.BrowserToken));
 
-        var getSiteResponse = await SiteRegistry.GetAsync($"/sites/{site.Id}");
+        var getSiteResponse = await GetAsync(SiteRegistry, $"/sites/{site.Id}");
         getSiteResponse.EnsureSuccessStatusCode();
         var fetchedSite = await getSiteResponse.Content.ReadFromJsonAsync<SiteDto>();
         Assert.Equal(site.BrowserToken, fetchedSite!.BrowserToken);
 
         var published = await WaitUntilOutboxEventPublishedAsync(site.Id, TimeSpan.FromSeconds(15));
         Assert.True(published, "Expected the site.created.v1 outbox row to be published within 15s.");
+    }
+
+    [Fact]
+    public async Task ProtectedEndpoints_WithoutToken_Return401()
+    {
+        var createWorkspace = await IdentityWorkspace.PostAsJsonAsync("/workspaces", new { Name = "Should Be Rejected" });
+        Assert.Equal(HttpStatusCode.Unauthorized, createWorkspace.StatusCode);
+
+        var createSite = await SiteRegistry.PostAsJsonAsync("/sites", new
+        {
+            WorkspaceId = Guid.NewGuid(),
+            Name = "Should Be Rejected",
+            CanonicalDomain = "example.test",
+            AllowedOrigins = new[] { "https://example.test" },
+            Environment = "production",
+        });
+        Assert.Equal(HttpStatusCode.Unauthorized, createSite.StatusCode);
+    }
+
+    private static Task<HttpResponseMessage> PostAsync<T>(HttpClient client, string path, T body)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Post, path) { Content = JsonContent.Create(body) };
+        request.Headers.Authorization = new("Bearer", AccessToken);
+        return client.SendAsync(request);
+    }
+
+    private static Task<HttpResponseMessage> GetAsync(HttpClient client, string path)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Get, path);
+        request.Headers.Authorization = new("Bearer", AccessToken);
+        return client.SendAsync(request);
     }
 
     private static async Task<bool> WaitUntilOutboxEventPublishedAsync(Guid siteId, TimeSpan timeout)
