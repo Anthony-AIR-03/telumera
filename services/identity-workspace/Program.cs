@@ -1,6 +1,8 @@
 using System.ComponentModel.DataAnnotations;
 
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Identity.Web;
 
 using Telumera.ServiceDefaults;
 using Telumera.Services.IdentityWorkspace.Api;
@@ -9,6 +11,15 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.AddApiServiceDefaults();
 builder.Services.AddOpenApi();
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddMicrosoftIdentityWebApi(builder.Configuration.GetSection("AzureAd"));
+
+// Requires the access_as_user delegated scope (docs/adr — Telumera API app registration's "Expose an
+// API" page) rather than a fallback policy, so /health/live and /health/ready (MapDefaultEndpoints,
+// packages/dotnet-service-defaults) stay open for container healthchecks.
+builder.Services.AddAuthorization(options => options.AddPolicy("ApiScope", policy =>
+    policy.RequireClaim(ClaimConstants.Scope, "access_as_user")));
 
 var connectionString = builder.Configuration.GetConnectionString("IdentityWorkspace")
     ?? throw new InvalidOperationException("ConnectionStrings:IdentityWorkspace is not configured.");
@@ -35,9 +46,9 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-// No auth is enforced on these endpoints yet — Entra ID integration is deferred to a later
-// M00.4 task (docs/architecture/bounded-contexts-and-data-ownership.md's Identity & Workspace
-// row). This is a known, explicitly temporary gap, not an oversight.
+app.UseAuthentication();
+app.UseAuthorization();
+
 app.MapPost("/workspaces", async (CreateWorkspaceRequest request, IdentityWorkspaceDbContext db) =>
 {
     var context = new ValidationContext(request);
@@ -66,14 +77,16 @@ app.MapPost("/workspaces", async (CreateWorkspaceRequest request, IdentityWorksp
 
     return Results.Created($"/workspaces/{workspace.Id}", workspace);
 })
-.WithName("CreateWorkspace");
+.WithName("CreateWorkspace")
+.RequireAuthorization("ApiScope");
 
 app.MapGet("/workspaces/{id:guid}", async (Guid id, IdentityWorkspaceDbContext db) =>
 {
     var workspace = await db.Workspaces.FindAsync(id);
     return workspace is null ? Results.NotFound() : Results.Ok(workspace);
 })
-.WithName("GetWorkspace");
+.WithName("GetWorkspace")
+.RequireAuthorization("ApiScope");
 
 app.Run();
 
