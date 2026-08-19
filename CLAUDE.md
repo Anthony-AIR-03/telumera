@@ -121,10 +121,19 @@ by `infrastructure/compose/scripts/get-dev-token.sh`/`.ps1` to get a real token 
 `apps/dashboard-web`'s actual sign-in flow (`src/stores/auth.ts`) is still a placeholder, deliberately
 deferred since the dashboard can't call through to these services end-to-end without a gateway anyway.
 
-Deliberately still deferred within M00.4: membership/roles, key rotation, module-enablement toggles, the
-dashboard settings UI (including real sign-in), and the `gateway/`/`services/event-collector/` scaffolds.
-`site-registry`'s `WorkspaceId` is still trusted as given rather than checked against caller membership —
-that's what the membership/roles task adds, not this one.
+Membership and roles are now implemented: `identity-workspace` owns `User` (JIT-provisioned from the
+caller's Entra `oid`, no separate signup flow) and `Membership` (`Viewer`/`Developer`/`Admin`/`Owner`,
+`services/identity-workspace/Role.cs`). Creating a workspace auto-grants the creator `Owner`.
+`POST /workspaces/{id}/members` adds members by raw Entra Object ID (no Microsoft Graph email lookup —
+deliberately deferred to M10's "workspace roles and invitations" hardening per
+`planning/Telumera_Modular_Project_Plan.md`). `site-registry` now actually enforces `WorkspaceId`
+membership (`Developer`+ to create a site, `Viewer`+ to read one) by calling identity-workspace's new
+internal membership endpoint through Dapr service invocation (`docs/adr/0002`) — this is what closes the
+"any authenticated caller could act on any workspace" gap flagged during the Entra ID auth cut.
+`identity-workspace` has its own Dapr sidecar now (`-app-port` set) to receive those invocations.
+
+Deliberately still deferred within M00.4: key rotation, module-enablement toggles, the dashboard settings
+UI (including real sign-in), and the `gateway/`/`services/event-collector/` scaffolds.
 
 ## Planning artifacts (`planning/`)
 
