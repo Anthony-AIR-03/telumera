@@ -13,7 +13,18 @@ scopes:
   - smoke-test
   - site-registry
   # Add each real service's app-id here once it publishes or subscribes through
-  # "pubsub" (see infrastructure/dapr/README.md).
+  # "pubsub", or makes outbound Dapr service-invocation calls that only ever expect success
+  # responses (see infrastructure/dapr/README.md and the note on gateway's exclusion below).
+  #
+  # gateway is deliberately NOT in this list. Dapr's resiliency retry/circuitBreaker treats any
+  # non-2xx response from the invoked app as a failure worth retrying — fine for
+  # site-registry's MembershipClient (a GET whose only outcomes are 200-with-a-nullable-field or
+  # a genuine transport error, by design — see services/identity-workspace/Program.cs's internal
+  # membership endpoint). It is NOT fine for gateway/GatewayForwarder, which proxies arbitrary
+  # REST responses: legitimate 401/403/404/400s are normal business outcomes there, not
+  # failures, and retrying a non-idempotent POST/PUT/PATCH on a false "failure" risks creating
+  # duplicate resources. gateway's invoke calls run on Dapr's un-intercepted default behavior
+  # instead — real responses pass straight through regardless of status code.
 spec:
   policies:
     retries:
@@ -46,8 +57,10 @@ spec:
           retry: pubsub-retry
           circuitBreaker: pubsub-circuit-breaker
     apps:
-      # Bounds site-registry's membership-check calls to identity-workspace (MembershipClient),
-      # per ADR 0002. Add each new service-invocation target's app-id here the same way.
+      # Bounds site-registry's membership-check calls to identity-workspace (MembershipClient) —
+      # a GET whose only outcomes are success or a genuine transport error, so retry-on-any-error
+      # is safe here. Per ADR 0002. Do not add gateway's invoke targets here — see the note on
+      # scopes above for why.
       identity-workspace:
         retry: invoke-retry
         circuitBreaker: invoke-circuit-breaker

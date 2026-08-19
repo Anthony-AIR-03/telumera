@@ -1,9 +1,10 @@
 # Local self-hosted runtime for Telumera (M00.3+). Brings up shared platform
 # infrastructure — Postgres, ClickHouse, RabbitMQ, Redis, MinIO, a Dapr
-# placement service + one headless "smoke-test" Dapr sidecar — plus the first
-# two real application services (M00.4): identity-workspace and
-# site-registry. gateway/ and the rest of services/* are still empty
-# scaffolds and get their own compose entries the same way, once built.
+# placement service + one headless "smoke-test" Dapr sidecar — plus the real
+# application services built so far: identity-workspace, site-registry, and
+# gateway (a transparent reverse proxy in front of both — see
+# gateway/README.md). services/event-collector/ is still an empty scaffold
+# and gets its own compose entry the same way, once built.
 #
 # Usage: see infrastructure/compose/README.md. Quick start:
 #   cp .env.example .env   # then fill in local values
@@ -242,12 +243,17 @@ services:
   # site-registry's own sidecar — it publishes site.created.v1 through the "pubsub"
   # component (see OutboxPublisher in services/site-registry/), following the pattern
   # docs/runbooks/local-environment.md documents under "Adding a real service's sidecar".
+  # -app-port added once gateway needed to invoke *into* site-registry (GatewayForwarder) —
+  # before that, site-registry only ever made outbound calls (publish), never received inbound
+  # Dapr invocations, so no app-port was needed. Same evolution identity-workspace-dapr went
+  # through when site-registry's MembershipClient first needed to invoke it.
   site-registry-dapr:
     image: daprio/daprd:1.14.4
     restart: unless-stopped
     command:
       - "./daprd"
       - "-app-id=site-registry"
+      - "-app-port=8080"
       - "-dapr-http-port=3500"
       - "-dapr-grpc-port=50001"
       - "-placement-host-address=dapr-placement:50006"
@@ -261,6 +267,55 @@ services:
     network_mode: "service:site-registry"
     depends_on:
       site-registry:
+        condition: service_started
+      dapr-placement:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
+
+  # The single authenticated public API surface — a transparent reverse proxy in front of
+  # identity-workspace/site-registry (see gateway/GatewayForwarder.cs and gateway/README.md).
+  # Holds no data of its own, so no ConnectionStrings__* here.
+  gateway:
+    build:
+      context: ../..
+      dockerfile: gateway/Dockerfile
+    restart: unless-stopped
+    environment:
+      DAPR_HTTP_PORT: "3500" # matches gateway-dapr's -dapr-http-port below (shared network namespace)
+      AzureAd__TenantId: "${AZURE_AD_TENANT_ID}"
+      AzureAd__ClientId: "${AZURE_AD_API_CLIENT_ID}"
+    ports:
+      - "5100:8080" # HTTP API
+      - "3504:3500" # gateway-dapr's HTTP API (shared namespace; published here since network_mode: service:x sidecars can't publish their own ports)
+      - "50005:50001" # gateway-dapr's gRPC API
+    networks:
+      - telumera-net
+
+  # gateway's own sidecar — outbound-only (it invokes identity-workspace/site-registry, nothing
+  # invokes it back via Dapr), so no -app-port, same shape site-registry-dapr originally had.
+  gateway-dapr:
+    image: daprio/daprd:1.14.4
+    restart: unless-stopped
+    command:
+      - "./daprd"
+      - "-app-id=gateway"
+      - "-dapr-http-port=3500"
+      - "-dapr-grpc-port=50001"
+      - "-placement-host-address=dapr-placement:50006"
+      - "-resources-path=/components"
+      - "-config=/config/config.yaml"
+    environment:
+      # Dapr initializes every component under -resources-path at startup regardless of whether
+      # the app actually uses it — gateway never publishes/subscribes, but the shared
+      # pubsub-rabbitmq.yaml component still needs this to resolve or the sidecar fails to start.
+      RABBITMQ_CONNECTION_STRING: "amqp://${RABBITMQ_DEFAULT_USER}:${RABBITMQ_DEFAULT_PASS}@rabbitmq:5672"
+    volumes:
+      - ../dapr/components:/components:ro
+      - ../dapr/config:/config:ro
+    network_mode: "service:gateway"
+    depends_on:
+      gateway:
         condition: service_started
       dapr-placement:
         condition: service_started
