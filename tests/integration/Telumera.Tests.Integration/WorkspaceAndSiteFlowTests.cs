@@ -54,17 +54,68 @@ public sealed class WorkspaceAndSiteFlowTests
             Environment = "production",
         });
         siteResponse.EnsureSuccessStatusCode();
-        var site = await siteResponse.Content.ReadFromJsonAsync<SiteDto>();
+        var site = await siteResponse.Content.ReadFromJsonAsync<CreateSiteResponseDto>();
         Assert.NotNull(site);
-        Assert.False(string.IsNullOrWhiteSpace(site!.BrowserToken));
+        Assert.False(string.IsNullOrWhiteSpace(site!.InitialToken));
 
         var getSiteResponse = await GetAsync(SiteRegistry, $"/sites/{site.Id}");
         getSiteResponse.EnsureSuccessStatusCode();
-        var fetchedSite = await getSiteResponse.Content.ReadFromJsonAsync<SiteDto>();
-        Assert.Equal(site.BrowserToken, fetchedSite!.BrowserToken);
 
-        var published = await WaitUntilOutboxEventPublishedAsync(site.Id, TimeSpan.FromSeconds(15));
+        var published = await WaitUntilOutboxEventPublishedAsync(site.Id, "site.created.v1", TimeSpan.FromSeconds(15));
         Assert.True(published, "Expected the site.created.v1 outbox row to be published within 15s.");
+    }
+
+    [SkippableFact]
+    public async Task RotateSiteToken_KeepsOldTokenActive_ThenRevoke_MarksItRevoked()
+    {
+        Skip.If(string.IsNullOrWhiteSpace(AccessToken),
+            "TELUMERA_TEST_ACCESS_TOKEN not set — run infrastructure/compose/scripts/get-dev-token.sh " +
+            "(or .ps1) and export the result to run this test.");
+
+        var workspaceResponse = await PostAsync(IdentityWorkspace, "/workspaces", new { Name = "Key Rotation Test Workspace" });
+        workspaceResponse.EnsureSuccessStatusCode();
+        var workspace = await workspaceResponse.Content.ReadFromJsonAsync<WorkspaceDto>();
+        Assert.NotNull(workspace);
+
+        var siteResponse = await PostAsync(SiteRegistry, "/sites", new
+        {
+            WorkspaceId = workspace!.Id,
+            Name = "Key Rotation Test Site",
+            CanonicalDomain = "rotation.example",
+            AllowedOrigins = new[] { "https://rotation.example" },
+            Environment = "production",
+        });
+        siteResponse.EnsureSuccessStatusCode();
+        var site = await siteResponse.Content.ReadFromJsonAsync<CreateSiteResponseDto>();
+        Assert.NotNull(site);
+
+        // Rotating must not touch the existing token — both stay valid ("overlapping keys").
+        var rotateResponse = await PostAsync<object?>(SiteRegistry, $"/sites/{site!.Id}/tokens/rotate", null);
+        rotateResponse.EnsureSuccessStatusCode();
+        var newToken = await rotateResponse.Content.ReadFromJsonAsync<SiteTokenDto>();
+        Assert.NotNull(newToken);
+
+        var afterRotate = await GetAsync(SiteRegistry, $"/sites/{site.Id}/tokens");
+        afterRotate.EnsureSuccessStatusCode();
+        var tokensAfterRotate = await afterRotate.Content.ReadFromJsonAsync<List<SiteTokenDto>>();
+        Assert.NotNull(tokensAfterRotate);
+        Assert.Equal(2, tokensAfterRotate!.Count);
+        Assert.All(tokensAfterRotate, t => Assert.Null(t.RevokedAt));
+
+        var initialToken = tokensAfterRotate.Single(t => t.Token == site.InitialToken);
+
+        var revokeResponse = await PostAsync<object?>(SiteRegistry, $"/sites/{site.Id}/tokens/{initialToken.Id}/revoke", null);
+        revokeResponse.EnsureSuccessStatusCode();
+
+        var afterRevoke = await GetAsync(SiteRegistry, $"/sites/{site.Id}/tokens");
+        afterRevoke.EnsureSuccessStatusCode();
+        var tokensAfterRevoke = await afterRevoke.Content.ReadFromJsonAsync<List<SiteTokenDto>>();
+        Assert.NotNull(tokensAfterRevoke);
+        Assert.NotNull(tokensAfterRevoke!.Single(t => t.Id == initialToken.Id).RevokedAt);
+        Assert.Null(tokensAfterRevoke.Single(t => t.Id == newToken!.Id).RevokedAt);
+
+        var rotatedPublished = await WaitUntilOutboxEventPublishedAsync(site.Id, "site.key.rotated.v1", TimeSpan.FromSeconds(15));
+        Assert.True(rotatedPublished, "Expected at least one site.key.rotated.v1 outbox row to be published within 15s.");
     }
 
     [SkippableFact]
@@ -149,7 +200,7 @@ public sealed class WorkspaceAndSiteFlowTests
         return client.SendAsync(request);
     }
 
-    private static async Task<bool> WaitUntilOutboxEventPublishedAsync(Guid siteId, TimeSpan timeout)
+    private static async Task<bool> WaitUntilOutboxEventPublishedAsync(Guid siteId, string eventType, TimeSpan timeout)
     {
         await using var connection = new NpgsqlConnection(SitesConnectionString);
         await connection.OpenAsync();
@@ -158,8 +209,11 @@ public sealed class WorkspaceAndSiteFlowTests
         while (DateTime.UtcNow < deadline)
         {
             await using var command = connection.CreateCommand();
-            command.CommandText = "SELECT published_at FROM outbox_events WHERE site_id = @siteId";
+            command.CommandText =
+                "SELECT published_at FROM outbox_events WHERE site_id = @siteId AND event_type = @eventType " +
+                "AND published_at IS NOT NULL LIMIT 1";
             command.Parameters.AddWithValue("siteId", siteId);
+            command.Parameters.AddWithValue("eventType", eventType);
 
             var result = await command.ExecuteScalarAsync();
             if (result is not null and not DBNull)
@@ -177,7 +231,9 @@ public sealed class WorkspaceAndSiteFlowTests
 
     private sealed record MemberDto(string EntraObjectId, string? DisplayName, string? Email, string Role);
 
-    private sealed record SiteDto(
-        Guid Id, Guid WorkspaceId, string Name, string CanonicalDomain,
-        string[] AllowedOrigins, string Environment, string BrowserToken, DateTimeOffset CreatedAt);
+    private sealed record CreateSiteResponseDto(
+        Guid Id, Guid WorkspaceId, string Name, string CanonicalDomain, string[] AllowedOrigins,
+        string Environment, DateTimeOffset CreatedAt, string InitialToken);
+
+    private sealed record SiteTokenDto(Guid Id, string Token, DateTimeOffset CreatedAt, DateTimeOffset? RevokedAt);
 }
