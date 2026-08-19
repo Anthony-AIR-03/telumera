@@ -89,11 +89,18 @@ app.MapPost("/sites", async (CreateSiteRequest request, SiteRegistryDbContext db
         CanonicalDomain = request.CanonicalDomain,
         AllowedOrigins = request.AllowedOrigins,
         Environment = request.Environment,
-        BrowserToken = GenerateBrowserToken(),
         CreatedAt = DateTimeOffset.UtcNow,
     };
-
     db.Sites.Add(site);
+
+    var initialToken = new SiteToken
+    {
+        Id = Guid.NewGuid(),
+        SiteId = site.Id,
+        Token = GenerateSiteToken(),
+        CreatedAt = site.CreatedAt,
+    };
+    db.SiteTokens.Add(initialToken);
 
     var eventData = new SiteCreatedEventData(
         site.Id, site.WorkspaceId, site.Name, site.CanonicalDomain, site.AllowedOrigins, site.Environment);
@@ -109,11 +116,14 @@ app.MapPost("/sites", async (CreateSiteRequest request, SiteRegistryDbContext db
         CreatedAt = site.CreatedAt,
     });
 
-    // Single SaveChangesAsync call = single transaction: the Site row and its OutboxEvent row
-    // commit together or not at all (docs/adr/0004-transactional-outbox-and-idempotent-consumers.md).
+    // Single SaveChangesAsync call = single transaction: the Site row, its initial SiteToken, and
+    // its OutboxEvent row commit together or not at all
+    // (docs/adr/0004-transactional-outbox-and-idempotent-consumers.md).
     await db.SaveChangesAsync();
 
-    return Results.Created($"/sites/{site.Id}", site);
+    return Results.Created($"/sites/{site.Id}", new CreateSiteResponse(
+        site.Id, site.WorkspaceId, site.Name, site.CanonicalDomain, site.AllowedOrigins,
+        site.Environment, site.CreatedAt, initialToken.Token));
 })
 .WithName("CreateSite")
 .RequireAuthorization("ApiScope");
@@ -139,12 +149,129 @@ app.MapGet("/sites/{id:guid}", async (Guid id, SiteRegistryDbContext db, HttpCon
 .WithName("GetSite")
 .RequireAuthorization("ApiScope");
 
+// Tokens are a sub-resource of a site — see SiteToken.cs and services/site-registry/README.md for
+// why rotation (issuing a new one) never touches existing tokens ("overlapping keys during safe
+// migration") and revocation is a separate, explicit action.
+app.MapGet("/sites/{id:guid}/tokens", async (Guid id, SiteRegistryDbContext db, HttpContext httpContext, MembershipClient membershipClient) =>
+{
+    var site = await db.Sites.FindAsync(id);
+    if (site is null)
+    {
+        return Results.NotFound();
+    }
+
+    var callerObjectId = httpContext.User.GetObjectId()
+        ?? throw new InvalidOperationException("Token has no oid claim.");
+    var role = await membershipClient.GetRoleAsync(site.WorkspaceId, callerObjectId);
+    if (role is null)
+    {
+        return Results.StatusCode(StatusCodes.Status403Forbidden);
+    }
+
+    var tokens = await db.SiteTokens
+        .Where(t => t.SiteId == id)
+        .OrderBy(t => t.CreatedAt)
+        .Select(t => new SiteTokenDto(t.Id, t.Token, t.CreatedAt, t.RevokedAt))
+        .ToListAsync();
+
+    return Results.Ok(tokens);
+})
+.WithName("GetSiteTokens")
+.RequireAuthorization("ApiScope");
+
+app.MapPost("/sites/{id:guid}/tokens/rotate", async (Guid id, SiteRegistryDbContext db, HttpContext httpContext, MembershipClient membershipClient) =>
+{
+    var site = await db.Sites.FindAsync(id);
+    if (site is null)
+    {
+        return Results.NotFound();
+    }
+
+    var callerObjectId = httpContext.User.GetObjectId()
+        ?? throw new InvalidOperationException("Token has no oid claim.");
+    var role = await membershipClient.GetRoleAsync(site.WorkspaceId, callerObjectId);
+    if (role is null || role < Role.Developer)
+    {
+        return Results.StatusCode(StatusCodes.Status403Forbidden);
+    }
+
+    var newToken = new SiteToken
+    {
+        Id = Guid.NewGuid(),
+        SiteId = id,
+        Token = GenerateSiteToken(),
+        CreatedAt = DateTimeOffset.UtcNow,
+    };
+    db.SiteTokens.Add(newToken);
+
+    AddSiteKeyRotatedOutboxEvent(db, site, newToken, "issued");
+
+    await db.SaveChangesAsync();
+
+    return Results.Created($"/sites/{id}/tokens/{newToken.Id}",
+        new SiteTokenDto(newToken.Id, newToken.Token, newToken.CreatedAt, newToken.RevokedAt));
+})
+.WithName("RotateSiteToken")
+.RequireAuthorization("ApiScope");
+
+app.MapPost("/sites/{id:guid}/tokens/{tokenId:guid}/revoke", async (Guid id, Guid tokenId, SiteRegistryDbContext db, HttpContext httpContext, MembershipClient membershipClient) =>
+{
+    var site = await db.Sites.FindAsync(id);
+    if (site is null)
+    {
+        return Results.NotFound();
+    }
+
+    var callerObjectId = httpContext.User.GetObjectId()
+        ?? throw new InvalidOperationException("Token has no oid claim.");
+    var role = await membershipClient.GetRoleAsync(site.WorkspaceId, callerObjectId);
+    if (role is null || role < Role.Developer)
+    {
+        return Results.StatusCode(StatusCodes.Status403Forbidden);
+    }
+
+    var token = await db.SiteTokens.FirstOrDefaultAsync(t => t.Id == tokenId && t.SiteId == id);
+    if (token is null)
+    {
+        return Results.NotFound();
+    }
+
+    if (token.RevokedAt is null)
+    {
+        token.RevokedAt = DateTimeOffset.UtcNow;
+        AddSiteKeyRotatedOutboxEvent(db, site, token, "revoked");
+        await db.SaveChangesAsync();
+    }
+
+    return Results.Ok(new SiteTokenDto(token.Id, token.Token, token.CreatedAt, token.RevokedAt));
+})
+.WithName("RevokeSiteToken")
+.RequireAuthorization("ApiScope");
+
 app.Run();
 
-static string GenerateBrowserToken() => Convert.ToBase64String(RandomNumberGenerator.GetBytes(32))
+static string GenerateSiteToken() => Convert.ToBase64String(RandomNumberGenerator.GetBytes(32))
     .TrimEnd('=')
     .Replace('+', '-')
     .Replace('/', '_');
+
+// The event catalogue defines only one key-related event type (site.key.rotated.v1) — both issuing
+// and revoking a token use it, with Action distinguishing which happened (see
+// services/site-registry/README.md).
+static void AddSiteKeyRotatedOutboxEvent(SiteRegistryDbContext db, Site site, SiteToken token, string action)
+{
+    var eventData = new SiteKeyRotatedEventData(site.Id, token.Id, token.Token, action);
+    db.OutboxEvents.Add(new OutboxEvent
+    {
+        Id = Guid.NewGuid(),
+        EventType = EventTypes.SiteKeyRotatedV1,
+        WorkspaceId = site.WorkspaceId,
+        SiteId = site.Id,
+        CorrelationId = Guid.NewGuid(),
+        DataJson = JsonSerializer.Serialize(eventData),
+        CreatedAt = DateTimeOffset.UtcNow,
+    });
+}
 
 internal sealed record CreateSiteRequest(
     [property: Required] Guid WorkspaceId,
@@ -152,6 +279,12 @@ internal sealed record CreateSiteRequest(
     [property: Required, MinLength(1), MaxLength(253)] string CanonicalDomain,
     [property: Required, MinLength(1)] string[] AllowedOrigins,
     [property: Required, MinLength(1), MaxLength(50)] string Environment);
+
+internal sealed record CreateSiteResponse(
+    Guid Id, Guid WorkspaceId, string Name, string CanonicalDomain, string[] AllowedOrigins,
+    string Environment, DateTimeOffset CreatedAt, string InitialToken);
+
+internal sealed record SiteTokenDto(Guid Id, string Token, DateTimeOffset CreatedAt, DateTimeOffset? RevokedAt);
 
 /// <summary>Event-specific payload carried in site.created.v1's EventEnvelope.Data (ADR 0002).</summary>
 internal sealed record SiteCreatedEventData(
@@ -161,5 +294,11 @@ internal sealed record SiteCreatedEventData(
     string CanonicalDomain,
     string[] AllowedOrigins,
     string Environment);
+
+/// <summary>
+/// Event-specific payload carried in site.key.rotated.v1's EventEnvelope.Data (ADR 0002). Action is
+/// "issued" or "revoked" — the catalogue defines one event type for both key-set transitions.
+/// </summary>
+internal sealed record SiteKeyRotatedEventData(Guid SiteId, Guid TokenId, string Token, string Action);
 
 public partial class Program;

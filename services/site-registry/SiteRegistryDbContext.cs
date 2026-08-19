@@ -6,6 +6,8 @@ public sealed class SiteRegistryDbContext(DbContextOptions<SiteRegistryDbContext
 {
     public DbSet<Site> Sites => Set<Site>();
 
+    public DbSet<SiteToken> SiteTokens => Set<SiteToken>();
+
     public DbSet<OutboxEvent> OutboxEvents => Set<OutboxEvent>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -17,8 +19,15 @@ public sealed class SiteRegistryDbContext(DbContextOptions<SiteRegistryDbContext
             entity.Property(s => s.Name).IsRequired().HasMaxLength(200);
             entity.Property(s => s.CanonicalDomain).IsRequired().HasMaxLength(253);
             entity.Property(s => s.Environment).IsRequired().HasMaxLength(50);
-            entity.Property(s => s.BrowserToken).IsRequired().HasMaxLength(64);
-            entity.HasIndex(s => s.BrowserToken).IsUnique();
+        });
+
+        modelBuilder.Entity<SiteToken>(entity =>
+        {
+            entity.ToTable("site_tokens");
+            entity.HasKey(t => t.Id);
+            entity.Property(t => t.Token).IsRequired().HasMaxLength(64);
+            entity.HasIndex(t => t.Token).IsUnique();
+            entity.HasIndex(t => t.SiteId);
         });
 
         modelBuilder.Entity<OutboxEvent>(entity =>

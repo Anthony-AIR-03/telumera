@@ -10,6 +10,7 @@ public static class EventTypes
 {
     public const string SiteCreatedV1 = "site.created.v1";
     public const string SiteSettingsChangedV1 = "site.settings.changed.v1";
+    public const string SiteKeyRotatedV1 = "site.key.rotated.v1";
     public const string AnalyticsPageViewReceivedV1 = "analytics.page-view.received.v1";
     public const string AnalyticsCustomEventReceivedV1 = "analytics.custom-event.received.v1";
     public const string AnalyticsProcessedV1 = "analytics.processed.v1";

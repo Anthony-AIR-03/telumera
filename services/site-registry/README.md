@@ -6,7 +6,23 @@ Site Registry (M00.4 first cut) — site registration and browser ingestion toke
 
 ## Scope of this cut
 
-`POST /sites` (register a site, issue its browser token) and `GET /sites/{id}`.
+`POST /sites` (register a site, issue its first browser token), `GET /sites/{id}`, and token management:
+`GET /sites/{id}/tokens`, `POST /sites/{id}/tokens/rotate`, `POST /sites/{id}/tokens/{tokenId}/revoke`.
+
+## Key rotation
+
+A site's browser tokens live in `SiteToken`, not on `Site` — a site can have several over its lifetime.
+**Rotating never revokes anything**: `POST /sites/{id}/tokens/rotate` issues a new active token and
+leaves every existing one untouched, so an old and new token stay valid simultaneously — this is the
+"overlapping keys during safe migration" the M00.4 backlog item asks for, letting a site owner update
+their embed before the old token stops working. Revocation is a separate, explicit action
+(`POST /sites/{id}/tokens/{tokenId}/revoke`). Both require `Developer`+ in the site's workspace, same bar
+as creating a site.
+
+Both actions publish `site.key.rotated.v1` through the outbox — the event catalogue
+(`docs/architecture/bounded-contexts-and-data-ownership.md`) defines only one key-related event type, so
+the payload carries an `Action` field (`"issued"` or `"revoked"`) to distinguish which transition
+happened, rather than inventing an undocumented second event type.
 
 ## Auth and membership enforcement
 
@@ -43,6 +59,7 @@ that this can migrate to without changing the published event contract.
 
 ## No consumer yet
 
-`site.created.v1` publishes today with no subscriber — Event Collector (which would keep a local
-projection of this data) isn't built yet. The contract is real and covered by
-`tests/integration/Telumera.Tests.Integration/`, it just has nothing downstream reacting to it yet.
+`site.created.v1` and `site.key.rotated.v1` publish today with no subscriber — Event Collector (which
+would keep a local projection of this data, including which tokens are currently valid) isn't built yet.
+Both contracts are real and covered by `tests/integration/Telumera.Tests.Integration/`, they just have
+nothing downstream reacting to them yet.
