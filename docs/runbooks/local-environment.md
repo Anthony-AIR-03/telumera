@@ -25,9 +25,10 @@ against a completely empty data volume.
 ## What's running, and what isn't yet
 
 Shared platform infrastructure (PostgreSQL, ClickHouse, RabbitMQ, Redis, MinIO, a Dapr placement service,
-one headless `dapr-smoke-test-sidecar`), plus the first two real M00.4 services:
-`identity-workspace` (`http://localhost:5101`) and `site-registry` (`http://localhost:5102`, with its own
-`site-registry-dapr` sidecar). `gateway/` and the rest of `services/*` are still empty scaffolds. See
+one headless `dapr-smoke-test-sidecar`), plus the real application services built so far:
+`identity-workspace` (`http://localhost:5101`), `site-registry` (`http://localhost:5102`), and `gateway`
+(`http://localhost:5100` — a transparent reverse proxy in front of both, see `gateway/README.md`), each
+with its own Dapr sidecar. `services/event-collector/` is still an empty scaffold. See
 `infrastructure/compose/README.md` for the full port/credential reference and
 `infrastructure/dapr/README.md` for how to add a real service's sidecar once one exists.
 

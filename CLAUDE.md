@@ -148,10 +148,18 @@ through the same outbox pattern as the other two Site Registry events — this c
 but had no publisher until now.
 
 This closes out every **backend-only** M00.4 backlog item (Entra ID auth, workspace entity, membership
-and roles, site registration, key issuance, key rotation, module enablement). What's left —
-`gateway/`, `services/event-collector/`, and the dashboard settings UI (including real sign-in) — is a
-different shape of work: building the actual consumers/composition layer these events and APIs feed into,
-not more backend data-model cuts on identity-workspace/site-registry.
+and roles, site registration, key issuance, key rotation, module enablement).
+
+`gateway/` is now built: a transparent reverse-proxy forwarder (`GatewayForwarder.cs`) in front of
+identity-workspace/site-registry — same paths, routed via Dapr service invocation (`docs/adr/0002`), the
+caller's own bearer token forwarded unchanged so each downstream service's existing auth/membership
+checks keep working untouched. No response-composition endpoints yet (nothing needs one until the
+dashboard does) — see `gateway/README.md` for the two design questions
+`docs/architecture/c4-container.md` left open (transport mechanism, auth-forwarding model) now resolved
+concretely. `http://localhost:5100`, its own `gateway-dapr` sidecar (outbound-only, no `-app-port`).
+
+What's left: `services/event-collector/` and the dashboard settings UI (including real sign-in, now
+unblocked since a gateway exists for `apps/dashboard-web/src/lib/api-client.ts` to call).
 
 ## Planning artifacts (`planning/`)
 
