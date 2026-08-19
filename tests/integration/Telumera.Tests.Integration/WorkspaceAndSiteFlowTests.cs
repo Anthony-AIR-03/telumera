@@ -67,6 +67,57 @@ public sealed class WorkspaceAndSiteFlowTests
         Assert.True(published, "Expected the site.created.v1 outbox row to be published within 15s.");
     }
 
+    [SkippableFact]
+    public async Task CreateSite_UnderWorkspaceCallerIsNotMemberOf_Returns403()
+    {
+        Skip.If(string.IsNullOrWhiteSpace(AccessToken),
+            "TELUMERA_TEST_ACCESS_TOKEN not set — run infrastructure/compose/scripts/get-dev-token.sh " +
+            "(or .ps1) and export the result to run this test.");
+
+        // A freshly-generated, never-created WorkspaceId — the signed-in test user has no
+        // membership in it (proves enforcement without needing a second real Entra identity).
+        var siteResponse = await PostAsync(SiteRegistry, "/sites", new
+        {
+            WorkspaceId = Guid.NewGuid(),
+            Name = "Should Be Rejected",
+            CanonicalDomain = "example.test",
+            AllowedOrigins = new[] { "https://example.test" },
+            Environment = "production",
+        });
+
+        Assert.Equal(HttpStatusCode.Forbidden, siteResponse.StatusCode);
+    }
+
+    [SkippableFact]
+    public async Task AddWorkspaceMember_ThenListMembers_RoundTrips()
+    {
+        Skip.If(string.IsNullOrWhiteSpace(AccessToken),
+            "TELUMERA_TEST_ACCESS_TOKEN not set — run infrastructure/compose/scripts/get-dev-token.sh " +
+            "(or .ps1) and export the result to run this test.");
+
+        var workspaceResponse = await PostAsync(IdentityWorkspace, "/workspaces", new { Name = "Membership Test Workspace" });
+        workspaceResponse.EnsureSuccessStatusCode();
+        var workspace = await workspaceResponse.Content.ReadFromJsonAsync<WorkspaceDto>();
+        Assert.NotNull(workspace);
+
+        // Not a real, signable-in identity — just proves the add/list mechanics work. See the
+        // verification notes in the plan for why role *enforcement* for this specific member can't
+        // be exercised without a second real Entra identity.
+        var fakeMemberObjectId = Guid.NewGuid().ToString();
+        var addMemberResponse = await PostAsync(IdentityWorkspace, $"/workspaces/{workspace!.Id}/members",
+            new { EntraObjectId = fakeMemberObjectId, Role = "Viewer" });
+        addMemberResponse.EnsureSuccessStatusCode();
+
+        var membersResponse = await GetAsync(IdentityWorkspace, $"/workspaces/{workspace.Id}/members");
+        membersResponse.EnsureSuccessStatusCode();
+        var members = await membersResponse.Content.ReadFromJsonAsync<List<MemberDto>>();
+
+        Assert.NotNull(members);
+        Assert.Equal(2, members!.Count);
+        Assert.Contains(members, m => m.EntraObjectId == fakeMemberObjectId && m.Role == "Viewer");
+        Assert.Contains(members, m => m.Role == "Owner");
+    }
+
     [Fact]
     public async Task ProtectedEndpoints_WithoutToken_Return401()
     {
@@ -123,6 +174,8 @@ public sealed class WorkspaceAndSiteFlowTests
     }
 
     private sealed record WorkspaceDto(Guid Id, string Name, DateTimeOffset CreatedAt);
+
+    private sealed record MemberDto(string EntraObjectId, string? DisplayName, string? Email, string Role);
 
     private sealed record SiteDto(
         Guid Id, Guid WorkspaceId, string Name, string CanonicalDomain,
