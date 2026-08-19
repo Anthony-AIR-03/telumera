@@ -13,7 +13,10 @@ Dapr component configuration for the local self-hosted runtime (M00.3), per
   never appears in a committed YAML file.
 - `components/resiliency.yaml` — the retry/backoff + circuit breaker policy applied to `pubsub`, scoped
   to specific Dapr `app-id`s. **Add a new service's app-id to the `scopes` list here when it starts
-  publishing or subscribing**, or it silently falls back to Dapr's unbounded default retry behavior.
+  publishing or subscribing**, or it silently falls back to Dapr's unbounded default retry behavior. Also
+  defines a `targets.apps` policy for service-invocation calls (e.g. site-registry's `MembershipClient`
+  calling identity-workspace) — same "don't leave it on Dapr's silent default" principle, just for the
+  invoke building block instead of pubsub. Add each new invocation target's app-id there too.
 - `config/config.yaml` — the Dapr sidecar `Configuration` resource (tracing sample rate, OTel export
   target — currently unset, see `infrastructure/observability/`, built in M00.5).
 

@@ -165,11 +165,7 @@ services:
     networks:
       - telumera-net
 
-  # First two real M00.4 services. identity-workspace has no Dapr sidecar (yet) —
-  # per docs/architecture/bounded-contexts-and-data-ownership.md it's a read-API-only
-  # context right now, publishing/subscribing nothing, so an idle sidecar would be
-  # unneeded complexity. Add one the same way site-registry has its own below, if/when
-  # identity-workspace starts publishing or subscribing to something.
+  # First two real M00.4 services.
   identity-workspace:
     build:
       context: ../..
@@ -181,11 +177,47 @@ services:
       AzureAd__ClientId: "${AZURE_AD_API_CLIENT_ID}"
     ports:
       - "5101:8080" # HTTP API
+      - "3503:3500" # identity-workspace-dapr's HTTP API (shared namespace; published here since network_mode: service:x sidecars can't publish their own ports)
+      - "50004:50001" # identity-workspace-dapr's gRPC API
     depends_on:
       postgres:
         condition: service_healthy
     networks:
       - telumera-net
+
+  # identity-workspace's own sidecar — added once site-registry needed to check membership via Dapr
+  # service invocation (docs/adr/0002-dapr-pubsub-abstraction.md), which requires -app-port so Dapr
+  # can proxy invocations into the app (unlike site-registry-dapr, which is publish-only and needs
+  # no app-port). Follows the same "Adding a real service's sidecar" pattern as site-registry-dapr,
+  # just for the invoke building block instead of pubsub.
+  identity-workspace-dapr:
+    image: daprio/daprd:1.14.4
+    restart: unless-stopped
+    command:
+      - "./daprd"
+      - "-app-id=identity-workspace"
+      - "-app-port=8080"
+      - "-dapr-http-port=3500"
+      - "-dapr-grpc-port=50001"
+      - "-placement-host-address=dapr-placement:50006"
+      - "-resources-path=/components"
+      - "-config=/config/config.yaml"
+    environment:
+      # Dapr initializes every component under -resources-path at startup regardless of whether
+      # the app actually uses it — identity-workspace never publishes/subscribes, but the shared
+      # pubsub-rabbitmq.yaml component still needs this to resolve or the sidecar fails to start.
+      RABBITMQ_CONNECTION_STRING: "amqp://${RABBITMQ_DEFAULT_USER}:${RABBITMQ_DEFAULT_PASS}@rabbitmq:5672"
+    volumes:
+      - ../dapr/components:/components:ro
+      - ../dapr/config:/config:ro
+    network_mode: "service:identity-workspace"
+    depends_on:
+      identity-workspace:
+        condition: service_started
+      dapr-placement:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
 
   site-registry:
     build:

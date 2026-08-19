@@ -1,10 +1,10 @@
-# Bounded retry/backoff + circuit breaker policy for the RabbitMQ pub/sub
-# component, satisfying docs/adr/0002-dapr-pubsub-abstraction.md's explicit
-# rule that "retries are bounded and configured per subscription (retry
-# count/backoff set in Dapr component config, not left at silent defaults)".
-# Dapr loads Resiliency resources from the same --resources-path directory as
-# Components (see infrastructure/compose/docker-compose.yml), so this file
-# lives directly in components/ even though it isn't a Component itself.
+# Bounded retry/backoff + circuit breaker policy for the RabbitMQ pub/sub component and for
+# service-invocation calls to identity-workspace, satisfying docs/adr/0002-dapr-pubsub-abstraction.md's
+# explicit rule that "retries are bounded and configured per subscription (retry count/backoff set in
+# Dapr component config, not left at silent defaults)" — the same principle applies to service
+# invocation, not just pub/sub. Dapr loads Resiliency resources from the same --resources-path
+# directory as Components (see infrastructure/compose/docker-compose.yml), so this file lives
+# directly in components/ even though it isn't a Component itself.
 apiVersion: dapr.io/v1alpha1
 kind: Resiliency
 metadata:
@@ -21,8 +21,17 @@ spec:
         policy: exponential
         maxInterval: 30s
         maxRetries: 5
+      invoke-retry:
+        policy: exponential
+        maxInterval: 30s
+        maxRetries: 5
     circuitBreakers:
       pubsub-circuit-breaker:
+        maxRequests: 1
+        interval: 30s
+        timeout: 10s
+        trip: consecutiveFailures >= 5
+      invoke-circuit-breaker:
         maxRequests: 1
         interval: 30s
         timeout: 10s
@@ -36,3 +45,9 @@ spec:
         outbound:
           retry: pubsub-retry
           circuitBreaker: pubsub-circuit-breaker
+    apps:
+      # Bounds site-registry's membership-check calls to identity-workspace (MembershipClient),
+      # per ADR 0002. Add each new service-invocation target's app-id here the same way.
+      identity-workspace:
+        retry: invoke-retry
+        circuitBreaker: invoke-circuit-breaker
