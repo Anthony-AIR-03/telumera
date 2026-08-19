@@ -8,6 +8,8 @@ public sealed class SiteRegistryDbContext(DbContextOptions<SiteRegistryDbContext
 
     public DbSet<SiteToken> SiteTokens => Set<SiteToken>();
 
+    public DbSet<SiteModuleSetting> SiteModuleSettings => Set<SiteModuleSetting>();
+
     public DbSet<OutboxEvent> OutboxEvents => Set<OutboxEvent>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -28,6 +30,13 @@ public sealed class SiteRegistryDbContext(DbContextOptions<SiteRegistryDbContext
             entity.Property(t => t.Token).IsRequired().HasMaxLength(64);
             entity.HasIndex(t => t.Token).IsUnique();
             entity.HasIndex(t => t.SiteId);
+        });
+
+        modelBuilder.Entity<SiteModuleSetting>(entity =>
+        {
+            entity.ToTable("site_module_settings");
+            entity.HasKey(s => s.Id);
+            entity.HasIndex(s => new { s.SiteId, s.Module }).IsUnique();
         });
 
         modelBuilder.Entity<OutboxEvent>(entity =>

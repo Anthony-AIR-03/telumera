@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.Security.Cryptography;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -14,6 +15,14 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.AddApiServiceDefaults();
 builder.Services.AddOpenApi();
+
+// Lets Module serialize/deserialize as "Analytics"/"Performance"/"Errors" instead of a raw int.
+builder.Services.ConfigureHttpJsonOptions(options =>
+    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+
+// Outbox payloads are serialized outside the ASP.NET Core request pipeline, so they don't pick up
+// ConfigureHttpJsonOptions automatically — anything with an enum field needs this passed explicitly.
+var outboxJsonOptions = new JsonSerializerOptions { Converters = { new JsonStringEnumConverter() } };
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddMicrosoftIdentityWebApi(builder.Configuration.GetSection("AzureAd"));
@@ -102,6 +111,21 @@ app.MapPost("/sites", async (CreateSiteRequest request, SiteRegistryDbContext db
     };
     db.SiteTokens.Add(initialToken);
 
+    // New tracking installs start with every module on; site owners opt out of specific ones
+    // rather than opting in (docs/architecture/bounded-contexts-and-data-ownership.md — Site
+    // Registry owns "settings, enabled-module flags").
+    foreach (var module in Enum.GetValues<Module>())
+    {
+        db.SiteModuleSettings.Add(new SiteModuleSetting
+        {
+            Id = Guid.NewGuid(),
+            SiteId = site.Id,
+            Module = module,
+            Enabled = true,
+            UpdatedAt = site.CreatedAt,
+        });
+    }
+
     var eventData = new SiteCreatedEventData(
         site.Id, site.WorkspaceId, site.Name, site.CanonicalDomain, site.AllowedOrigins, site.Environment);
 
@@ -116,8 +140,8 @@ app.MapPost("/sites", async (CreateSiteRequest request, SiteRegistryDbContext db
         CreatedAt = site.CreatedAt,
     });
 
-    // Single SaveChangesAsync call = single transaction: the Site row, its initial SiteToken, and
-    // its OutboxEvent row commit together or not at all
+    // Single SaveChangesAsync call = single transaction: the Site row, its initial SiteToken, its
+    // default SiteModuleSettings, and its OutboxEvent row commit together or not at all
     // (docs/adr/0004-transactional-outbox-and-idempotent-consumers.md).
     await db.SaveChangesAsync();
 
@@ -248,6 +272,84 @@ app.MapPost("/sites/{id:guid}/tokens/{tokenId:guid}/revoke", async (Guid id, Gui
 .WithName("RevokeSiteToken")
 .RequireAuthorization("ApiScope");
 
+// Module settings are a sub-resource of a site, created once (all enabled) at registration — see
+// the foreach loop in POST /sites and services/site-registry/README.md.
+app.MapGet("/sites/{id:guid}/modules", async (Guid id, SiteRegistryDbContext db, HttpContext httpContext, MembershipClient membershipClient) =>
+{
+    var site = await db.Sites.FindAsync(id);
+    if (site is null)
+    {
+        return Results.NotFound();
+    }
+
+    var callerObjectId = httpContext.User.GetObjectId()
+        ?? throw new InvalidOperationException("Token has no oid claim.");
+    var role = await membershipClient.GetRoleAsync(site.WorkspaceId, callerObjectId);
+    if (role is null)
+    {
+        return Results.StatusCode(StatusCodes.Status403Forbidden);
+    }
+
+    var settings = await db.SiteModuleSettings
+        .Where(s => s.SiteId == id)
+        .Select(s => new SiteModuleSettingDto(s.Module, s.Enabled, s.UpdatedAt))
+        .ToListAsync();
+
+    return Results.Ok(settings);
+})
+.WithName("GetSiteModules")
+.RequireAuthorization("ApiScope");
+
+app.MapPatch("/sites/{id:guid}/modules/{module}", async (Guid id, string module, UpdateModuleSettingRequest request, SiteRegistryDbContext db, HttpContext httpContext, MembershipClient membershipClient) =>
+{
+    if (!Enum.TryParse<Module>(module, ignoreCase: true, out var parsedModule))
+    {
+        return Results.Problem($"Unknown module '{module}'.", statusCode: StatusCodes.Status400BadRequest);
+    }
+
+    var site = await db.Sites.FindAsync(id);
+    if (site is null)
+    {
+        return Results.NotFound();
+    }
+
+    var callerObjectId = httpContext.User.GetObjectId()
+        ?? throw new InvalidOperationException("Token has no oid claim.");
+    var role = await membershipClient.GetRoleAsync(site.WorkspaceId, callerObjectId);
+    if (role is null || role < Role.Developer)
+    {
+        return Results.StatusCode(StatusCodes.Status403Forbidden);
+    }
+
+    var setting = await db.SiteModuleSettings.FirstAsync(s => s.SiteId == id && s.Module == parsedModule);
+
+    if (setting.Enabled != request.Enabled)
+    {
+        setting.Enabled = request.Enabled;
+        setting.UpdatedAt = DateTimeOffset.UtcNow;
+
+        var eventData = new SiteSettingsChangedEventData(site.Id, parsedModule, request.Enabled);
+        db.OutboxEvents.Add(new OutboxEvent
+        {
+            Id = Guid.NewGuid(),
+            EventType = EventTypes.SiteSettingsChangedV1,
+            WorkspaceId = site.WorkspaceId,
+            SiteId = site.Id,
+            CorrelationId = Guid.NewGuid(),
+            // Explicit converter: Module must serialize as "Analytics"/etc, not a raw int — the
+            // default JsonSerializer.Serialize() call doesn't pick up the app's ConfigureHttpJsonOptions.
+            DataJson = JsonSerializer.Serialize(eventData, outboxJsonOptions),
+            CreatedAt = setting.UpdatedAt,
+        });
+
+        await db.SaveChangesAsync();
+    }
+
+    return Results.Ok(new SiteModuleSettingDto(setting.Module, setting.Enabled, setting.UpdatedAt));
+})
+.WithName("UpdateSiteModule")
+.RequireAuthorization("ApiScope");
+
 app.Run();
 
 static string GenerateSiteToken() => Convert.ToBase64String(RandomNumberGenerator.GetBytes(32))
@@ -286,6 +388,10 @@ internal sealed record CreateSiteResponse(
 
 internal sealed record SiteTokenDto(Guid Id, string Token, DateTimeOffset CreatedAt, DateTimeOffset? RevokedAt);
 
+internal sealed record SiteModuleSettingDto(Module Module, bool Enabled, DateTimeOffset UpdatedAt);
+
+internal sealed record UpdateModuleSettingRequest(bool Enabled);
+
 /// <summary>Event-specific payload carried in site.created.v1's EventEnvelope.Data (ADR 0002).</summary>
 internal sealed record SiteCreatedEventData(
     Guid SiteId,
@@ -300,5 +406,8 @@ internal sealed record SiteCreatedEventData(
 /// "issued" or "revoked" — the catalogue defines one event type for both key-set transitions.
 /// </summary>
 internal sealed record SiteKeyRotatedEventData(Guid SiteId, Guid TokenId, string Token, string Action);
+
+/// <summary>Event-specific payload carried in site.settings.changed.v1's EventEnvelope.Data (ADR 0002).</summary>
+internal sealed record SiteSettingsChangedEventData(Guid SiteId, Module Module, bool Enabled);
 
 public partial class Program;

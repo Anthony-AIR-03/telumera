@@ -6,8 +6,9 @@ Site Registry (M00.4 first cut) — site registration and browser ingestion toke
 
 ## Scope of this cut
 
-`POST /sites` (register a site, issue its first browser token), `GET /sites/{id}`, and token management:
-`GET /sites/{id}/tokens`, `POST /sites/{id}/tokens/rotate`, `POST /sites/{id}/tokens/{tokenId}/revoke`.
+`POST /sites` (register a site, issue its first browser token), `GET /sites/{id}`, token management
+(`GET /sites/{id}/tokens`, `POST /sites/{id}/tokens/rotate`, `POST /sites/{id}/tokens/{tokenId}/revoke`),
+and module enablement (`GET /sites/{id}/modules`, `PATCH /sites/{id}/modules/{module}`).
 
 ## Key rotation
 
@@ -24,11 +25,25 @@ Both actions publish `site.key.rotated.v1` through the outbox — the event cata
 the payload carries an `Action` field (`"issued"` or `"revoked"`) to distinguish which transition
 happened, rather than inventing an undocumented second event type.
 
+## Module enablement settings
+
+Per-site enabled/disabled state for `Analytics`/`Performance`/`Errors` (`services/site-registry/Module.cs`
+— only the three modules the M00.4 backlog task names explicitly, i.e. the next modules on the roadmap;
+not every module in the full CLAUDE.md roadmap, since none of those are close to being built and this
+list only grows when a module actually needs a toggle). `POST /sites` creates one `SiteModuleSetting` row
+per module, all `Enabled: true` by default — new tracking installs start with everything on, site owners
+opt out of specific modules rather than opting in. `PATCH /sites/{id}/modules/{module}` (`Developer`+,
+same bar as creating a site) flips one; a no-op PATCH (value unchanged) doesn't publish a duplicate event.
+Publishes `site.settings.changed.v1` through the outbox — the payload's `Module` field serializes as its
+name (`"Analytics"`, not a raw int) via the same `JsonStringEnumConverter` pattern the API's own JSON uses,
+applied explicitly since outbox payloads are serialized outside the ASP.NET Core request pipeline and
+don't pick up `ConfigureHttpJsonOptions` automatically.
+
 ## Auth and membership enforcement
 
-Both endpoints require a valid Entra ID bearer token with the `access_as_user` scope (`Telumera API` app
-registration) — see `docs/runbooks/local-environment.md`'s "Auth" section for how to get one for manual
-testing. `/health/live` and `/health/ready` stay open.
+Every endpoint except `/health/live`/`/health/ready` requires a valid Entra ID bearer token with the
+`access_as_user` scope (`Telumera API` app registration) — see `docs/runbooks/local-environment.md`'s
+"Auth" section for how to get one for manual testing.
 
 On top of that, `WorkspaceId` is checked against the caller's actual membership role in
 identity-workspace — `MembershipClient` calls identity-workspace's internal membership endpoint through
@@ -59,7 +74,8 @@ that this can migrate to without changing the published event contract.
 
 ## No consumer yet
 
-`site.created.v1` and `site.key.rotated.v1` publish today with no subscriber — Event Collector (which
-would keep a local projection of this data, including which tokens are currently valid) isn't built yet.
-Both contracts are real and covered by `tests/integration/Telumera.Tests.Integration/`, they just have
-nothing downstream reacting to them yet.
+`site.created.v1`, `site.key.rotated.v1`, and `site.settings.changed.v1` all publish today with no
+subscriber — Event Collector (which would keep a local projection of this data, including which tokens
+are currently valid and which modules are enabled) isn't built yet. All three contracts are real and
+covered by `tests/integration/Telumera.Tests.Integration/`, they just have nothing downstream reacting to
+them yet.
