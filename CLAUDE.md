@@ -132,8 +132,16 @@ internal membership endpoint through Dapr service invocation (`docs/adr/0002`) �
 "any authenticated caller could act on any workspace" gap flagged during the Entra ID auth cut.
 `identity-workspace` has its own Dapr sidecar now (`-app-port` set) to receive those invocations.
 
-Deliberately still deferred within M00.4: key rotation, module-enablement toggles, the dashboard settings
-UI (including real sign-in), and the `gateway/`/`services/event-collector/` scaffolds.
+Key rotation is implemented: a site's browser tokens live in `SiteToken` (`services/site-registry/`), not
+on `Site` — `POST /sites/{id}/tokens/rotate` issues a new active token without touching existing ones
+("overlapping keys during safe migration," per the backlog wording), `POST
+/sites/{id}/tokens/{tokenId}/revoke` is the separate, explicit step that invalidates one. Both require
+`Developer`+ and publish `site.key.rotated.v1` through the same outbox pattern as `site.created.v1`, with
+an `Action` field (`"issued"`/`"revoked"`) since the event catalogue defines only one key-related event
+type — see `services/site-registry/README.md`.
+
+Deliberately still deferred within M00.4: module-enablement toggles, the dashboard settings UI (including
+real sign-in), and the `gateway/`/`services/event-collector/` scaffolds.
 
 ## Planning artifacts (`planning/`)
 
