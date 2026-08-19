@@ -140,8 +140,18 @@ on `Site` — `POST /sites/{id}/tokens/rotate` issues a new active token without
 an `Action` field (`"issued"`/`"revoked"`) since the event catalogue defines only one key-related event
 type — see `services/site-registry/README.md`.
 
-Deliberately still deferred within M00.4: module-enablement toggles, the dashboard settings UI (including
-real sign-in), and the `gateway/`/`services/event-collector/` scaffolds.
+Module enablement settings are implemented: `SiteModuleSetting` (`services/site-registry/`) tracks
+per-site enabled/disabled state for `Analytics`/`Performance`/`Errors` — the three modules the backlog
+task names explicitly, not the full M04–M09 roadmap. `POST /sites` creates all three enabled by default;
+`PATCH /sites/{id}/modules/{module}` (`Developer`+) flips one and publishes `site.settings.changed.v1`
+through the same outbox pattern as the other two Site Registry events — this constant existed since M00.1
+but had no publisher until now.
+
+This closes out every **backend-only** M00.4 backlog item (Entra ID auth, workspace entity, membership
+and roles, site registration, key issuance, key rotation, module enablement). What's left —
+`gateway/`, `services/event-collector/`, and the dashboard settings UI (including real sign-in) — is a
+different shape of work: building the actual consumers/composition layer these events and APIs feed into,
+not more backend data-model cuts on identity-workspace/site-registry.
 
 ## Planning artifacts (`planning/`)
 
