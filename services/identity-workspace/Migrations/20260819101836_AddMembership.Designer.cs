@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Telumera.Services.IdentityWorkspace.Api;
@@ -11,9 +12,11 @@ using Telumera.Services.IdentityWorkspace.Api;
 namespace Telumera.Services.IdentityWorkspace.Api.Migrations
 {
     [DbContext(typeof(IdentityWorkspaceDbContext))]
-    partial class IdentityWorkspaceDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260819101836_AddMembership")]
+    partial class AddMembership
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
