@@ -6,16 +6,22 @@ Site Registry (M00.4 first cut) — site registration and browser ingestion toke
 
 ## Scope of this cut
 
-`POST /sites` (register a site, issue its browser token) and `GET /sites/{id}`. `WorkspaceId` is stored
-as a plain value, not validated against identity-workspace's API — real validation arrives once the
-membership/roles task lets this check "does the caller actually belong to this workspace," not just "is
-the caller authenticated at all."
+`POST /sites` (register a site, issue its browser token) and `GET /sites/{id}`.
 
-## Auth
+## Auth and membership enforcement
 
 Both endpoints require a valid Entra ID bearer token with the `access_as_user` scope (`Telumera API` app
 registration) — see `docs/runbooks/local-environment.md`'s "Auth" section for how to get one for manual
 testing. `/health/live` and `/health/ready` stay open.
+
+On top of that, `WorkspaceId` is checked against the caller's actual membership role in
+identity-workspace — `MembershipClient` calls identity-workspace's internal membership endpoint through
+the Dapr sidecar's service-invocation building block
+(`docs/adr/0002-dapr-pubsub-abstraction.md` — "synchronous cross-service calls ... use Dapr service
+invocation rather than hardcoded service URLs"), since Site Registry may never read Identity &
+Workspace's database directly. `POST /sites` requires `Developer`+, `GET /sites/{id}` requires any
+membership (`Viewer`+) in the site's workspace — `403` otherwise. This is what actually closes the gap
+flagged during the Entra ID auth cut, where any authenticated caller could act on any workspace.
 
 ## Outbox and event publishing
 

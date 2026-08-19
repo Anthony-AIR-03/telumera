@@ -32,6 +32,7 @@ builder.Services.AddDbContext<SiteRegistryDbContext>(options =>
 builder.Services.AddHealthChecks().AddNpgSql(connectionString, tags: ["ready"]);
 builder.Services.AddHttpClient();
 builder.Services.AddHostedService<OutboxPublisher>();
+builder.Services.AddSingleton<MembershipClient>();
 
 var app = builder.Build();
 
@@ -54,11 +55,9 @@ app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 
-// WorkspaceId below is trusted as given, not yet validated against identity-workspace (see the
-// doc comment on Site.WorkspaceId) — membership/roles (a separate M00.4 task) is what will let
-// this check "does the caller actually belong to this workspace," not just "is the caller
-// authenticated at all."
-app.MapPost("/sites", async (CreateSiteRequest request, SiteRegistryDbContext db) =>
+// WorkspaceId is checked against identity-workspace's membership records (via Dapr service
+// invocation, see MembershipClient) — the caller must be Developer+ in the target workspace.
+app.MapPost("/sites", async (CreateSiteRequest request, SiteRegistryDbContext db, HttpContext httpContext, MembershipClient membershipClient) =>
 {
     var context = new ValidationContext(request);
     var errors = new List<ValidationResult>();
@@ -72,6 +71,14 @@ app.MapPost("/sites", async (CreateSiteRequest request, SiteRegistryDbContext db
             .ToDictionary(g => g.Key, g => g.Select(e => e.Item2).ToArray());
 
         return Results.ValidationProblem(problemErrors);
+    }
+
+    var callerObjectId = httpContext.User.GetObjectId()
+        ?? throw new InvalidOperationException("Token has no oid claim.");
+    var role = await membershipClient.GetRoleAsync(request.WorkspaceId, callerObjectId);
+    if (role is null || role < Role.Developer)
+    {
+        return Results.StatusCode(StatusCodes.Status403Forbidden);
     }
 
     var site = new Site
@@ -111,10 +118,23 @@ app.MapPost("/sites", async (CreateSiteRequest request, SiteRegistryDbContext db
 .WithName("CreateSite")
 .RequireAuthorization("ApiScope");
 
-app.MapGet("/sites/{id:guid}", async (Guid id, SiteRegistryDbContext db) =>
+app.MapGet("/sites/{id:guid}", async (Guid id, SiteRegistryDbContext db, HttpContext httpContext, MembershipClient membershipClient) =>
 {
     var site = await db.Sites.FindAsync(id);
-    return site is null ? Results.NotFound() : Results.Ok(site);
+    if (site is null)
+    {
+        return Results.NotFound();
+    }
+
+    var callerObjectId = httpContext.User.GetObjectId()
+        ?? throw new InvalidOperationException("Token has no oid claim.");
+    var role = await membershipClient.GetRoleAsync(site.WorkspaceId, callerObjectId);
+    if (role is null)
+    {
+        return Results.StatusCode(StatusCodes.Status403Forbidden);
+    }
+
+    return Results.Ok(site);
 })
 .WithName("GetSite")
 .RequireAuthorization("ApiScope");
