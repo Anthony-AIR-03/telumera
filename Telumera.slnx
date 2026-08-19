@@ -13,6 +13,9 @@
   <Folder Name="/templates/worker-service/">
     <Project Path="templates/worker-service/WorkerServiceTemplate.csproj" />
   </Folder>
+  <Folder Name="/gateway/">
+    <Project Path="gateway/Telumera.Gateway.csproj" />
+  </Folder>
   <Folder Name="/services/" />
   <Folder Name="/services/identity-workspace/">
     <Project Path="services/identity-workspace/Telumera.Services.IdentityWorkspace.Api.csproj" />
