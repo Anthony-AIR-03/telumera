@@ -61,8 +61,57 @@ public sealed class WorkspaceAndSiteFlowTests
         var getSiteResponse = await GetAsync(SiteRegistry, $"/sites/{site.Id}");
         getSiteResponse.EnsureSuccessStatusCode();
 
+        var modulesResponse = await GetAsync(SiteRegistry, $"/sites/{site.Id}/modules");
+        modulesResponse.EnsureSuccessStatusCode();
+        var modules = await modulesResponse.Content.ReadFromJsonAsync<List<SiteModuleSettingDto>>();
+        Assert.NotNull(modules);
+        Assert.Equal(3, modules!.Count);
+        Assert.All(modules, m => Assert.True(m.Enabled));
+        Assert.Contains(modules, m => m.Module == "Analytics");
+        Assert.Contains(modules, m => m.Module == "Performance");
+        Assert.Contains(modules, m => m.Module == "Errors");
+
         var published = await WaitUntilOutboxEventPublishedAsync(site.Id, "site.created.v1", TimeSpan.FromSeconds(15));
         Assert.True(published, "Expected the site.created.v1 outbox row to be published within 15s.");
+    }
+
+    [SkippableFact]
+    public async Task PatchSiteModule_DisablesOnlyThatModule_AndPublishesOutboxEvent()
+    {
+        Skip.If(string.IsNullOrWhiteSpace(AccessToken),
+            "TELUMERA_TEST_ACCESS_TOKEN not set — run infrastructure/compose/scripts/get-dev-token.sh " +
+            "(or .ps1) and export the result to run this test.");
+
+        var workspaceResponse = await PostAsync(IdentityWorkspace, "/workspaces", new { Name = "Module Settings Test Workspace" });
+        workspaceResponse.EnsureSuccessStatusCode();
+        var workspace = await workspaceResponse.Content.ReadFromJsonAsync<WorkspaceDto>();
+        Assert.NotNull(workspace);
+
+        var siteResponse = await PostAsync(SiteRegistry, "/sites", new
+        {
+            WorkspaceId = workspace!.Id,
+            Name = "Module Settings Test Site",
+            CanonicalDomain = "modules.example",
+            AllowedOrigins = new[] { "https://modules.example" },
+            Environment = "production",
+        });
+        siteResponse.EnsureSuccessStatusCode();
+        var site = await siteResponse.Content.ReadFromJsonAsync<CreateSiteResponseDto>();
+        Assert.NotNull(site);
+
+        var patchResponse = await PatchAsync(SiteRegistry, $"/sites/{site!.Id}/modules/Analytics", new { Enabled = false });
+        patchResponse.EnsureSuccessStatusCode();
+
+        var modulesResponse = await GetAsync(SiteRegistry, $"/sites/{site.Id}/modules");
+        modulesResponse.EnsureSuccessStatusCode();
+        var modules = await modulesResponse.Content.ReadFromJsonAsync<List<SiteModuleSettingDto>>();
+        Assert.NotNull(modules);
+        Assert.False(modules!.Single(m => m.Module == "Analytics").Enabled);
+        Assert.True(modules.Single(m => m.Module == "Performance").Enabled);
+        Assert.True(modules.Single(m => m.Module == "Errors").Enabled);
+
+        var published = await WaitUntilOutboxEventPublishedAsync(site.Id, "site.settings.changed.v1", TimeSpan.FromSeconds(15));
+        Assert.True(published, "Expected the site.settings.changed.v1 outbox row to be published within 15s.");
     }
 
     [SkippableFact]
@@ -193,6 +242,13 @@ public sealed class WorkspaceAndSiteFlowTests
         return client.SendAsync(request);
     }
 
+    private static Task<HttpResponseMessage> PatchAsync<T>(HttpClient client, string path, T body)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Patch, path) { Content = JsonContent.Create(body) };
+        request.Headers.Authorization = new("Bearer", AccessToken);
+        return client.SendAsync(request);
+    }
+
     private static Task<HttpResponseMessage> GetAsync(HttpClient client, string path)
     {
         var request = new HttpRequestMessage(HttpMethod.Get, path);
@@ -236,4 +292,6 @@ public sealed class WorkspaceAndSiteFlowTests
         string Environment, DateTimeOffset CreatedAt, string InitialToken);
 
     private sealed record SiteTokenDto(Guid Id, string Token, DateTimeOffset CreatedAt, DateTimeOffset? RevokedAt);
+
+    private sealed record SiteModuleSettingDto(string Module, bool Enabled, DateTimeOffset UpdatedAt);
 }
