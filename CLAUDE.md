@@ -158,8 +158,25 @@ dashboard does) — see `gateway/README.md` for the two design questions
 `docs/architecture/c4-container.md` left open (transport mechanism, auth-forwarding model) now resolved
 concretely. `http://localhost:5100`, its own `gateway-dapr` sidecar (outbound-only, no `-app-port`).
 
-What's left: `services/event-collector/` and the dashboard settings UI (including real sign-in, now
-unblocked since a gateway exists for `apps/dashboard-web/src/lib/api-client.ts` to call).
+The M00.4 backlog is now fully closed: `apps/dashboard-web` has real sign-in (MSAL.js against a third,
+separate Entra app registration — `Telumera Dashboard`, Single-page application platform, distinct from
+`Telumera API` and the CLI test client) and real screens (`DashboardView.vue` workspace list/create →
+`WorkspaceDetailView.vue` sites/members → `SiteDetailView.vue` tokens/modules). Needed two small backend
+additions found while scoping this: `GET /workspaces` (identity-workspace) and
+`GET /workspaces/{id}/sites` (site-registry) — nothing previously let a caller list "mine" without
+already knowing an ID. The gateway also needed CORS (`Cors__AllowedOrigins` config) added, since the
+dashboard is a different origin. End-to-end browser verification (not just "should work") surfaced three
+real bugs, all fixed: the gateway's `/workspaces/**` → identity-workspace routing table didn't know
+`GET /workspaces/{id}/sites` actually lives on site-registry (see `gateway/README.md`); the MSAL popup
+flow needed its own dedicated redirect page (`apps/dashboard-web/auth-popup.html`) rather than the SPA
+root — pointing it at the SPA root made the whole app boot a second time inside the popup and race
+MSAL's own response-relay handling; and `logout()` was switched from `logoutPopup()` (a full Azure AD
+front-channel logout that pops up a real Microsoft "end your session?" prompt — more than a dashboard
+"Log out" button should trigger, and confusing to hit unexpectedly) to a local-only `clearCache()` (see
+`src/lib/msal.ts`/`src/stores/auth.ts`).
+
+What's left: `services/event-collector/` — separately blocked on M01's tracking SDK, not planned until
+then (see the M00.4 epic's Asana history for why it's not scoped as part of this work).
 
 ## Planning artifacts (`planning/`)
 

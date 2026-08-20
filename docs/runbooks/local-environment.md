@@ -59,8 +59,20 @@ with its own Dapr sidecar. `services/event-collector/` is still an empty scaffol
 (from `AZURE_AD_TENANT_ID` / `AZURE_AD_API_CLIENT_ID`) or Microsoft.Identity.Web fails fast at startup —
 see `.env.example` for where these come from in the Entra admin center.
 
-There's no dashboard sign-in flow yet (`apps/dashboard-web/src/stores/auth.ts`'s `login()` is still a
-placeholder — that's a separate, later task), so to get a real token for manual testing:
+`apps/dashboard-web` has real sign-in now, through a third, separate app registration — `Telumera
+Dashboard`, a **Single-page application** platform (not a public client like the CLI test client below),
+same `access_as_user` delegated permission on `Telumera API`. It needs **two** redirect URIs registered:
+`http://localhost:5173` (the app itself) and `http://localhost:5173/auth-popup.html` (the popup's
+redirect target — a standalone static page, `apps/dashboard-web/auth-popup.html`, that runs MSAL's
+`broadcastResponseToMainFrame()` and nothing else; pointing the popup at the SPA root instead makes the
+whole app boot a second time inside the popup and race MSAL's own response handling — see the comment
+above `msalInstance` in `src/lib/msal.ts`). See `apps/dashboard-web/.env.example` for the `VITE_AZURE_AD_*`
+values it needs. The gateway also needs `CORS_ALLOWED_ORIGINS` set (`.env.example`) so the dashboard's
+origin is allowed to call it at all — without it the browser blocks every request before it reaches the
+gateway's auth check.
+
+For manual API testing without the dashboard (curl, the integration tests), get a real token via the
+device-code flow instead:
 
 ```bash
 ./scripts/get-dev-token.sh   # or scripts/get-dev-token.ps1 on Windows PowerShell
