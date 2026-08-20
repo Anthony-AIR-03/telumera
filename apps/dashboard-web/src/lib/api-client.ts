@@ -20,15 +20,17 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   if (init.body && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json')
   }
-  if (auth.accessToken) {
-    headers.set('Authorization', `Bearer ${auth.accessToken}`)
-  }
+
+  // MSAL's silent-refresh-then-interactive-fallback (see stores/auth.ts) — async, unlike the
+  // M00.2 placeholder's synchronous accessToken read.
+  const token = await auth.getAccessToken()
+  headers.set('Authorization', `Bearer ${token}`)
 
   const response = await fetch(`${baseUrl}${path}`, { ...init, headers })
 
   if (response.status === 401) {
-    auth.logout()
-    router.push({ name: 'login', query: { redirect: router.currentRoute.value.fullPath } })
+    await auth.logout()
+    await router.push({ name: 'login', query: { redirect: router.currentRoute.value.fullPath } })
   }
 
   if (!response.ok) {
@@ -49,5 +51,7 @@ export const apiClient = {
     request<T>(path, { method: 'POST', body: body ? JSON.stringify(body) : undefined }),
   put: <T>(path: string, body?: unknown) =>
     request<T>(path, { method: 'PUT', body: body ? JSON.stringify(body) : undefined }),
+  patch: <T>(path: string, body?: unknown) =>
+    request<T>(path, { method: 'PATCH', body: body ? JSON.stringify(body) : undefined }),
   delete: <T>(path: string) => request<T>(path, { method: 'DELETE' }),
 }

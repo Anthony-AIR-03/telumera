@@ -8,10 +8,51 @@
   },
   "login": {
     "title": "Sign in",
-    "description": "Authentication is not wired up yet — this is a placeholder for the M00 identity module.",
-    "action": "Continue"
+    "description": "Sign in with your Telumera account to continue.",
+    "action": "Sign in",
+    "signingIn": "Signing in…",
+    "error": "Sign-in failed. Please try again."
   },
-  "dashboard": {
-    "placeholder": "Dashboard shell — modules will render here as they ship."
+  "common": {
+    "loading": "Loading…",
+    "backToWorkspaces": "← All workspaces",
+    "backToWorkspace": "← Back to workspace"
+  },
+  "workspaces": {
+    "title": "Workspaces",
+    "namePlaceholder": "Workspace name",
+    "create": "Create workspace",
+    "empty": "No workspaces yet — create one above.",
+    "loadError": "Couldn't load workspaces.",
+    "createError": "Couldn't create the workspace."
+  },
+  "sites": {
+    "title": "Sites",
+    "namePlaceholder": "Site name",
+    "domainPlaceholder": "Canonical domain (e.g. example.com)",
+    "create": "Add site",
+    "empty": "No sites yet — add one above.",
+    "loadError": "Couldn't load this site.",
+    "createError": "Couldn't create the site."
+  },
+  "members": {
+    "title": "Members",
+    "objectIdPlaceholder": "Entra Object ID",
+    "add": "Add member",
+    "addError": "Couldn't add that member."
+  },
+  "tokens": {
+    "title": "Browser tokens",
+    "rotate": "Issue new token",
+    "revoke": "Revoke",
+    "revoked": "Revoked",
+    "rotateError": "Couldn't issue a new token.",
+    "revokeError": "Couldn't revoke that token."
+  },
+  "modules": {
+    "title": "Modules",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "toggleError": "Couldn't update that module."
   }
 }

@@ -16,11 +16,24 @@ const router = createRouter({
       component: () => import('../views/DashboardView.vue'),
       meta: { requiresAuth: true },
     },
+    {
+      path: '/workspaces/:id',
+      name: 'workspace-detail',
+      component: () => import('../views/WorkspaceDetailView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/sites/:id',
+      name: 'site-detail',
+      component: () => import('../views/SiteDetailView.vue'),
+      meta: { requiresAuth: true },
+    },
   ],
 })
 
-router.beforeEach((to) => {
+router.beforeEach(async (to) => {
   const auth = useAuthStore()
+  await auth.restore()
 
   if (to.meta.requiresAuth && !auth.isAuthenticated) {
     return { name: 'login', query: { redirect: to.fullPath } }

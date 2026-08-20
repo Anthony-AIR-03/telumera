@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
@@ -8,11 +9,21 @@ const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 
-function signIn() {
-  // Placeholder token until the identity-workspace service issues real ones.
-  auth.login('placeholder-token')
-  const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/'
-  router.push(redirect)
+const error = ref<string | null>(null)
+const signingIn = ref(false)
+
+async function signIn() {
+  error.value = null
+  signingIn.value = true
+  try {
+    await auth.login()
+    const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/'
+    await router.push(redirect)
+  } catch {
+    error.value = t('login.error')
+  } finally {
+    signingIn.value = false
+  }
 }
 </script>
 
@@ -20,6 +31,9 @@ function signIn() {
   <main>
     <h1>{{ t('login.title') }}</h1>
     <p>{{ t('login.description') }}</p>
-    <button type="button" @click="signIn">{{ t('login.action') }}</button>
+    <p v-if="error" role="alert">{{ error }}</p>
+    <button type="button" :disabled="signingIn" @click="signIn">
+      {{ signingIn ? t('login.signingIn') : t('login.action') }}
+    </button>
   </main>
 </template>
