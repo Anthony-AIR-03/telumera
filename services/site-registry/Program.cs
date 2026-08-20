@@ -152,6 +152,27 @@ app.MapPost("/sites", async (CreateSiteRequest request, SiteRegistryDbContext db
 .WithName("CreateSite")
 .RequireAuthorization("ApiScope");
 
+// Lists sites for a workspace — Viewer+ membership check, same pattern as every other endpoint here.
+app.MapGet("/workspaces/{workspaceId:guid}/sites", async (Guid workspaceId, SiteRegistryDbContext db, HttpContext httpContext, MembershipClient membershipClient) =>
+{
+    var callerObjectId = httpContext.User.GetObjectId()
+        ?? throw new InvalidOperationException("Token has no oid claim.");
+    var role = await membershipClient.GetRoleAsync(workspaceId, callerObjectId);
+    if (role is null)
+    {
+        return Results.StatusCode(StatusCodes.Status403Forbidden);
+    }
+
+    var sites = await db.Sites
+        .Where(s => s.WorkspaceId == workspaceId)
+        .Select(s => new SiteSummaryDto(s.Id, s.Name, s.CanonicalDomain, s.Environment, s.CreatedAt))
+        .ToListAsync();
+
+    return Results.Ok(sites);
+})
+.WithName("ListWorkspaceSites")
+.RequireAuthorization("ApiScope");
+
 app.MapGet("/sites/{id:guid}", async (Guid id, SiteRegistryDbContext db, HttpContext httpContext, MembershipClient membershipClient) =>
 {
     var site = await db.Sites.FindAsync(id);
@@ -385,6 +406,8 @@ internal sealed record CreateSiteRequest(
 internal sealed record CreateSiteResponse(
     Guid Id, Guid WorkspaceId, string Name, string CanonicalDomain, string[] AllowedOrigins,
     string Environment, DateTimeOffset CreatedAt, string InitialToken);
+
+internal sealed record SiteSummaryDto(Guid Id, string Name, string CanonicalDomain, string Environment, DateTimeOffset CreatedAt);
 
 internal sealed record SiteTokenDto(Guid Id, string Token, DateTimeOffset CreatedAt, DateTimeOffset? RevokedAt);
 

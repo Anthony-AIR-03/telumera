@@ -28,6 +28,13 @@ Microsoft Graph) are explicitly out of scope here; the project plan places that 
 roles and invitations" hardening work, not this cut. Requires the caller to be `Admin`+ in the target
 workspace.
 
+## Listing workspaces
+
+`GET /workspaces` lists workspaces the caller has any membership in (plus their role in each) — added
+for `apps/dashboard-web`'s workspace picker, since every other endpoint here takes an ID you'd already
+have to know. Inherently scoped to the caller's own memberships, so no per-workspace role check beyond a
+valid token.
+
 ## Internal membership-check endpoint
 
 `GET /internal/workspaces/{workspaceId}/members/{entraObjectId}` — used by other services (currently

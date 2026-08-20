@@ -99,6 +99,23 @@ app.MapPost("/workspaces", async (CreateWorkspaceRequest request, IdentityWorksp
 .WithName("CreateWorkspace")
 .RequireAuthorization("ApiScope");
 
+// Lists workspaces the caller has any membership in — inherently scoped to the caller, so no
+// per-workspace role check needed beyond a valid token.
+app.MapGet("/workspaces", async (IdentityWorkspaceDbContext db, CurrentUserAccessor currentUser) =>
+{
+    var caller = await currentUser.GetOrProvisionAsync();
+
+    var workspaces = await db.Memberships
+        .Where(m => m.UserId == caller.Id)
+        .Join(db.Workspaces, m => m.WorkspaceId, w => w.Id,
+            (m, w) => new WorkspaceSummaryDto(w.Id, w.Name, w.CreatedAt, m.Role))
+        .ToListAsync();
+
+    return Results.Ok(workspaces);
+})
+.WithName("ListWorkspaces")
+.RequireAuthorization("ApiScope");
+
 app.MapGet("/workspaces/{id:guid}", async (Guid id, IdentityWorkspaceDbContext db, CurrentUserAccessor currentUser) =>
 {
     var workspace = await db.Workspaces.FindAsync(id);
@@ -234,6 +251,8 @@ static async Task<Role?> GetRoleAsync(IdentityWorkspaceDbContext db, Guid worksp
 }
 
 internal sealed record CreateWorkspaceRequest([property: Required, MinLength(1), MaxLength(200)] string Name);
+
+internal sealed record WorkspaceSummaryDto(Guid Id, string Name, DateTimeOffset CreatedAt, Role Role);
 
 internal sealed record AddMemberRequest([property: Required, MinLength(1)] string EntraObjectId, Role Role);
 

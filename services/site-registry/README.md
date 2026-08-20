@@ -6,9 +6,11 @@ Site Registry (M00.4 first cut) — site registration and browser ingestion toke
 
 ## Scope of this cut
 
-`POST /sites` (register a site, issue its first browser token), `GET /sites/{id}`, token management
-(`GET /sites/{id}/tokens`, `POST /sites/{id}/tokens/rotate`, `POST /sites/{id}/tokens/{tokenId}/revoke`),
-and module enablement (`GET /sites/{id}/modules`, `PATCH /sites/{id}/modules/{module}`).
+`POST /sites` (register a site, issue its first browser token), `GET /sites/{id}`,
+`GET /workspaces/{id}/sites` (list a workspace's sites — added for `apps/dashboard-web`'s site picker,
+same `Viewer`+ check as the other site endpoints), token management (`GET /sites/{id}/tokens`,
+`POST /sites/{id}/tokens/rotate`, `POST /sites/{id}/tokens/{tokenId}/revoke`), and module enablement
+(`GET /sites/{id}/modules`, `PATCH /sites/{id}/modules/{module}`).
 
 ## Key rotation
 
