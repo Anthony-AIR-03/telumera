@@ -1,24 +1,91 @@
-@import './base.css';
+@import 'tailwindcss';
 
-#app {
-  max-width: 1280px;
-  margin: 0 auto;
-  font-weight: normal;
+/*
+ * Self-hosted, not a Google Fonts CDN link — this is a privacy-first analytics platform's own
+ * dashboard; it shouldn't leak dashboard usage/IP to a third party just to render its own UI.
+ * Latin-subset static weights only (no variable font) to keep the request count and payload small.
+ */
+@font-face {
+  font-family: 'Sora';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('/fonts/sora-600.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Sora';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/sora-700.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Public Sans';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/public-sans-400.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Public Sans';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('/fonts/public-sans-500.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Public Sans';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('/fonts/public-sans-600.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/jetbrains-mono-400.woff2') format('woff2');
 }
 
-main {
-  padding: 2rem;
+/*
+ * Brand color, plus the 3-typeface system from docs/design/housestyle.md. --font-sans/--font-mono
+ * are special Tailwind v4 theme keys — Preflight reads them app-wide automatically (no `body {}`
+ * rule needed, and it re-skins the existing `font-mono` token-code usage in SiteDetailView.vue for
+ * free). --font-display has no auto-apply; use the `font-display` utility class on headings.
+ * brand-500 is the exact existing teal (hsla(160, 100%, 37%, 1)) that already rendered the
+ * "Telumera" wordmark; brand-700/800 are darker steps for solid button fills, since brand-500
+ * fails WCAG AA contrast against white text.
+ */
+@theme {
+  --color-brand-50: #e6fbf3;
+  --color-brand-300: #6bddb4;
+  --color-brand-500: #00bd7e;
+  --color-brand-700: #008055;
+  --color-brand-800: #006642;
+
+  /*
+   * Overrides Tailwind's stock neutral-* scale rather than introducing parallel token names —
+   * every existing neutral-* class across the app picks this up with no template changes. A pure
+   * gray reads as unconsidered; this is the same slight green-gray bias as brand-500, "chosen, not
+   * inherited." Matches the approved design mockup exactly (its --page-bg/--surface-sunken/--ink-*
+   * tokens), ported here after the first pass shipped with Tailwind's defaults instead by mistake.
+   */
+  --color-neutral-50: #f6f8f7;
+  --color-neutral-100: #eef1f0;
+  --color-neutral-200: #e7e9e7;
+  --color-neutral-400: #838f88;
+  --color-neutral-500: #838f88;
+  --color-neutral-600: #4b5750;
+  --color-neutral-900: #0f1512;
+
+  --font-sans: 'Public Sans', -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --font-display: 'Sora', -apple-system, 'Segoe UI', sans-serif;
 }
 
-a {
-  text-decoration: none;
-  color: hsla(160, 100%, 37%, 1);
-  transition: 0.4s;
-  padding: 3px;
-}
-
-@media (hover: hover) {
-  a:hover {
-    background-color: hsla(160, 100%, 37%, 0.2);
+@layer base {
+  body {
+    @apply bg-neutral-50 text-neutral-900;
   }
 }

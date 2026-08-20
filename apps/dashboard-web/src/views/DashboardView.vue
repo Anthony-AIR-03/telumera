@@ -2,6 +2,9 @@
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { apiClient } from '@/lib/api-client'
+import AppButton from '@/components/AppButton.vue'
+import AppBadge from '@/components/AppBadge.vue'
+import StateMessage from '@/components/StateMessage.vue'
 
 interface WorkspaceSummary {
   id: string
@@ -53,48 +56,46 @@ onMounted(loadWorkspaces)
 
 <template>
   <main>
-    <h1>{{ t('workspaces.title') }}</h1>
+    <h1 class="font-display text-xl font-bold text-neutral-900">
+      {{ t('workspaces.title') }}
+    </h1>
 
-    <form @submit.prevent="createWorkspace">
-      <input v-model="newWorkspaceName" :placeholder="t('workspaces.namePlaceholder')" required />
-      <button type="submit" :disabled="creating">{{ t('workspaces.create') }}</button>
+    <form class="mt-4 flex gap-2" @submit.prevent="createWorkspace">
+      <input
+        v-model="newWorkspaceName"
+        :placeholder="t('workspaces.namePlaceholder')"
+        required
+        class="flex-1 rounded-[9px] border border-neutral-300 px-3 py-2 text-sm placeholder-neutral-400 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+      />
+      <AppButton type="submit" :loading="creating">{{ t('workspaces.create') }}</AppButton>
     </form>
 
-    <p v-if="error" role="alert">{{ error }}</p>
-    <p v-else-if="loading">{{ t('common.loading') }}</p>
-    <p v-else-if="workspaces.length === 0">{{ t('workspaces.empty') }}</p>
+    <StateMessage v-if="error" state="error" :message="error" class="mt-6" />
+    <StateMessage v-else-if="loading" state="loading" :message="t('common.loading')" class="mt-6" />
+    <StateMessage
+      v-else-if="workspaces.length === 0"
+      state="empty"
+      :message="t('workspaces.empty')"
+      class="mt-6"
+    />
 
-    <ul v-else class="list">
-      <li v-for="workspace in workspaces" :key="workspace.id">
-        <RouterLink :to="`/workspaces/${workspace.id}`">{{ workspace.name }}</RouterLink>
-        <span class="badge">{{ workspace.role }}</span>
+    <ul
+      v-else
+      class="mt-6 divide-y divide-neutral-200 rounded-[14px] border border-neutral-200 bg-white shadow-[0_1px_2px_rgba(15,21,18,0.04),0_1px_1px_rgba(15,21,18,0.03)]"
+    >
+      <li
+        v-for="workspace in workspaces"
+        :key="workspace.id"
+        class="flex items-center justify-between px-5 py-3.5"
+      >
+        <RouterLink
+          :to="`/workspaces/${workspace.id}`"
+          class="text-sm font-semibold text-brand-700 hover:text-brand-800"
+        >
+          {{ workspace.name }}
+        </RouterLink>
+        <AppBadge>{{ workspace.role }}</AppBadge>
       </li>
     </ul>
   </main>
 </template>
-
-<style scoped>
-form {
-  display: flex;
-  gap: 0.5rem;
-  margin-top: 1rem;
-}
-
-.list {
-  list-style: none;
-  margin-top: 1.5rem;
-}
-
-.list li {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.75rem 0;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.badge {
-  font-size: 0.8rem;
-  opacity: 0.65;
-}
-</style>

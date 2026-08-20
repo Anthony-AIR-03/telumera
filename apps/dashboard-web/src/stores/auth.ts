@@ -60,7 +60,10 @@ export const useAuthStore = defineStore('auth', () => {
     }
 
     try {
-      const result = await msalInstance.acquireTokenSilent({ scopes: [apiScope], account: account.value })
+      const result = await msalInstance.acquireTokenSilent({
+        scopes: [apiScope],
+        account: account.value,
+      })
       return result.accessToken
     } catch (error) {
       if (error instanceof InteractionRequiredAuthError) {

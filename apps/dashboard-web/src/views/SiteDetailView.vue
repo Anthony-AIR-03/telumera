@@ -1,8 +1,13 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { apiClient } from '@/lib/api-client'
+import { roleAtLeast } from '@/lib/roles'
+import AppButton from '@/components/AppButton.vue'
+import AppBadge from '@/components/AppBadge.vue'
+import AppToggle from '@/components/AppToggle.vue'
+import StateMessage from '@/components/StateMessage.vue'
 
 interface Site {
   id: string
@@ -11,6 +16,7 @@ interface Site {
   canonicalDomain: string
   environment: string
   createdAt: string
+  role: string
 }
 
 interface SiteToken {
@@ -96,88 +102,81 @@ async function toggleModule(module: ModuleSetting) {
 }
 
 onMounted(loadAll)
+
+/** Rotate/revoke/toggle all require Developer+ server-side (see services/site-registry/README.md). */
+const canManage = computed(() => roleAtLeast(site.value?.role ?? null, 'Developer'))
 </script>
 
 <template>
   <main>
-    <RouterLink v-if="site" :to="`/workspaces/${site.workspaceId}`">{{ t('common.backToWorkspace') }}</RouterLink>
-    <h1>{{ site?.name ?? siteId }}</h1>
+    <RouterLink
+      v-if="site"
+      :to="`/workspaces/${site.workspaceId}`"
+      class="text-xs font-semibold text-neutral-400 hover:text-neutral-700"
+    >
+      {{ t('common.backToWorkspace') }}
+    </RouterLink>
+    <h1 class="font-display mt-2 text-xl font-bold text-neutral-900">
+      {{ site?.name ?? siteId }}
+    </h1>
 
-    <p v-if="error" role="alert">{{ error }}</p>
-    <p v-else-if="loading">{{ t('common.loading') }}</p>
+    <StateMessage v-if="error" state="error" :message="error" class="mt-6" />
+    <StateMessage v-else-if="loading" state="loading" :message="t('common.loading')" class="mt-6" />
 
     <template v-else>
-      <section>
-        <h2>{{ t('tokens.title') }}</h2>
-        <button type="button" :disabled="busy" @click="rotateToken">{{ t('tokens.rotate') }}</button>
+      <section class="mt-8">
+        <h2 class="font-display text-sm font-bold text-neutral-900">{{ t('tokens.title') }}</h2>
+        <AppButton class="mt-3" :disabled="!canManage" :loading="busy" @click="rotateToken">{{
+          t('tokens.rotate')
+        }}</AppButton>
 
-        <ul class="list">
-          <li v-for="token in tokens" :key="token.id">
-            <code>{{ token.token }}</code>
-            <span v-if="token.revokedAt" class="badge">{{ t('tokens.revoked') }}</span>
-            <button v-else type="button" :disabled="busy" @click="revokeToken(token.id)">
+        <ul
+          class="mt-4 divide-y divide-neutral-200 rounded-[14px] border border-neutral-200 bg-white shadow-[0_1px_2px_rgba(15,21,18,0.04),0_1px_1px_rgba(15,21,18,0.03)]"
+        >
+          <li v-for="token in tokens" :key="token.id" class="flex items-center gap-3 px-5 py-3.5">
+            <code
+              class="flex-1 overflow-hidden text-ellipsis whitespace-nowrap rounded bg-neutral-100 px-2 py-1 font-mono text-xs text-neutral-700"
+            >
+              {{ token.token }}
+            </code>
+            <AppBadge v-if="token.revokedAt" tone="danger">{{ t('tokens.revoked') }}</AppBadge>
+            <AppButton
+              v-else
+              variant="danger"
+              :disabled="!canManage"
+              :loading="busy"
+              @click="revokeToken(token.id)"
+            >
               {{ t('tokens.revoke') }}
-            </button>
+            </AppButton>
           </li>
         </ul>
       </section>
 
-      <section>
-        <h2>{{ t('modules.title') }}</h2>
-        <ul class="list">
-          <li v-for="module in modules" :key="module.module">
-            <span>{{ module.module }}</span>
-            <label class="toggle">
-              <input
-                type="checkbox"
-                :checked="module.enabled"
-                :disabled="busy"
-                @change="toggleModule(module)"
-              />
+      <section class="mt-8">
+        <h2 class="font-display text-sm font-bold text-neutral-900">
+          {{ t('modules.title') }}
+        </h2>
+        <ul
+          class="mt-4 divide-y divide-neutral-200 rounded-[14px] border border-neutral-200 bg-white shadow-[0_1px_2px_rgba(15,21,18,0.04),0_1px_1px_rgba(15,21,18,0.03)]"
+        >
+          <li
+            v-for="module in modules"
+            :key="module.module"
+            class="flex items-center justify-between px-5 py-3.5"
+          >
+            <span class="text-sm text-neutral-900">{{ module.module }}</span>
+            <AppToggle
+              :model-value="module.enabled"
+              :disabled="!canManage || busy"
+              class="text-sm text-neutral-600"
+              @update:model-value="toggleModule(module)"
+            >
               {{ module.enabled ? t('modules.enabled') : t('modules.disabled') }}
-            </label>
+            </AppToggle>
           </li>
         </ul>
       </section>
     </template>
   </main>
 </template>
-
-<style scoped>
-section {
-  margin-top: 2rem;
-}
-
-.list {
-  list-style: none;
-  margin-top: 1rem;
-}
-
-.list li {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.75rem 0;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.list li code {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  flex: 1;
-}
-
-.badge {
-  font-size: 0.8rem;
-  opacity: 0.65;
-}
-
-.toggle {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-size: 0.85rem;
-}
-</style>
