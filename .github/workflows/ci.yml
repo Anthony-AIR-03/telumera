@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  dotnet:
+    name: .NET build, format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - run: dotnet restore Telumera.slnx
+
+      - run: dotnet build Telumera.slnx --configuration Release --no-restore
+
+      # Enforces .editorconfig (LF line endings, no BOM, etc.) — matches the local check
+      # documented in CONTRIBUTING.md's "Pull requests" section.
+      - run: dotnet format Telumera.slnx --verify-no-changes
+
+  dashboard-web:
+    name: dashboard-web build, lint, type-check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - run: npm run type-check --workspace=apps/dashboard-web
+
+      - run: npm run build --workspace=apps/dashboard-web
+
+      # ci:lint/format:check are non-mutating variants of lint/format (which run with --fix/--write
+      # for local dev) -- a CI gate must fail on violations, not silently auto-fix and pass.
+      - run: npm run ci:lint --workspace=apps/dashboard-web
+
+      - run: npm run format:check --workspace=apps/dashboard-web

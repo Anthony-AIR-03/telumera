@@ -12,7 +12,11 @@
     "lint": "run-s \"lint:*\"",
     "lint:oxlint": "oxlint . --fix",
     "lint:eslint": "eslint . --fix --cache",
-    "format": "prettier --write --experimental-cli src/"
+    "ci:lint": "run-s \"ci:lint:*\"",
+    "ci:lint:oxlint": "oxlint .",
+    "ci:lint:eslint": "eslint . --max-warnings 0",
+    "format": "prettier --write --experimental-cli src/",
+    "format:check": "prettier --check --experimental-cli src/"
   },
   "dependencies": {
     "@azure/msal-browser": "^5.19.0",
