@@ -28,9 +28,20 @@ public sealed class GatewayForwarder(IHttpClientFactory httpClientFactory, IConf
     public async Task ForwardAsync(HttpContext httpContext)
     {
         var path = httpContext.Request.Path.Value ?? string.Empty;
-        var firstSegment = path.TrimStart('/').Split('/', 2)[0];
+        var segments = path.TrimStart('/').Split('/');
+        var firstSegment = segments[0];
 
-        if (!RouteToAppId.TryGetValue(firstSegment, out var appId))
+        // GET /workspaces/{id}/sites is site-registry's endpoint (a workspace's sites, not one of
+        // identity-workspace's own resources) — carve this one path out of the otherwise-uniform
+        // per-top-level-segment table rather than teaching the table about sub-resources.
+        string? appId;
+        if (firstSegment.Equals("workspaces", StringComparison.OrdinalIgnoreCase)
+            && segments.Length == 3
+            && segments[2].Equals("sites", StringComparison.OrdinalIgnoreCase))
+        {
+            appId = "site-registry";
+        }
+        else if (!RouteToAppId.TryGetValue(firstSegment, out appId))
         {
             httpContext.Response.StatusCode = StatusCodes.Status404NotFound;
             return;

@@ -21,6 +21,15 @@ builder.Services.AddAuthorization(options => options.AddPolicy("ApiScope", polic
 builder.Services.AddHttpClient();
 builder.Services.AddSingleton<GatewayForwarder>();
 
+// Dashboard-web (a different origin — Vite dev server) needs this to call the gateway at all;
+// without it the browser blocks every request before it reaches ApiScope or GatewayForwarder.
+// Origins are config-driven, not hardcoded or AllowAnyOrigin — CORS_ALLOWED_ORIGINS in .env.
+var corsAllowedOrigins = (builder.Configuration["Cors:AllowedOrigins"] ?? string.Empty)
+    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+builder.Services.AddCors(options => options.AddPolicy("Dashboard", policy =>
+    policy.WithOrigins(corsAllowedOrigins).AllowAnyHeader().AllowAnyMethod()));
+
 var app = builder.Build();
 
 app.MapDefaultEndpoints();
@@ -31,6 +40,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseCors("Dashboard");
 
 app.UseAuthentication();
 app.UseAuthorization();

@@ -8,10 +8,14 @@ identity-workspace/site-registry. Holds no module data of its own (see
 
 A transparent reverse-proxy forwarder (`GatewayForwarder.cs`) — same paths, same request/response shapes
 as the underlying services, not hand-written routes per existing endpoint. `/workspaces/**` forwards to
-identity-workspace, `/sites/**` to site-registry; anything else `404`s. Real response-composition
-endpoints (aggregating multiple services into one call, e.g. "workspace overview") are deliberately not
-built yet — no dashboard screen exists to consume one. Add those when an actual UI need justifies them,
-not speculatively.
+identity-workspace, `/sites/**` to site-registry; anything else `404`s. One carved-out exception:
+`GET /workspaces/{id}/sites` is site-registry's endpoint (a workspace's sites, not one of
+identity-workspace's own resources), so the forwarder checks for that specific three-segment shape before
+falling back to the first-segment table — found as a real bug during dashboard verification, where the
+naive table sent it to identity-workspace and got a `404` back. Real response-composition endpoints
+(aggregating multiple services into one call, e.g. "workspace overview") are deliberately not built yet —
+no dashboard screen exists to consume one. Add those when an actual UI need justifies them, not
+speculatively.
 
 ## Two design questions `docs/architecture/c4-container.md` left open, resolved here
 
@@ -31,6 +35,14 @@ Every path except `/health/live`/`/health/ready` requires a valid Entra ID beare
 `access_as_user` scope — see `docs/runbooks/local-environment.md`'s "Auth" section for how to get one for
 manual testing. Authorization runs before `GatewayForwarder` does, so an unknown path still `401`s before
 it ever gets the chance to `404`.
+
+## CORS
+
+`apps/dashboard-web` (Vite dev server, a different origin) needs this to call the gateway at all —
+without it the browser blocks every request before it reaches auth or `GatewayForwarder`. Allowed origins
+come from `Cors__AllowedOrigins` config (`CORS_ALLOWED_ORIGINS` in `.env`, comma-separated) — not
+hardcoded, not `AllowAnyOrigin`. `UseCors` runs before `UseAuthentication`/`UseAuthorization` (standard
+ASP.NET Core ordering — CORS has to handle preflight before auth does).
 
 ## Dapr
 
