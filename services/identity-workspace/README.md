@@ -35,6 +35,12 @@ for `apps/dashboard-web`'s workspace picker, since every other endpoint here tak
 have to know. Inherently scoped to the caller's own memberships, so no per-workspace role check beyond a
 valid token.
 
+`GET /workspaces/{id}` also returns the caller's own `Role` in that workspace (`WorkspaceDetailDto`) —
+previously returned the raw `Workspace` entity and discarded the role it already computes for the 403
+check. Added for `WorkspaceDetailView.vue`'s client-side role-gating (hide the create-site/add-member
+forms below the caller's actual permission), not a new authorization mechanism — the backend still
+enforces every real check independently.
+
 ## Internal membership-check endpoint
 
 `GET /internal/workspaces/{workspaceId}/members/{entraObjectId}` — used by other services (currently

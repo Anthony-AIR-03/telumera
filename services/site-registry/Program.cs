@@ -189,7 +189,7 @@ app.MapGet("/sites/{id:guid}", async (Guid id, SiteRegistryDbContext db, HttpCon
         return Results.StatusCode(StatusCodes.Status403Forbidden);
     }
 
-    return Results.Ok(site);
+    return Results.Ok(new SiteDetailDto(site.Id, site.WorkspaceId, site.Name, site.CanonicalDomain, site.Environment, site.CreatedAt, role.Value));
 })
 .WithName("GetSite")
 .RequireAuthorization("ApiScope");
@@ -408,6 +408,8 @@ internal sealed record CreateSiteResponse(
     string Environment, DateTimeOffset CreatedAt, string InitialToken);
 
 internal sealed record SiteSummaryDto(Guid Id, string Name, string CanonicalDomain, string Environment, DateTimeOffset CreatedAt);
+
+internal sealed record SiteDetailDto(Guid Id, Guid WorkspaceId, string Name, string CanonicalDomain, string Environment, DateTimeOffset CreatedAt, Role Role);
 
 internal sealed record SiteTokenDto(Guid Id, string Token, DateTimeOffset CreatedAt, DateTimeOffset? RevokedAt);
 

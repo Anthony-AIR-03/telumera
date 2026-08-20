@@ -56,6 +56,12 @@ Workspace's database directly. `POST /sites` requires `Developer`+, `GET /sites/
 membership (`Viewer`+) in the site's workspace — `403` otherwise. This is what actually closes the gap
 flagged during the Entra ID auth cut, where any authenticated caller could act on any workspace.
 
+`GET /sites/{id}` returns the caller's own `Role` alongside the site (`SiteDetailDto`) — previously
+computed via `MembershipClient` for the 403 check and then discarded, returning the raw `Site` entity.
+Added for `SiteDetailView.vue`'s client-side gating of token rotate/revoke and module toggles (both
+already require `Developer`+ server-side; this only lets the UI reflect that before the caller tries
+and gets a 403), not a new authorization mechanism.
+
 ## Outbox and event publishing
 
 `POST /sites` writes the `Site` row and an `OutboxEvent` row in one EF Core transaction

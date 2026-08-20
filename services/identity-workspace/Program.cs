@@ -131,7 +131,7 @@ app.MapGet("/workspaces/{id:guid}", async (Guid id, IdentityWorkspaceDbContext d
         return Results.StatusCode(StatusCodes.Status403Forbidden);
     }
 
-    return Results.Ok(workspace);
+    return Results.Ok(new WorkspaceDetailDto(workspace.Id, workspace.Name, workspace.CreatedAt, role.Value));
 })
 .WithName("GetWorkspace")
 .RequireAuthorization("ApiScope");
@@ -253,6 +253,8 @@ static async Task<Role?> GetRoleAsync(IdentityWorkspaceDbContext db, Guid worksp
 internal sealed record CreateWorkspaceRequest([property: Required, MinLength(1), MaxLength(200)] string Name);
 
 internal sealed record WorkspaceSummaryDto(Guid Id, string Name, DateTimeOffset CreatedAt, Role Role);
+
+internal sealed record WorkspaceDetailDto(Guid Id, string Name, DateTimeOffset CreatedAt, Role Role);
 
 internal sealed record AddMemberRequest([property: Required, MinLength(1)] string EntraObjectId, Role Role);
 
