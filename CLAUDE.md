@@ -191,8 +191,14 @@ a shared library, `packages/idempotency/` (processed-event marker + `TryBeginPro
 ADR 0004's "persist processed event IDs" strategy) — no real event subscriber exists in the codebase yet
 (Event Collector, the natural first one, is blocked on M01's tracking SDK), so this is validated by
 `packages/idempotency.Tests/` (in-memory EF Core) rather than a real end-to-end consumer; a future
-subscriber adopts it directly. Still open: distributed tracing, container build workflow, Bicep baseline,
-Azure development deployment, and rollback/migration-rules documentation.
+subscriber adopts it directly. Distributed tracing is done at collector-only scope (explicitly chosen
+over also standing up a Jaeger/Grafana UI, which isn't tracked as a future step anywhere — add it later
+if it turns out to matter): an OTel Collector (`infrastructure/observability/`) receives OTLP traces from
+every .NET service and every Dapr sidecar and logs them via the `debug` exporter, and
+`OutboxEvent.CorrelationId` (`packages/outbox/`) now carries the actual request's W3C trace id instead of
+a disposable random value, closing the real gap the backlog item named ("propagate correlation and trace
+identifiers"). Still open: container build workflow, Bicep baseline, Azure development deployment, and
+rollback/migration-rules documentation.
 
 ## Planning artifacts (`planning/`)
 

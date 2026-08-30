@@ -100,7 +100,7 @@ public sealed class OutboxPublisher<TDbContext>(
         var envelope = new EventEnvelope<JsonNode?>(
             TenantId: outboxEvent.TenantId.ToString(),
             SiteId: outboxEvent.SiteId.ToString(),
-            CorrelationId: outboxEvent.CorrelationId.ToString(),
+            CorrelationId: outboxEvent.CorrelationId,
             DataVersion: 1,
             Data: JsonNode.Parse(outboxEvent.DataJson));
 

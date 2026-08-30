@@ -23,7 +23,7 @@ Get-Content $envFile | ForEach-Object {
 }
 
 Section "Containers"
-$expectedServices = @("postgres", "clickhouse", "rabbitmq", "redis", "minio", "dapr-placement", "dapr-smoke-test-sidecar")
+$expectedServices = @("postgres", "clickhouse", "rabbitmq", "redis", "minio", "otel-collector", "dapr-placement", "dapr-smoke-test-sidecar")
 foreach ($svc in $expectedServices) {
     $cid = (docker compose ps -q $svc 2>$null)
     if (-not $cid) {

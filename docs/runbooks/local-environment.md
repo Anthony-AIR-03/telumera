@@ -24,8 +24,8 @@ against a completely empty data volume.
 
 ## What's running, and what isn't yet
 
-Shared platform infrastructure (PostgreSQL, ClickHouse, RabbitMQ, Redis, MinIO, a Dapr placement service,
-one headless `dapr-smoke-test-sidecar`), plus the real application services built so far:
+Shared platform infrastructure (PostgreSQL, ClickHouse, RabbitMQ, Redis, MinIO, an OTel Collector, a Dapr
+placement service, one headless `dapr-smoke-test-sidecar`), plus the real application services built so far:
 `identity-workspace` (`http://localhost:5101`), `site-registry` (`http://localhost:5102`), and `gateway`
 (`http://localhost:5100` — a transparent reverse proxy in front of both, see `gateway/README.md`), each
 with its own Dapr sidecar. `services/event-collector/` is still an empty scaffold. See
@@ -109,6 +109,17 @@ curl -H "Authorization: Bearer $TELUMERA_TEST_ACCESS_TOKEN" -X POST http://local
 5. **Is retry/backoff actually applied to this service?** `infrastructure/dapr/components/resiliency.yaml`
    only applies to the `scopes` listed in that file. A new service's Dapr `app-id` must be added to that
    list, or it silently gets Dapr's unbounded default retry behavior instead of the documented policy.
+
+## Checking distributed tracing
+
+Every .NET service exports OTLP traces to `otel-collector` (`OTEL_EXPORTER_OTLP_ENDPOINT`,
+`packages/dotnet-service-defaults`), and every Dapr sidecar does the same for its own spans
+(`infrastructure/dapr/config/config.yaml`'s `tracing.otel` block) — both land in one place.
+`docker compose logs otel-collector` shows them via the `debug` exporter (no trace UI exists yet — see
+`infrastructure/observability/README.md`). Make an authenticated request (e.g. the `curl` above) and grep
+the collector's logs for a `TraceID` shared across the HTTP request span and the Dapr invocation span it
+triggers (e.g. site-registry calling identity-workspace's membership check) to confirm propagation is
+actually working across the hop, not just within one service.
 
 ## Adding a real service's sidecar
 

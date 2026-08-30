@@ -16,6 +16,7 @@ public static class OutboxModelBuilderExtensions
             entity.ToTable("outbox_events");
             entity.HasKey(e => e.Id);
             entity.Property(e => e.EventType).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.CorrelationId).IsRequired().HasMaxLength(64);
             entity.Property(e => e.DataJson).IsRequired().HasColumnType("jsonb");
             entity.HasIndex(e => e.PublishedAt);
         });

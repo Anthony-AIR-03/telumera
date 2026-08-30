@@ -1,10 +1,11 @@
 # Local self-hosted runtime for Telumera (M00.3+). Brings up shared platform
-# infrastructure — Postgres, ClickHouse, RabbitMQ, Redis, MinIO, a Dapr
-# placement service + one headless "smoke-test" Dapr sidecar — plus the real
-# application services built so far: identity-workspace, site-registry, and
-# gateway (a transparent reverse proxy in front of both — see
-# gateway/README.md). services/event-collector/ is still an empty scaffold
-# and gets its own compose entry the same way, once built.
+# infrastructure — Postgres, ClickHouse, RabbitMQ, Redis, MinIO, an OTel
+# Collector, a Dapr placement service + one headless "smoke-test" Dapr
+# sidecar — plus the real application services built so far:
+# identity-workspace, site-registry, and gateway (a transparent reverse
+# proxy in front of both — see gateway/README.md). services/event-collector/
+# is still an empty scaffold and gets its own compose entry the same way,
+# once built.
 #
 # Usage: see infrastructure/compose/README.md. Quick start:
 #   cp .env.example .env   # then fill in local values
@@ -126,6 +127,23 @@ services:
       timeout: 5s
       retries: 10
 
+  # Receives OTLP traces from every .NET service (packages/dotnet-service-defaults) and every Dapr
+  # sidecar (infrastructure/dapr/config/config.yaml), exporting to its own container logs — enough to
+  # prove distributed tracing propagates end-to-end (`docker compose logs otel-collector`) without a
+  # trace UI (M00.5; add one later by extending infrastructure/observability/otel-collector-config.yaml
+  # with a real backend exporter — nothing upstream needs to change).
+  otel-collector:
+    image: otel/opentelemetry-collector:0.112.0
+    restart: unless-stopped
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ../observability/otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
+    ports:
+      - "4317:4317" # OTLP gRPC — services' OTEL_EXPORTER_OTLP_ENDPOINT
+      - "4318:4318" # OTLP HTTP — Dapr's tracing.otel endpoint (config.yaml)
+    networks:
+      - telumera-net
+
   dapr-placement:
     image: daprio/dapr:1.14.4
     restart: unless-stopped
@@ -176,6 +194,7 @@ services:
       ConnectionStrings__IdentityWorkspace: "Host=postgres;Port=5432;Database=telumera_access;Username=svc_access;Password=${APP_DB_PASSWORD}"
       AzureAd__TenantId: "${AZURE_AD_TENANT_ID}"
       AzureAd__ClientId: "${AZURE_AD_API_CLIENT_ID}"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"
     ports:
       - "5101:8080" # HTTP API
       - "3503:3500" # identity-workspace-dapr's HTTP API (shared namespace; published here since network_mode: service:x sidecars can't publish their own ports)
@@ -183,6 +202,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      otel-collector:
+        condition: service_started
     networks:
       - telumera-net
 
@@ -217,6 +238,8 @@ services:
         condition: service_started
       dapr-placement:
         condition: service_started
+      otel-collector:
+        condition: service_started
       rabbitmq:
         condition: service_healthy
 
@@ -230,6 +253,7 @@ services:
       DAPR_HTTP_PORT: "3500" # matches site-registry-dapr's -dapr-http-port below (shared network namespace)
       AzureAd__TenantId: "${AZURE_AD_TENANT_ID}"
       AzureAd__ClientId: "${AZURE_AD_API_CLIENT_ID}"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"
     ports:
       - "5102:8080" # HTTP API
       - "3502:3500" # site-registry-dapr's HTTP API (shared namespace; published here since network_mode: service:x sidecars can't publish their own ports)
@@ -237,6 +261,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      otel-collector:
+        condition: service_started
     networks:
       - telumera-net
 
@@ -270,6 +296,8 @@ services:
         condition: service_started
       dapr-placement:
         condition: service_started
+      otel-collector:
+        condition: service_started
       rabbitmq:
         condition: service_healthy
 
@@ -286,10 +314,14 @@ services:
       AzureAd__TenantId: "${AZURE_AD_TENANT_ID}"
       AzureAd__ClientId: "${AZURE_AD_API_CLIENT_ID}"
       Cors__AllowedOrigins: "${CORS_ALLOWED_ORIGINS}"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"
     ports:
       - "5100:8080" # HTTP API
       - "3504:3500" # gateway-dapr's HTTP API (shared namespace; published here since network_mode: service:x sidecars can't publish their own ports)
       - "50005:50001" # gateway-dapr's gRPC API
+    depends_on:
+      otel-collector:
+        condition: service_started
     networks:
       - telumera-net
 
@@ -319,6 +351,8 @@ services:
       gateway:
         condition: service_started
       dapr-placement:
+        condition: service_started
+      otel-collector:
         condition: service_started
       rabbitmq:
         condition: service_healthy

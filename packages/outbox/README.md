@@ -9,7 +9,9 @@ the ADR) doesn't reimplement the entity, EF Core mapping, and publisher loop fro
   describes. Field names (`TenantId`, `SiteId`, `CorrelationId`) match
   [`EventEnvelope<TData>`](../event-contracts/EventEnvelope.cs)'s domain-agnostic vocabulary rather than
   any one service's — a consuming service maps its own concept (e.g. `WorkspaceId`) onto `TenantId` when
-  it creates the row.
+  it creates the row. `CorrelationId` is a string, not a `Guid` — set it from the current distributed
+  trace id (`System.Diagnostics.Activity.Current?.TraceId`, M00.5) so the row ties back to the request
+  that caused it; see `services/site-registry/Program.cs`'s `CurrentCorrelationId()`.
 - `OutboxModelBuilderExtensions.ConfigureOutboxEvent()` — call from a service's own `OnModelCreating`.
   Each service still owns its own `outbox_events` table in its own database
   ([ADR 0005](../../docs/adr/0005-context-level-data-isolation.md)); this only shares the mapping.

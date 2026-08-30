@@ -20,7 +20,15 @@ public sealed class OutboxEvent
 
     public required Guid SiteId { get; init; }
 
-    public required Guid CorrelationId { get; init; }
+    /// <summary>
+    /// Ties this event back to the request or session that caused it — the W3C trace id
+    /// (<see cref="System.Diagnostics.Activity.Current"/>'s <c>TraceId</c>) of the HTTP request that
+    /// wrote this row when one was active, so a single id correlates the request, the outbox row, and
+    /// (once distributed tracing is configured, see infrastructure/observability/) the published
+    /// CloudEvent to the same trace. A plain string, not a <see cref="Guid"/> — trace ids are 32 hex
+    /// chars, not Guid-formatted.
+    /// </summary>
+    public required string CorrelationId { get; init; }
 
     /// <summary>Serialized event-specific payload (the CloudEvent's <c>data.data</c>), stored as jsonb.</summary>
     public required string DataJson { get; init; }

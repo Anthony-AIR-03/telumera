@@ -88,6 +88,14 @@ visible effect of the migration was renaming the row's `WorkspaceId` column to `
 (`Migrations/20260830100134_RenameOutboxEventTenantId.cs`) to match `EventEnvelope<TData>`'s
 domain-agnostic field name, since the entity is no longer site-registry-specific code.
 
+**Correlation id** (M00.5, distributed tracing): each `OutboxEvent`'s `CorrelationId` is
+`Activity.Current?.TraceId` (`Program.cs`'s `CurrentCorrelationId()`) — the W3C trace id of the HTTP
+request that wrote the row, not a disposable random value. This ties the request, the outbox row, and
+(once Dapr's own trace propagation reaches a real subscriber) the published event to the same trace —
+see `docs/runbooks/local-environment.md`'s "Checking distributed tracing". Required a second migration
+(`Migrations/20260830104728_ChangeOutboxEventCorrelationIdToString.cs`) changing the column from `uuid` to
+`character varying(64)`, since a trace id is a 32-hex-char string, not Guid-formatted.
+
 ## No consumer yet
 
 `site.created.v1`, `site.key.rotated.v1`, and `site.settings.changed.v1` all publish today with no

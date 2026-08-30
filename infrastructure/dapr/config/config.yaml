@@ -1,12 +1,14 @@
-# Dapr sidecar Configuration for the local self-hosted runtime. Kept
-# deliberately minimal: tracing is on (cheap locally, and exercises the same
-# OTLP path services already read via OTEL_EXPORTER_OTLP_ENDOINT, see
-# packages/dotnet-service-defaults) but points nowhere until
-# infrastructure/observability/ exists (M00.5) and is harmless meanwhile.
-# mTLS between sidecars is intentionally left at Dapr's self-hosted default
-# (disabled) — this is a local-dev-only relaxation, not a NAS/production
-# posture; revisit in docs/runbooks/local-environment.md before anything
-# beyond localhost can reach these sidecars.
+# Dapr sidecar Configuration for the local self-hosted runtime. Tracing is on
+# (cheap locally) and points at the OTel Collector added in M00.5
+# (infrastructure/observability/otel-collector-config.yaml, the otel-collector
+# service in docker-compose.yml) via its OTLP/HTTP port — the same collector
+# every .NET service exports to via OTEL_EXPORTER_OTLP_ENDOINT (see
+# packages/dotnet-service-defaults), so a trace can be followed across an HTTP
+# call and a Dapr pub/sub hop in the same place. mTLS between sidecars is
+# intentionally left at Dapr's self-hosted default (disabled) — this is a
+# local-dev-only relaxation, not a NAS/production posture; revisit in
+# docs/runbooks/local-environment.md before anything beyond localhost can
+# reach these sidecars.
 apiVersion: dapr.io/v1alpha1
 kind: Configuration
 metadata:
@@ -15,6 +17,6 @@ spec:
   tracing:
     samplingRate: "1"
     otel:
-      endpointAddress: "" # left unset until M00.5's OTel collector exists
+      endpointAddress: "otel-collector:4318"
       isSecure: false
       protocol: http

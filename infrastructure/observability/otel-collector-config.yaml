@@ -1,0 +1,23 @@
+# OpenTelemetry Collector config for the local self-hosted runtime (M00.5). Receives OTLP traces from
+# every .NET service (packages/dotnet-service-defaults, via OTEL_EXPORTER_OTLP_ENDPOINT) and from every
+# Dapr sidecar (infrastructure/dapr/config/config.yaml's tracing.otel block), and exports them to its own
+# container logs via the debug exporter — enough to prove distributed tracing actually propagates
+# end-to-end (`docker compose logs otel-collector`) without standing up a trace UI. Add a real backend
+# (Grafana Tempo, Jaeger, ...) later by adding an exporter here; nothing upstream needs to change.
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+exporters:
+  debug:
+    verbosity: detailed
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      exporters: [debug]

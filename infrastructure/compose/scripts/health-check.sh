@@ -27,7 +27,7 @@ source "$ENV_FILE"
 set +a
 
 section "Containers"
-EXPECTED_SERVICES=(postgres clickhouse rabbitmq redis minio dapr-placement dapr-smoke-test-sidecar)
+EXPECTED_SERVICES=(postgres clickhouse rabbitmq redis minio otel-collector dapr-placement dapr-smoke-test-sidecar)
 for svc in "${EXPECTED_SERVICES[@]}"; do
   cid=$(docker compose ps -q "$svc" 2>/dev/null)
   if [[ -z "$cid" ]]; then

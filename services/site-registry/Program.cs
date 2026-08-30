@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -136,7 +137,7 @@ app.MapPost("/sites", async (CreateSiteRequest request, SiteRegistryDbContext db
         EventType = EventTypes.SiteCreatedV1,
         TenantId = site.WorkspaceId,
         SiteId = site.Id,
-        CorrelationId = Guid.NewGuid(),
+        CorrelationId = CurrentCorrelationId(),
         DataJson = JsonSerializer.Serialize(eventData),
         CreatedAt = site.CreatedAt,
     });
@@ -357,7 +358,7 @@ app.MapPatch("/sites/{id:guid}/modules/{module}", async (Guid id, string module,
             EventType = EventTypes.SiteSettingsChangedV1,
             TenantId = site.WorkspaceId,
             SiteId = site.Id,
-            CorrelationId = Guid.NewGuid(),
+            CorrelationId = CurrentCorrelationId(),
             // Explicit converter: Module must serialize as "Analytics"/etc, not a raw int — the
             // default JsonSerializer.Serialize() call doesn't pick up the app's ConfigureHttpJsonOptions.
             DataJson = JsonSerializer.Serialize(eventData, outboxJsonOptions),
@@ -379,6 +380,13 @@ static string GenerateSiteToken() => Convert.ToBase64String(RandomNumberGenerato
     .Replace('+', '-')
     .Replace('/', '_');
 
+// Ties an outbox row back to the HTTP request that wrote it (distributed tracing, M00.5) — ASP.NET
+// Core starts an Activity per request whenever a listener is subscribed, which
+// packages/dotnet-service-defaults's AddAspNetCoreInstrumentation() always is, so Activity.Current is
+// reliably set for every endpoint here. Falls back to a fresh id only for the unusual case of no
+// active Activity (e.g. called outside a request).
+static string CurrentCorrelationId() => Activity.Current?.TraceId.ToString() ?? Guid.NewGuid().ToString("N");
+
 // The event catalogue defines only one key-related event type (site.key.rotated.v1) — both issuing
 // and revoking a token use it, with Action distinguishing which happened (see
 // services/site-registry/README.md).
@@ -391,7 +399,7 @@ static void AddSiteKeyRotatedOutboxEvent(SiteRegistryDbContext db, Site site, Si
         EventType = EventTypes.SiteKeyRotatedV1,
         TenantId = site.WorkspaceId,
         SiteId = site.Id,
-        CorrelationId = Guid.NewGuid(),
+        CorrelationId = CurrentCorrelationId(),
         DataJson = JsonSerializer.Serialize(eventData),
         CreatedAt = DateTimeOffset.UtcNow,
     });
