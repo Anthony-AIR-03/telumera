@@ -186,9 +186,13 @@ themselves turned out to already be complete from earlier milestones — the dec
 (M00.2) — so that backlog item just needed to be marked done, not built. The transactional outbox pattern
 is now a shared library, `packages/outbox/` (entity, EF Core mapping, Dapr-publishing `BackgroundService`),
 per ADR 0004's call for this; `services/site-registry/` migrated onto it with no change to the published
-event contract (see `services/site-registry/README.md`). Still open: consumer idempotency pattern,
-distributed tracing, container build workflow, Bicep baseline, Azure development deployment, and
-rollback/migration-rules documentation.
+event contract (see `services/site-registry/README.md`). The consumer idempotency pattern is also done as
+a shared library, `packages/idempotency/` (processed-event marker + `TryBeginProcessingEventAsync` guard,
+ADR 0004's "persist processed event IDs" strategy) — no real event subscriber exists in the codebase yet
+(Event Collector, the natural first one, is blocked on M01's tracking SDK), so this is validated by
+`packages/idempotency.Tests/` (in-memory EF Core) rather than a real end-to-end consumer; a future
+subscriber adopts it directly. Still open: distributed tracing, container build workflow, Bicep baseline,
+Azure development deployment, and rollback/migration-rules documentation.
 
 ## Planning artifacts (`planning/`)
 

@@ -9,6 +9,12 @@
   <Folder Name="/packages/outbox/">
     <Project Path="packages/outbox/Telumera.Outbox.csproj" />
   </Folder>
+  <Folder Name="/packages/idempotency/">
+    <Project Path="packages/idempotency/Telumera.Idempotency.csproj" />
+  </Folder>
+  <Folder Name="/packages/idempotency.Tests/">
+    <Project Path="packages/idempotency.Tests/Telumera.Idempotency.Tests.csproj" />
+  </Folder>
   <Folder Name="/templates/" />
   <Folder Name="/templates/api-service/">
     <Project Path="templates/api-service/ApiServiceTemplate.csproj" />
