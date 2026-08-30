@@ -218,9 +218,24 @@ own free-tier one, logged in and out for the check): 9 resources to create, no e
 references resolved correctly. That run caught a real issue — `westeurope` (the original default) is
 rejected on this subscription tier ("region is currently not accepting new customers"), not a template
 bug; the default is now `northeurope`, confirmed working, documented in `infrastructure/bicep/README.md`.
-Not yet an actual `az deployment sub create` (only `what-if`) or a real service deployed into the
-resulting environment — that's the still-open "Azure development deployment" task. Still open: that task
-and rollback/migration-rules documentation.
+The "Azure development deployment" task itself is now done too: `infrastructure/bicep/deploy.bicep`
+deploys the full control plane (gateway, identity-workspace, site-registry — everything M00.4 built) on
+top of the baseline via a new `modules/services.bicep` (PostgreSQL Flexible Server with one database per
+context per ADR 0005, an Azure Service Bus namespace/topic backing Dapr's pubsub component per ADR 0002,
+and the three Container Apps themselves, Dapr-enabled and topologically matching
+`infrastructure/compose/docker-compose.yml`). Actually deployed for real and exercised end-to-end through
+the live gateway with a real Entra token: `POST`/`GET /workspaces`, `POST /sites` (exercising
+site-registry's Dapr service-invocation membership check and its transactional outbox). Dapr's
+managed-identity auth against Azure Service Bus — the single highest-risk piece of this whole
+deployment — worked on the first real attempt (publish → `204`, confirmed in container logs). Two real
+ARM-level bugs surfaced only by an actual deployment, not `what-if` (a Key Vault name and a Container App
+name both over their length limits) — both fixed, documented in `infrastructure/bicep/README.md`. Also
+tightened both services from the Postgres admin login to their own `svc_access`/`svc_sites` roles
+(ADR 0005's actual requirement, not just "works because admin has access everywhere") via
+`scripts/init-postgres-databases.sh` — re-verified the same requests still succeed on the scoped
+credentials. To be torn down (`az group delete`) once M00.5 testing wraps up — this was always a
+deliberately throwaway validation run, not a persistent environment. Still open: rollback/migration-rules
+documentation.
 
 ## Planning artifacts (`planning/`)
 

@@ -25,7 +25,9 @@ var uniqueSuffix = uniqueString(resourceGroup().id)
 var logAnalyticsName = 'log-telumera-${environmentName}'
 var appInsightsName = 'appi-telumera-${environmentName}'
 var containerRegistryName = 'acrtelumera${environmentName}${uniqueSuffix}'
-var keyVaultName = 'kv-telumera-${environmentName}-${uniqueSuffix}'
+// Key Vault names are capped at 24 characters — uniqueString() alone is already 13, so this budgets
+// "kv-" (3) + environmentName (up to 12, per its own @maxLength) + "-" (1) + an 8-char suffix = 24 max.
+var keyVaultName = 'kv-${environmentName}-${take(uniqueSuffix, 8)}'
 var containerAppsEnvironmentName = 'cae-telumera-${environmentName}'
 var managedIdentityName = 'id-telumera-${environmentName}'
 
@@ -134,9 +136,12 @@ resource containerAppsEnvironment 'Microsoft.App/managedEnvironments@2024-03-01'
 }
 
 output containerAppsEnvironmentId string = containerAppsEnvironment.id
+output containerAppsEnvironmentName string = containerAppsEnvironment.name
 output containerAppsEnvironmentDefaultDomain string = containerAppsEnvironment.properties.defaultDomain
 output containerRegistryLoginServer string = containerRegistry.properties.loginServer
 output keyVaultUri string = keyVault.properties.vaultUri
+output keyVaultName string = keyVault.name
+output managedIdentityPrincipalId string = managedIdentity.properties.principalId
 output logAnalyticsWorkspaceId string = logAnalytics.id
 output appInsightsConnectionString string = appInsights.properties.ConnectionString
 output managedIdentityId string = managedIdentity.id

@@ -30,3 +30,4 @@ npm-debug.log*
 
 # Bicep build output (ARM JSON) — the .bicep/.bicepparam source is what's committed
 infrastructure/bicep/**/*.json
+infrastructure/bicep/*.local.bicepparam
