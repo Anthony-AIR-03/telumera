@@ -197,8 +197,15 @@ if it turns out to matter): an OTel Collector (`infrastructure/observability/`) 
 every .NET service and every Dapr sidecar and logs them via the `debug` exporter, and
 `OutboxEvent.CorrelationId` (`packages/outbox/`) now carries the actual request's W3C trace id instead of
 a disposable random value, closing the real gap the backlog item named ("propagate correlation and trace
-identifiers"). Still open: container build workflow, Bicep baseline, Azure development deployment, and
-rollback/migration-rules documentation.
+identifiers"). `.github/workflows/container-build.yml` builds each independently deployable service's
+Dockerfile (`identity-workspace`, `site-registry`, `gateway` — `apps/dashboard-web` isn't containerized)
+and pushes versioned images to GHCR (`ghcr.io/<owner>/telumera-<service>`) on push to `main` and on `v*`
+release tags (CONTRIBUTING.md's release convention), tagged by short SHA plus `latest`/the release tag;
+PRs get a build-only run (no push) to catch a broken Dockerfile before merge. Not yet exercised on a real
+GitHub Actions run — validated locally (YAML parses; `docker compose build` already proved all three
+Dockerfiles build during the distributed-tracing verification) but not confirmed against GHCR's actual
+push permissions. Still open: Bicep baseline, Azure development deployment, and rollback/migration-rules
+documentation.
 
 ## Planning artifacts (`planning/`)
 

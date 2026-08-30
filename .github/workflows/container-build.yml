@@ -1,0 +1,76 @@
+name: Container Build
+
+# Builds each independently deployable service's Dockerfile and pushes versioned images to GHCR
+# (ghcr.io/<owner>/telumera-<service>) -- separate from ci.yml's fast build/lint/test gate since this
+# only needs to run on main/release tags, not block every PR the same way. PRs still get a build-only
+# run (no push) to catch a broken Dockerfile before merge.
+#
+# Tags per image: sha-<short-sha> (every push to main), latest (main only), and the git tag itself for
+# a v* release tag (CONTRIBUTING.md's "Releases" convention, e.g. v0-platform-foundation) -- so a
+# deploy always has an immutable SHA-pinned reference available, not just floating latest.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+    tags: ["v*"]
+
+concurrency:
+  group: container-build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.service }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - service: identity-workspace
+            dockerfile: services/identity-workspace/Dockerfile
+          - service: site-registry
+            dockerfile: services/site-registry/Dockerfile
+          - service: gateway
+            dockerfile: gateway/Dockerfile
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      # No login (and no push below) on pull_request -- a fork's PR run has no write access to
+      # GITHUB_TOKEN anyway, and even a same-repo PR shouldn't publish an image before merge.
+      - name: Log in to GHCR
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # docker/metadata-action lowercases the image ref automatically -- github.repository preserves
+      # this repo's actual (mixed-case) owner casing, which Docker doesn't accept as-is.
+      - name: Derive image metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}-${{ matrix.service }}
+          tags: |
+            type=sha,prefix=sha-,format=short
+            type=ref,event=tag
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
