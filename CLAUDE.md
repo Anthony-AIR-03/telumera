@@ -212,10 +212,15 @@ plan's full Azure portability table (no PostgreSQL/Service Bus/Blob Storage/actu
 matching the backlog task's own wording; those belong to the still-open "Azure development deployment"
 task once there's a real service to justify provisioning continuously-billed resources for. Every name is
 parameter-derived, no account-specific values (same rule `docs/architecture/nas-deployment-profile.md`
-follows) — installed the standalone Bicep CLI to actually compile/lint-check it (`bicep build`, `bicep
-lint`, both clean) rather than hand-verify syntax; not deployed against a real Azure subscription, which
-is exactly what the deployment task still needs to do. Still open: Azure development deployment and
-rollback/migration-rules documentation.
+follows) — installed the standalone Bicep CLI to compile/lint-check it (`bicep build`, `bicep lint`, both
+clean), then went further and ran `az deployment sub what-if` against a real Azure subscription (Anthony's
+own free-tier one, logged in and out for the check): 9 resources to create, no errors, all cross-resource
+references resolved correctly. That run caught a real issue — `westeurope` (the original default) is
+rejected on this subscription tier ("region is currently not accepting new customers"), not a template
+bug; the default is now `northeurope`, confirmed working, documented in `infrastructure/bicep/README.md`.
+Not yet an actual `az deployment sub create` (only `what-if`) or a real service deployed into the
+resulting environment — that's the still-open "Azure development deployment" task. Still open: that task
+and rollback/migration-rules documentation.
 
 ## Planning artifacts (`planning/`)
 

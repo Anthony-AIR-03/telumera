@@ -24,8 +24,8 @@ targetScope = 'subscription'
 @maxLength(12)
 param environmentName string = 'dev'
 
-@description('Azure region for every resource.')
-param location string = 'westeurope'
+@description('Azure region for every resource. westeurope is rejected on some subscriptions ("region is currently not accepting new customers") — northeurope is confirmed working, see README.md.')
+param location string = 'northeurope'
 
 @description('Resource group name. Defaults to a name derived from environmentName so most deployments never need to set this explicitly.')
 param resourceGroupName string = 'rg-telumera-${environmentName}'

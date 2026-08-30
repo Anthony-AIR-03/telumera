@@ -32,10 +32,16 @@ optionally a different `.bicepparam` file (e.g. `staging.bicepparam`).
 ```bash
 az login
 az deployment sub create \
-  --location westeurope \
+  --location northeurope \
   --template-file main.bicep \
   --parameters main.bicepparam
 ```
+
+**`westeurope` doesn't work on every subscription** — confirmed against a real free/trial subscription
+during M00.5, `az deployment sub what-if` rejected it with `RequestDisallowedByAzure` ("the selected
+region is currently not accepting new customers"), a subscription-tier restriction, not a template bug.
+`northeurope` is confirmed working and is the default; if it stops working too, `az account list-locations
+-o table` shows what's available for your subscription.
 
 ## Validating without deploying
 
@@ -43,13 +49,20 @@ az deployment sub create \
 bicep build main.bicep          # compiles to ARM JSON, catches syntax/type errors
 bicep lint main.bicep           # style/best-practice diagnostics
 bicep build-params main.bicepparam
+az deployment sub what-if --location northeurope --template-file main.bicep --parameters main.bicepparam
 ```
 
-No Azure login needed for either — both are pure compile/lint checks against the Bicep CLI's bundled
-resource-type schema.
+The first three are pure compile/lint checks against the Bicep CLI's bundled resource-type schema, no
+Azure login needed. `what-if` does need a real login (`az login`) but creates nothing — it asks Azure to
+evaluate the template for real (resolving references, checking region/quota/naming constraints) and report
+what it *would* do.
 
-## Not yet done
+## Verified
 
-Actually deploying this against a real subscription and validating the outputs (registry login server, Key
-Vault URI, managed identity, Container Apps environment) — that's the separate "Azure development
-deployment" backlog task.
+Run against a real Azure subscription (M00.5): `az deployment sub what-if` reported 9 resource changes to
+create (the resource group plus all 8 resources in `modules/platform.bicep`, including both RBAC role
+assignments) with no errors — dependency ordering, cross-resource references (Container Apps environment →
+Log Analytics workspace, both role assignments → the managed identity's `principalId`), and the ACR/Key
+Vault uniqueness-suffixed names all resolved correctly. Not yet actually deployed (`az deployment sub
+create`, not `what-if`) — that, plus deploying a real service into the resulting environment, is the
+separate "Azure development deployment" backlog task.
