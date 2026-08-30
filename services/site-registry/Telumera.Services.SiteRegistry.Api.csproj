@@ -22,6 +22,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\packages\dotnet-service-defaults\Telumera.ServiceDefaults.csproj" />
     <ProjectReference Include="..\..\packages\event-contracts\Telumera.EventContracts.csproj" />
+    <ProjectReference Include="..\..\packages\outbox\Telumera.Outbox.csproj" />
   </ItemGroup>
 
 </Project>

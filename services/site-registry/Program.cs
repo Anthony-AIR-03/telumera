@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Identity.Web;
 
 using Telumera.EventContracts;
+using Telumera.Outbox;
 using Telumera.ServiceDefaults;
 using Telumera.Services.SiteRegistry.Api;
 
@@ -40,7 +41,7 @@ builder.Services.AddDbContext<SiteRegistryDbContext>(options =>
     options.UseNpgsql(connectionString).UseSnakeCaseNamingConvention());
 builder.Services.AddHealthChecks().AddNpgSql(connectionString, tags: ["ready"]);
 builder.Services.AddHttpClient();
-builder.Services.AddHostedService<OutboxPublisher>();
+builder.Services.AddOutboxPublisher<SiteRegistryDbContext>(topic: "site-events", source: "telumera.site-registry");
 builder.Services.AddSingleton<MembershipClient>();
 
 var app = builder.Build();
@@ -133,7 +134,7 @@ app.MapPost("/sites", async (CreateSiteRequest request, SiteRegistryDbContext db
     {
         Id = Guid.NewGuid(),
         EventType = EventTypes.SiteCreatedV1,
-        WorkspaceId = site.WorkspaceId,
+        TenantId = site.WorkspaceId,
         SiteId = site.Id,
         CorrelationId = Guid.NewGuid(),
         DataJson = JsonSerializer.Serialize(eventData),
@@ -354,7 +355,7 @@ app.MapPatch("/sites/{id:guid}/modules/{module}", async (Guid id, string module,
         {
             Id = Guid.NewGuid(),
             EventType = EventTypes.SiteSettingsChangedV1,
-            WorkspaceId = site.WorkspaceId,
+            TenantId = site.WorkspaceId,
             SiteId = site.Id,
             CorrelationId = Guid.NewGuid(),
             // Explicit converter: Module must serialize as "Analytics"/etc, not a raw int — the
@@ -388,7 +389,7 @@ static void AddSiteKeyRotatedOutboxEvent(SiteRegistryDbContext db, Site site, Si
     {
         Id = Guid.NewGuid(),
         EventType = EventTypes.SiteKeyRotatedV1,
-        WorkspaceId = site.WorkspaceId,
+        TenantId = site.WorkspaceId,
         SiteId = site.Id,
         CorrelationId = Guid.NewGuid(),
         DataJson = JsonSerializer.Serialize(eventData),

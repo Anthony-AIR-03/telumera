@@ -3,37 +3,41 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 using Telumera.EventContracts;
 
-namespace Telumera.Services.SiteRegistry.Api;
+namespace Telumera.Outbox;
 
 /// <summary>
-/// Drains <see cref="OutboxEvent"/> rows and publishes them through the Dapr sidecar's HTTP API, per
+/// Drains <see cref="OutboxEvent"/> rows from <typeparamref name="TDbContext"/> and publishes them
+/// through the local Dapr sidecar's HTTP API, per
 /// docs/adr/0004-transactional-outbox-and-idempotent-consumers.md. Publishes as a fully-formed
 /// CloudEvent (Content-Type: application/cloudevents+json) so Dapr uses Telumera's own
 /// id/type/source/subject instead of auto-generating them, per ADR 0002's explicit envelope-ownership
 /// rule. Polling (not LISTEN/NOTIFY) is enough at this volume — revisit if outbox latency ever matters.
+/// One instance per service, registered via <see cref="OutboxServiceCollectionExtensions.AddOutboxPublisher{TDbContext}"/>.
 /// </summary>
-public sealed class OutboxPublisher(
+public sealed class OutboxPublisher<TDbContext>(
     IServiceScopeFactory scopeFactory,
     IHttpClientFactory httpClientFactory,
     IConfiguration configuration,
-    ILogger<OutboxPublisher> logger) : BackgroundService
+    IOptions<OutboxPublisherOptions> options,
+    ILogger<OutboxPublisher<TDbContext>> logger) : BackgroundService
+    where TDbContext : DbContext
 {
     private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(2);
 
-    /// <summary>
-    /// Dapr pub/sub topic all Site Registry events publish under (see
-    /// services/site-registry/README.md for why one topic covers every event type this service
-    /// emits, rather than one topic per event type).
-    /// </summary>
-    private const string Topic = "site-events";
+    private const string HttpClientName = "Telumera.Outbox.OutboxPublisher";
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         var daprHttpPort = configuration["DAPR_HTTP_PORT"] ?? "3500";
-        var publishUrl = $"http://localhost:{daprHttpPort}/v1.0/publish/pubsub/{Topic}";
+        var publishUrl = $"http://localhost:{daprHttpPort}/v1.0/publish/pubsub/{options.Value.Topic}";
 
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -53,9 +57,9 @@ public sealed class OutboxPublisher(
     private async Task PublishPendingAsync(string publishUrl, CancellationToken stoppingToken)
     {
         using var scope = scopeFactory.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<SiteRegistryDbContext>();
+        var db = scope.ServiceProvider.GetRequiredService<TDbContext>();
 
-        var pending = await db.OutboxEvents
+        var pending = await db.Set<OutboxEvent>()
             .Where(e => e.PublishedAt == null)
             .OrderBy(e => e.CreatedAt)
             .Take(20)
@@ -66,11 +70,11 @@ public sealed class OutboxPublisher(
             return;
         }
 
-        var httpClient = httpClientFactory.CreateClient(nameof(OutboxPublisher));
+        var httpClient = httpClientFactory.CreateClient(HttpClientName);
 
         foreach (var outboxEvent in pending)
         {
-            var cloudEvent = BuildCloudEvent(outboxEvent);
+            var cloudEvent = BuildCloudEvent(outboxEvent, options.Value.Source);
 
             using var content = JsonContent.Create(cloudEvent);
             content.Headers.ContentType = new("application/cloudevents+json");
@@ -91,10 +95,10 @@ public sealed class OutboxPublisher(
         await db.SaveChangesAsync(stoppingToken);
     }
 
-    private static JsonObject BuildCloudEvent(OutboxEvent outboxEvent)
+    private static JsonObject BuildCloudEvent(OutboxEvent outboxEvent, string source)
     {
         var envelope = new EventEnvelope<JsonNode?>(
-            TenantId: outboxEvent.WorkspaceId.ToString(),
+            TenantId: outboxEvent.TenantId.ToString(),
             SiteId: outboxEvent.SiteId.ToString(),
             CorrelationId: outboxEvent.CorrelationId.ToString(),
             DataVersion: 1,
@@ -105,7 +109,7 @@ public sealed class OutboxPublisher(
             ["specversion"] = "1.0",
             ["id"] = outboxEvent.Id.ToString(),
             ["type"] = outboxEvent.EventType,
-            ["source"] = "telumera.site-registry",
+            ["source"] = source,
             ["subject"] = $"sites/{outboxEvent.SiteId}",
             ["time"] = outboxEvent.CreatedAt.ToString("O"),
             ["datacontenttype"] = "application/json",

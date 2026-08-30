@@ -178,6 +178,18 @@ front-channel logout that pops up a real Microsoft "end your session?" prompt �
 What's left: `services/event-collector/` — separately blocked on M01's tracking SDK, not planned until
 then (see the M00.4 epic's Asana history for why it's not scoped as part of this work).
 
+M00.5 ("Messaging, observability and CI/CD") is in progress. `.github/workflows/ci.yml` builds/lints/tests
+both the .NET and TypeScript projects on every PR (integration tests excluded — they need the full local
+stack plus a real Entra ID token, out of scope for a first CI pass). The CloudEvent envelope conventions
+themselves turned out to already be complete from earlier milestones — the decision in
+`docs/adr/0002-dapr-pubsub-abstraction.md` (M00.1) and the typed contract in `packages/event-contracts/`
+(M00.2) — so that backlog item just needed to be marked done, not built. The transactional outbox pattern
+is now a shared library, `packages/outbox/` (entity, EF Core mapping, Dapr-publishing `BackgroundService`),
+per ADR 0004's call for this; `services/site-registry/` migrated onto it with no change to the published
+event contract (see `services/site-registry/README.md`). Still open: consumer idempotency pattern,
+distributed tracing, container build workflow, Bicep baseline, Azure development deployment, and
+rollback/migration-rules documentation.
+
 ## Planning artifacts (`planning/`)
 
 - `Telumera_Modular_Project_Plan.md` — the full architecture/roadmap doc summarized above; treat as the

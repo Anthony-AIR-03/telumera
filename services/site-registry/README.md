@@ -64,10 +64,12 @@ and gets a 403), not a new authorization mechanism.
 
 ## Outbox and event publishing
 
-`POST /sites` writes the `Site` row and an `OutboxEvent` row in one EF Core transaction
-(`docs/adr/0004-transactional-outbox-and-idempotent-consumers.md` — Site Registry is explicitly named as
-a context that needs this). `OutboxPublisher` (a `BackgroundService`) polls for unpublished rows every
-~2s and publishes them through the `site-registry-dapr` sidecar's HTTP API as a fully-formed CloudEvent
+`POST /sites` writes the `Site` row and an `OutboxEvent` row (`Telumera.Outbox.OutboxEvent`, from
+`packages/outbox/`) in one EF Core transaction (`docs/adr/0004-transactional-outbox-and-idempotent-consumers.md`
+— Site Registry is explicitly named as a context that needs this). `OutboxPublisher<SiteRegistryDbContext>`
+(a `BackgroundService`, registered via `builder.Services.AddOutboxPublisher<SiteRegistryDbContext>(topic:
+"site-events", source: "telumera.site-registry")`) polls for unpublished rows every ~2s and publishes them
+through the `site-registry-dapr` sidecar's HTTP API as a fully-formed CloudEvent
 (`Content-Type: application/cloudevents+json`), so Dapr uses Telumera's own `id`/`type`/`source`/`subject`
 per ADR 0002 rather than auto-generating them.
 
@@ -77,8 +79,14 @@ per *context*, not per event type, since a future subscriber (Event Collector's 
 will want all of this context's events in one place rather than subscribing to several topics. Documented
 here per ADR 0004's requirement that a context's topic-naming choice be written down somewhere.
 
-This is a per-service implementation of the outbox pattern; ADR 0004 calls for a shared library in M00.5
-that this can migrate to without changing the published event contract.
+The outbox entity and publisher now live in `packages/outbox/` (M00.5) rather than as a per-service
+implementation — ADR 0004 called for this so a future context (Deployment, Errors, Alerting, ...) can
+adopt the pattern without reimplementing it. `SiteRegistryDbContext` still owns its own `outbox_events`
+table (`modelBuilder.ConfigureOutboxEvent()` in `OnModelCreating`) — per `docs/adr/0005`, there is no
+shared outbox table, only a shared mapping/publisher. The published event contract is unchanged; the only
+visible effect of the migration was renaming the row's `WorkspaceId` column to `TenantId`
+(`Migrations/20260830100134_RenameOutboxEventTenantId.cs`) to match `EventEnvelope<TData>`'s
+domain-agnostic field name, since the entity is no longer site-registry-specific code.
 
 ## No consumer yet
 

@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 
+using Telumera.Outbox;
+
 namespace Telumera.Services.SiteRegistry.Api;
 
 public sealed class SiteRegistryDbContext(DbContextOptions<SiteRegistryDbContext> options) : DbContext(options)
@@ -39,13 +41,6 @@ public sealed class SiteRegistryDbContext(DbContextOptions<SiteRegistryDbContext
             entity.HasIndex(s => new { s.SiteId, s.Module }).IsUnique();
         });
 
-        modelBuilder.Entity<OutboxEvent>(entity =>
-        {
-            entity.ToTable("outbox_events");
-            entity.HasKey(e => e.Id);
-            entity.Property(e => e.EventType).IsRequired().HasMaxLength(200);
-            entity.Property(e => e.DataJson).IsRequired().HasColumnType("jsonb");
-            entity.HasIndex(e => e.PublishedAt);
-        });
+        modelBuilder.ConfigureOutboxEvent();
     }
 }

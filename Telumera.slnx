@@ -6,6 +6,9 @@
   <Folder Name="/packages/event-contracts/">
     <Project Path="packages/event-contracts/Telumera.EventContracts.csproj" />
   </Folder>
+  <Folder Name="/packages/outbox/">
+    <Project Path="packages/outbox/Telumera.Outbox.csproj" />
+  </Folder>
   <Folder Name="/templates/" />
   <Folder Name="/templates/api-service/">
     <Project Path="templates/api-service/ApiServiceTemplate.csproj" />

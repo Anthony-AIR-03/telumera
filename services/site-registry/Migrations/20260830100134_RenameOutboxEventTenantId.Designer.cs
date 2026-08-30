@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Telumera.Services.SiteRegistry.Api;
@@ -11,9 +12,11 @@ using Telumera.Services.SiteRegistry.Api;
 namespace Telumera.Services.SiteRegistry.Api.Migrations
 {
     [DbContext(typeof(SiteRegistryDbContext))]
-    partial class SiteRegistryDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260830100134_RenameOutboxEventTenantId")]
+    partial class RenameOutboxEventTenantId
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

@@ -5,6 +5,7 @@ WORKDIR /src
 
 COPY packages/dotnet-service-defaults/ packages/dotnet-service-defaults/
 COPY packages/event-contracts/ packages/event-contracts/
+COPY packages/outbox/ packages/outbox/
 COPY services/site-registry/ services/site-registry/
 
 WORKDIR /src/services/site-registry
