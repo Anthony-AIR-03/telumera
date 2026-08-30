@@ -178,7 +178,7 @@ front-channel logout that pops up a real Microsoft "end your session?" prompt �
 What's left: `services/event-collector/` — separately blocked on M01's tracking SDK, not planned until
 then (see the M00.4 epic's Asana history for why it's not scoped as part of this work).
 
-M00.5 ("Messaging, observability and CI/CD") is in progress. `.github/workflows/ci.yml` builds/lints/tests
+M00.5 ("Messaging, observability and CI/CD") is complete. `.github/workflows/ci.yml` builds/lints/tests
 both the .NET and TypeScript projects on every PR (integration tests excluded — they need the full local
 stack plus a real Entra ID token, out of scope for a first CI pass). The CloudEvent envelope conventions
 themselves turned out to already be complete from earlier milestones — the decision in
@@ -234,8 +234,13 @@ tightened both services from the Postgres admin login to their own `svc_access`/
 (ADR 0005's actual requirement, not just "works because admin has access everywhere") via
 `scripts/init-postgres-databases.sh` — re-verified the same requests still succeed on the scoped
 credentials. To be torn down (`az group delete`) once M00.5 testing wraps up — this was always a
-deliberately throwaway validation run, not a persistent environment. Still open: rollback/migration-rules
-documentation.
+deliberately throwaway validation run, not a persistent environment. Last backlog item,
+`docs/runbooks/rollback-and-migrations.md`, documents what "rollback" actually means per environment
+(self-hosted image redeploy, Azure Container Apps revision activation) and the expand/contract rule for
+schema migrations — grounded in two real examples already in this repo's history
+(`RenameOutboxEventTenantId`, `ChangeOutboxEventCorrelationIdToString`) that took the direct-rename
+shortcut this rule now says not to repeat once a real rollback path needs protecting. This closes out
+every M00.5 backlog item.
 
 ## Planning artifacts (`planning/`)
 
