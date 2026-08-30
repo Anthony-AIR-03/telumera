@@ -205,8 +205,17 @@ PRs get a build-only run (no push) to catch a broken Dockerfile before merge. Co
 GitHub Actions run (Container Build #1, triggered by this epic's own commits): all three jobs succeeded
 in under two minutes and pushed both tags to GHCR with no permission issues —
 `ghcr.io/anthony-air-03/telumera-{identity-workspace,site-registry,gateway}` all exist now, Private
-(inherited from the repo). Still open: Bicep baseline, Azure development deployment, and rollback/migration-rules
-documentation.
+(inherited from the repo). `infrastructure/bicep/` provisions the shared platform layer only (Container
+Apps environment, Azure Container Registry, Log Analytics + Application Insights, a Key Vault, and a
+managed identity wired with `AcrPull`/`Key Vault Secrets User` RBAC) — deliberately narrower than the
+plan's full Azure portability table (no PostgreSQL/Service Bus/Blob Storage/actual container apps yet),
+matching the backlog task's own wording; those belong to the still-open "Azure development deployment"
+task once there's a real service to justify provisioning continuously-billed resources for. Every name is
+parameter-derived, no account-specific values (same rule `docs/architecture/nas-deployment-profile.md`
+follows) — installed the standalone Bicep CLI to actually compile/lint-check it (`bicep build`, `bicep
+lint`, both clean) rather than hand-verify syntax; not deployed against a real Azure subscription, which
+is exactly what the deployment task still needs to do. Still open: Azure development deployment and
+rollback/migration-rules documentation.
 
 ## Planning artifacts (`planning/`)
 

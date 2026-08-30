@@ -27,3 +27,6 @@ Thumbs.db
 # Logs
 *.log
 npm-debug.log*
+
+# Bicep build output (ARM JSON) — the .bicep/.bicepparam source is what's committed
+infrastructure/bicep/**/*.json
