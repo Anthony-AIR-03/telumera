@@ -242,6 +242,40 @@ schema migrations — grounded in two real examples already in this repo's histo
 shortcut this rule now says not to repeat once a real rollback path needs protecting. This closes out
 every M00.5 backlog item.
 
+M01.1 ("Analytics definitions and privacy model") is complete: `docs/analytics/definitions-and-privacy-model.md`
+defines exactly what every Product Analytics metric means — page-view rules (SPA navigation, reloads,
+redirects, canonical URL/route-exclusion handling), session rules (30-minute inactivity timeout, no
+midnight cutoff, cross-tab `localStorage`, campaign-context restart), visitor rules (server-side daily
+hash by default per `docs/privacy/privacy-threat-model.md`, an opt-in consent-gated persistent mode),
+bounce/engagement (an explicit engaged-session formula instead of copying GA's ambiguous single-interaction
+rule), active-time measurement, URL/query-string policy (allowlist-only, denylist safety net), IP/geography
+policy (no raw IP storage — schema-level, not just policy), and retention/deletion defaults — all before
+any collection code exists, per the Accuracy Principle. Covers all 8 M01.1 Asana subtasks.
+
+M01.2 ("Browser tracking SDK") is complete: `packages/browser-sdk` implements the client-side SDK against
+M01.1's definitions doc exactly, and follows `docs/adr/0006-public-browser-ingestion-tokens.md` (the config
+field is `siteToken`, never "SDK key") and the privacy threat model's consent/debug-mode requirements. This
+is the first TypeScript package in `packages/*` (the other two, `outbox`/`idempotency`, are C#) and the
+first use of a test runner anywhere in the repo — Vitest + jsdom, chosen because it's Vite's own runner and
+the repo already depends on Vite for `apps/dashboard-web`, avoiding a second bundler/test-runner family.
+Vite library mode builds two outputs from one `src/index.ts` entry (`browser-sdk.mjs` ESM,
+`browser-sdk.global.js` IIFE setting `window.telumera`), with `.d.ts` emitted separately via
+`tsc -p tsconfig.build.json` since Vite's build only handles JS. One design decision confirmed with Anthony
+before implementing: debug mode implies dry-run (logs the exact outgoing payload, never actually sends) —
+a site owner who wants to watch real traffic while debugging points `endpoint` at staging instead of
+toggling a second flag. There's no Event Collector yet (M01.3), so the SDK posts to a fully configurable
+`endpoint` with no path assumed. CI gained a `browser-sdk` job in `.github/workflows/ci.yml` mirroring
+`dashboard-web`'s job shape (type-check, test, build, ci:lint, format:check) — each workspace is wired
+explicitly by name in this repo, so a new `packages/*` TS package doesn't get picked up automatically.
+Verified two ways: 50 Vitest cases across every module (page-view double-fire suppression, session
+restart/sampling, consent gating, batching/retry/backoff, engagement idle/visibility handling, custom-event
+validation), and a manual smoke test of the actual built `dist/browser-sdk.global.js` — Chrome's extension
+automation in this environment refuses `file://` navigation, so the built bundle was instead loaded and
+executed in a small jsdom harness (Node), confirming `window.telumera` is set, the router double-fire is
+suppressed against the init page view, nothing is sent before `setConsent(true)`, and after consent the
+debug transport logs the exact payload while still making zero real network calls. Covers all 12 M01.2
+Asana subtasks. What's left before real traffic: the Event Collector itself (M01.3).
+
 ## Planning artifacts (`planning/`)
 
 - `Telumera_Modular_Project_Plan.md` — the full architecture/roadmap doc summarized above; treat as the

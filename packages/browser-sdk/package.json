@@ -1,0 +1,64 @@
+{
+  "name": "@telumera/browser-sdk",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/browser-sdk.mjs",
+  "module": "./dist/browser-sdk.mjs",
+  "types": "./dist/index.d.ts",
+  "unpkg": "./dist/browser-sdk.global.js",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/browser-sdk.mjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "dev": "vite build --watch",
+    "build": "run-s build:js build:types",
+    "build:js": "vite build",
+    "build:types": "tsc -p tsconfig.build.json",
+    "type-check": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "run-s \"lint:*\"",
+    "lint:oxlint": "oxlint . --fix",
+    "lint:eslint": "eslint . --fix --cache",
+    "ci:lint": "run-s \"ci:lint:*\"",
+    "ci:lint:oxlint": "oxlint .",
+    "ci:lint:eslint": "eslint . --max-warnings 0",
+    "format": "prettier --write --experimental-cli src/",
+    "format:check": "prettier --check --experimental-cli src/"
+  },
+  "peerDependencies": {
+    "vue-router": "^4.0.0 || ^5.0.0"
+  },
+  "peerDependenciesMeta": {
+    "vue-router": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^24.13.3",
+    "eslint": "^10.7.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-oxlint": "~1.75.0",
+    "jiti": "^2.7.0",
+    "jsdom": "^27.0.0",
+    "npm-run-all2": "^9.0.2",
+    "oxlint": "~1.75.0",
+    "prettier": "3.9.5",
+    "typescript": "~6.0.0",
+    "typescript-eslint": "^8.46.4",
+    "vite": "^8.1.5",
+    "vitest": "^3.2.4",
+    "vue-router": "^5.2.0"
+  },
+  "engines": {
+    "node": "^22.18.0 || >=24.12.0"
+  }
+}

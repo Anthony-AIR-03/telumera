@@ -54,3 +54,26 @@ jobs:
       - run: npm run ci:lint --workspace=apps/dashboard-web
 
       - run: npm run format:check --workspace=apps/dashboard-web
+
+  browser-sdk:
+    name: browser-sdk build, test, lint, type-check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - run: npm run type-check --workspace=packages/browser-sdk
+
+      - run: npm run test --workspace=packages/browser-sdk
+
+      - run: npm run build --workspace=packages/browser-sdk
+
+      - run: npm run ci:lint --workspace=packages/browser-sdk
+
+      - run: npm run format:check --workspace=packages/browser-sdk

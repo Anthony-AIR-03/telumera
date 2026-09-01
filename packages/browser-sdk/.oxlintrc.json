@@ -1,0 +1,9 @@
+{
+  "plugins": ["eslint", "typescript", "unicorn", "oxc"],
+  "env": {
+    "browser": true
+  },
+  "categories": {
+    "correctness": "error"
+  }
+}
