@@ -84,16 +84,24 @@ IP rather than site token — the token lives in the JSON body, not a header, so
 avoids reading the request body twice. Plus a global Kestrel `MaxRequestBodySize` and a max-events-per-batch
 cap.
 
-**GeoIP**: `IGeoLookup` is a stub (`NoOpGeoLookup`, always returns no country) — no provider has been
-chosen anywhere in this repo yet; picking one is deferred to M01.8 per the privacy doc's own note.
+**Enrichment lives downstream (M01.4)**: the published payload carries the raw `TruncatedIp` and
+`UserAgent` this service already computed for the visitor hash, not a resolved country/device/browser —
+an earlier version of this service did its own GeoIP lookup here (a stubbed `IGeoLookup`/`NoOpGeoLookup`,
+since removed), which overlapped with `services/analytics`'s own "Enrich coarse geography"/"Enrich device
+and browser categories" subtasks and worked against this service's own "no analytics queries or heavy
+processing" design. `services/analytics/README.md` covers the actual enrichment.
 
-## `packages/browser-sdk` patch
+## `packages/browser-sdk` patches
 
-Added `id: string` (client-generated via `crypto.randomUUID()`) to `OutgoingEvent` — the Collector's
-duplicate-protection subtask needs a per-event id the SDK didn't emit before this epic. Small, additive
-change; nothing else consumed the shape yet.
+- Added `id: string` (client-generated via `crypto.randomUUID()`) to `OutgoingEvent` — this service's
+  duplicate-protection subtask needed a per-event id the SDK didn't emit before M01.3.
+- (M01.4) Added `title`/`channel`/`referrer`/`utm` to every outgoing event's `properties` — `services/
+  analytics`'s "Normalize URLs and page titles"/"Normalize referrer and campaign data" subtasks had
+  nothing to normalize without them; the SDK already computed `channel`/`referrer`/`utm` client-side for
+  session-restart logic but never attached it to the payload.
 
 ## Not in this service
 
-A real GeoIP provider, any real downstream subscriber of `collector-events` (Analytics/Performance/Errors
-processors — future modules), and multi-instance-safe (Redis-backed) dedup/projection sharing.
+A real GeoIP provider or device/browser categorization (both now `services/analytics`'s job), any real
+downstream subscriber of `collector-events` besides `services/analytics`, and multi-instance-safe
+(Redis-backed) dedup/projection sharing.

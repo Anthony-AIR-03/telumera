@@ -25,6 +25,12 @@ CONTEXTS=(
   "ai-insights:telumera_ai:svc_ai"
   "alerting:telumera_alerting:svc_alerting"
   "notifications:telumera_notifications:svc_notifications"
+  # Holds only packages/idempotency's processed_events table (M01.4's consumer-dedup markers) — the
+  # actual analytics event data lives in ClickHouse's telumera_analytics database (db-init/clickhouse),
+  # a deliberately different name from that ClickHouse database despite the same owning context, since
+  # "telumera_analytics" was already claimed there and identical names across the two engines would
+  # invite confusion about which store a given connection string points at.
+  "analytics:telumera_analytics_control:svc_analytics_control"
 )
 
 for entry in "${CONTEXTS[@]}"; do

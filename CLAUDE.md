@@ -322,6 +322,57 @@ batch; and — the most load-bearing check — publishing synthetic `site.settin
 projection within seconds with no restart, proving the subscription wiring actually works end-to-end,
 not just that it compiles. Covers all 8 M01.3 Asana subtasks.
 
+M01.4 ("Analytics processing pipeline") is complete: `services/analytics` is the first real subscriber
+of the Collector's `collector-events` topic, and the first real ClickHouse writer anywhere in the repo.
+It normalizes, enriches, dedupes, and persists events to ClickHouse's `telumera_analytics.events` table
+(pre-provisioned since M00.3), then publishes `analytics.processed.v1` (per-event granularity — the
+metric-window/anomaly rollup split `bounded-contexts-and-data-ownership.md` flags as an open question is
+deferred to whichever epic actually builds Alerting/AI, per a confirmed decision). It owns a *second*,
+much smaller PostgreSQL database (`telumera_analytics_control`) purely for `packages/idempotency`'s
+consumer-dedup markers — the first real consumer of that package (built in M00.5, only unit-tested until
+now) — matching ADR 0003's "a service using both PostgreSQL and ClickHouse" pattern. Scaffolded like
+`event-collector` (`Microsoft.NET.Sdk.Web`, not `templates/worker-service/`) since Dapr pub/sub delivery
+is HTTP-push into the app regardless of whether a service is conceptually a "worker" — confirmed by
+M01.3's own container logs. `ClickHouseWriter.cs` talks to ClickHouse over its plain HTTP interface
+rather than a NuGet client library (`ClickHouse.Client`'s latest stable has no confirmed net10.0 target),
+matching how every other infra HTTP API in this repo is already called directly rather than through a
+client SDK.
+
+Four decisions were confirmed before building: enrichment moved fully into this service (the Collector's
+own always-stubbed `GeoLookup.cs`/`Country` field was removed — a design mistake from M01.3 that
+duplicated this epic's scope and worked against the Collector's own "no analytics queries" philosophy;
+it now passes through raw `TruncatedIp`/`UserAgent`/`ClientTimestamp` instead); the SDK gained a second
+follow-up patch (`title`/`channel`/`referrer`/`utm` added to every outgoing event's `properties` — the
+SDK already computed `channel`/`referrer`/`utm` client-side for session-restart logic but never attached
+it to the payload, so "Normalize referrer and campaign data" had nothing to normalize before this);
+`analytics.processed.v1` publishes per-event only, not the full rollup split; and dead-letter recovery
+is a standalone console tool, `tools/dead-letter-recovery` (the repo's first `tools/` directory), using
+RabbitMQ's management HTTP API rather than admin endpoints on the always-running service. Device/browser/
+OS categorization (`UserAgentClassifier.cs`) is hand-rolled substring heuristics into bounded categories,
+deliberately not a UA-parsing library — the privacy threat model wants "bounded categories... not full
+high-entropy fingerprint strings," so a full parser would work against the actual requirement, not toward
+it. The idempotency-marker-vs-ClickHouse-write ordering (`EventProcessor.cs`) is a disclosed trade-off:
+the Postgres marker commits *before* the ClickHouse write (not after, and not in one transaction — the
+two stores can't share one), accepting rare event loss on a crash between the two over the alternative of
+double-counting, since the subtask's literal goal is preventing retry duplicates from inflating metrics.
+
+Verified live against the real running stack (same standard M01.3 set): a real batch through
+`/v1/events` (with `channel`/`referrer`/`utm`/`title` in its properties, matching what the patched SDK
+now sends) produces a correctly normalized ClickHouse row — trailing slash and fragment stripped from
+the trusted `url` field, UTM fields extracted, `channel` validated, device/browser/OS correctly
+classified from a real Chrome/Windows user agent string, visitor hash passed through unchanged; a
+resubmitted duplicate event id produces no second row and the Postgres marker table shows why; a
+Googlebot user agent is marked `is_bot = 1` while still being written, never dropped;
+`analytics.processed.v1` actually publishes exactly once per processed event (RabbitMQ's
+`analytics-events` exchange `publish_in` counter, same verification method M01.3 used for
+`collector-events`); and `tools/dead-letter-recovery list` successfully queried the real
+`dlq-analytics-collector-events` queue over RabbitMQ's management API, confirming the Dapr dead-letter
+naming convention assumption was correct. This session also hit the exact same Dapr-sidecar-recreate
+network-namespace quirk M01.3 first surfaced (recreating an app container orphans its
+`network_mode: service:x` sidecar) — recognized immediately this time and fixed by recreating both
+sidecars alongside their apps, rather than rediscovering it as a new bug. Covers all 10 M01.4 Asana
+subtasks.
+
 ## Planning artifacts (`planning/`)
 
 - `Telumera_Modular_Project_Plan.md` — the full architecture/roadmap doc summarized above; treat as the

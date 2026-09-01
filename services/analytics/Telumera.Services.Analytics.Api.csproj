@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Sdk.Web (not templates/worker-service, despite this being conceptually a consumer/worker):
+         Dapr pub/sub delivery is HTTP-push into the app (confirmed live via event-collector's own
+         subscription in M01.3), which needs Kestrel regardless. Postgres/EF Core here is only for
+         packages/idempotency's dedup markers — the actual analytics data goes to ClickHouse via its
+         plain HTTP interface (ClickHouseWriter.cs), not an EF Core provider. -->
+    <PackageReference Include="AspNetCore.HealthChecks.NpgSql" Version="9.0.0" />
+    <PackageReference Include="Dapr.AspNetCore" Version="1.18.5" />
+    <PackageReference Include="EFCore.NamingConventions" Version="10.0.1" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.10" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.11">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.OpenApi" Version="2.11.0" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\packages\dotnet-service-defaults\Telumera.ServiceDefaults.csproj" />
+    <ProjectReference Include="..\..\packages\event-contracts\Telumera.EventContracts.csproj" />
+    <ProjectReference Include="..\..\packages\idempotency\Telumera.Idempotency.csproj" />
+  </ItemGroup>
+
+</Project>

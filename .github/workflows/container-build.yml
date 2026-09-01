@@ -39,6 +39,8 @@ jobs:
             dockerfile: gateway/Dockerfile
           - service: event-collector
             dockerfile: services/event-collector/Dockerfile
+          - service: analytics
+            dockerfile: services/analytics/Dockerfile
     steps:
       - uses: actions/checkout@v4
 

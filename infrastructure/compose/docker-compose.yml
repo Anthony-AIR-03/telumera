@@ -3,8 +3,10 @@
 # Collector, a Dapr placement service + one headless "smoke-test" Dapr
 # sidecar — plus the real application services built so far:
 # identity-workspace, site-registry, gateway (a transparent reverse proxy in
-# front of both — see gateway/README.md), and event-collector (the one
-# public/anonymous endpoint — see services/event-collector/README.md).
+# front of both — see gateway/README.md), event-collector (the one
+# public/anonymous endpoint — see services/event-collector/README.md), and
+# analytics (the first real Dapr pub/sub consumer, writing to ClickHouse —
+# see services/analytics/README.md).
 #
 # Usage: see infrastructure/compose/README.md. Quick start:
 #   cp .env.example .env   # then fill in local values
@@ -403,6 +405,68 @@ services:
     network_mode: "service:event-collector"
     depends_on:
       event-collector:
+        condition: service_started
+      dapr-placement:
+        condition: service_started
+      otel-collector:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
+
+  # M01.4's Analytics Service — the first real subscriber of event-collector's collector-events topic.
+  # Owns telumera_analytics (ClickHouse, event data) and telumera_analytics_control (Postgres,
+  # packages/idempotency's consumer-dedup markers only) — see services/analytics/README.md.
+  analytics:
+    build:
+      context: ../..
+      dockerfile: services/analytics/Dockerfile
+    restart: unless-stopped
+    environment:
+      ConnectionStrings__Analytics: "Host=postgres;Port=5432;Database=telumera_analytics_control;Username=svc_analytics_control;Password=${APP_DB_PASSWORD}"
+      ClickHouse__Host: "clickhouse"
+      ClickHouse__Port: "8123"
+      ClickHouse__Database: "telumera_analytics"
+      ClickHouse__User: "svc_analytics"
+      ClickHouse__Password: "${CLICKHOUSE_APP_PASSWORD}"
+      DAPR_HTTP_PORT: "3500" # matches analytics-dapr's -dapr-http-port below (shared network namespace)
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"
+    ports:
+      - "5104:8080" # HTTP API
+      - "3506:3500" # analytics-dapr's HTTP API (shared namespace; published here since network_mode: service:x sidecars can't publish their own ports)
+      - "50007:50001" # analytics-dapr's gRPC API
+    depends_on:
+      postgres:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
+      otel-collector:
+        condition: service_started
+    networks:
+      - telumera-net
+
+  # analytics's own sidecar — -app-port is required for the same reason event-collector-dapr needs it:
+  # Dapr pub/sub delivery for its collector-events subscription works by the sidecar calling back into
+  # the app's /dapr/subscribe and topic-handler routes.
+  analytics-dapr:
+    image: daprio/daprd:1.14.4
+    restart: unless-stopped
+    command:
+      - "./daprd"
+      - "-app-id=analytics"
+      - "-app-port=8080"
+      - "-dapr-http-port=3500"
+      - "-dapr-grpc-port=50001"
+      - "-placement-host-address=dapr-placement:50006"
+      - "-resources-path=/components"
+      - "-config=/config/config.yaml"
+    environment:
+      RABBITMQ_CONNECTION_STRING: "amqp://${RABBITMQ_DEFAULT_USER}:${RABBITMQ_DEFAULT_PASS}@rabbitmq:5672"
+    volumes:
+      - ../dapr/components:/components:ro
+      - ../dapr/config:/config:ro
+    network_mode: "service:analytics"
+    depends_on:
+      analytics:
         condition: service_started
       dapr-placement:
         condition: service_started

@@ -35,6 +35,13 @@
   <Folder Name="/services/event-collector/">
     <Project Path="services/event-collector/Telumera.Services.EventCollector.Api.csproj" />
   </Folder>
+  <Folder Name="/services/analytics/">
+    <Project Path="services/analytics/Telumera.Services.Analytics.Api.csproj" />
+  </Folder>
+  <Folder Name="/tools/" />
+  <Folder Name="/tools/dead-letter-recovery/">
+    <Project Path="tools/dead-letter-recovery/Telumera.Tools.DeadLetterRecovery.csproj" />
+  </Folder>
   <Folder Name="/tests/" />
   <Folder Name="/tests/integration/">
     <Project Path="tests/integration/Telumera.Tests.Integration/Telumera.Tests.Integration.csproj" />

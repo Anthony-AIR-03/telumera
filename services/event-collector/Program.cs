@@ -47,7 +47,6 @@ builder.Services.AddMemoryCache();
 builder.Services.AddSingleton<SiteRegistryClient>();
 builder.Services.AddSingleton<SiteProjection>();
 builder.Services.AddSingleton<DuplicateEventCache>();
-builder.Services.AddSingleton<IGeoLookup, NoOpGeoLookup>();
 builder.Services.AddSingleton<CollectorChannel>();
 builder.Services.AddHostedService<CollectorPublisher>();
 // This service owns no persistent data (docs/architecture/bounded-contexts-and-data-ownership.md), so
@@ -78,7 +77,6 @@ app.MapPost("/v1/events", async (
     SiteProjection projection,
     CollectorChannel channel,
     DuplicateEventCache duplicateCache,
-    IGeoLookup geoLookup,
     IConfiguration configuration,
     IHostEnvironment env,
     ILogger<Program> logger) =>
@@ -118,7 +116,6 @@ app.MapPost("/v1/events", async (
     var truncatedIp = IpUtilities.Truncate(httpContext.Connection.RemoteIpAddress);
     var receivedAt = DateTimeOffset.UtcNow;
     var userAgent = httpContext.Request.Headers.UserAgent.ToString();
-    var country = geoLookup.CountryFor(truncatedIp);
     var visitorHashSecret = configuration["Collector:VisitorHashSecret"] ?? "local-dev-secret-not-for-production";
 
     var accepted = 0;
@@ -155,7 +152,7 @@ app.MapPost("/v1/events", async (
             ?? VisitorHash.Compute(visitorHashSecret, site.SiteId, truncatedIp, userAgent, receivedAt);
 
         var eventType = evt.Name == "page_view" ? EventTypes.AnalyticsPageViewReceivedV1 : EventTypes.AnalyticsCustomEventReceivedV1;
-        var data = new AnalyticsEventPayload(evt.Name, evt.SessionId, visitorId, evt.Url, evt.Environment, evt.Properties, receivedAt, country);
+        var data = new AnalyticsEventPayload(evt.Name, evt.SessionId, visitorId, evt.Url, evt.Environment, evt.Properties, evt.Timestamp, receivedAt, truncatedIp, userAgent);
         var enrichedEvent = new EnrichedEvent(evt.Id, eventType, site.SiteId, site.WorkspaceId, httpContext.TraceIdentifier, receivedAt, data);
 
         if (!channel.TryEnqueue(enrichedEvent))
@@ -246,10 +243,16 @@ internal sealed record CollectEventsRequest(IncomingEvent[] Events);
 
 internal sealed record CollectEventsResponse(int Accepted, int Rejected, string[]? Errors);
 
-/// <summary>Event-specific payload carried in analytics.page-view.received.v1 / analytics.custom-event.received.v1's EventEnvelope.Data.</summary>
+/// <summary>
+/// Event-specific payload carried in analytics.page-view.received.v1 / analytics.custom-event.received.v1's
+/// EventEnvelope.Data. Carries raw TruncatedIp/UserAgent rather than a resolved country/device/browser —
+/// that enrichment belongs to services/analytics (M01.4), not this "no analytics queries or heavy
+/// processing" service.
+/// </summary>
 internal sealed record AnalyticsEventPayload(
     string Name, string SessionId, string? VisitorId, string Url, string? Environment,
-    Dictionary<string, JsonElement>? Properties, DateTimeOffset ReceivedAt, string? Country);
+    Dictionary<string, JsonElement>? Properties, string ClientTimestamp, DateTimeOffset ReceivedAt,
+    string TruncatedIp, string UserAgent);
 
 /// <summary>Consumer-side shape of site.created.v1's payload — deliberately duplicated from site-registry's own internal record (decoupled by design, same as any other event consumer).</summary>
 internal sealed record SiteCreatedPayload(Guid SiteId, Guid WorkspaceId, string Name, string CanonicalDomain, string[] AllowedOrigins, string Environment);

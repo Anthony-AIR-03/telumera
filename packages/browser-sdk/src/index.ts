@@ -123,12 +123,21 @@ export class TelumeraClient {
       visitorId: this.visitorStore ? this.visitorStore.getOrCreate() : null,
       url: window.location.href,
       timestamp: new Date().toISOString(),
-      properties,
+      properties: {
+        ...properties,
+        channel: context.channel,
+        referrer: context.referrer,
+        utm: context.utm,
+      },
     }
   }
 
   private enqueuePageView(canonical: CanonicalUrl): void {
-    const event = this.buildEvent('page_view', { path: canonical.path, query: canonical.query })
+    const event = this.buildEvent('page_view', {
+      path: canonical.path,
+      query: canonical.query,
+      title: document.title,
+    })
     if (event) this.queue.enqueue(event)
   }
 
