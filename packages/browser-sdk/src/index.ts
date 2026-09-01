@@ -115,6 +115,7 @@ export class TelumeraClient {
     }
 
     return {
+      id: crypto.randomUUID(),
       name,
       siteToken: this.config.siteToken,
       environment: this.config.environment,

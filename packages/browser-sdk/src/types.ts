@@ -51,6 +51,8 @@ export interface CampaignContext {
 export type EventName = 'page_view' | 'engagement' | (string & {})
 
 export interface OutgoingEvent {
+  /** Client-generated, unique per event — lets the Collector dedupe a retried batch. */
+  id: string
   name: EventName
   siteToken: string
   environment: string | undefined

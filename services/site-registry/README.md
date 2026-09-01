@@ -96,10 +96,20 @@ see `docs/runbooks/local-environment.md`'s "Checking distributed tracing". Requi
 (`Migrations/20260830104728_ChangeOutboxEventCorrelationIdToString.cs`) changing the column from `uuid` to
 `character varying(64)`, since a trace id is a 32-hex-char string, not Guid-formatted.
 
-## No consumer yet
+## Internal token lookup (M01.3)
 
-`site.created.v1`, `site.key.rotated.v1`, and `site.settings.changed.v1` all publish today with no
-subscriber — Event Collector (which would keep a local projection of this data, including which tokens
-are currently valid and which modules are enabled) isn't built yet. All three contracts are real and
-covered by `tests/integration/Telumera.Tests.Integration/`, they just have nothing downstream reacting to
-them yet.
+Two more unauthenticated internal endpoints, same pattern as identity-workspace's
+`GetInternalMembership` (trusts the Dapr-invoke network boundary, always 200, never 404):
+`GET /internal/tokens/{token}` and `GET /internal/tokens` (bulk list). Added because Event Collector
+(`services/event-collector/`) needs to resolve a raw token string an anonymous browser presents to a
+site/workspace/allowed-origins/enabled-modules projection, and no existing endpoint could do that —
+every other endpoint here is keyed by an authenticated caller's already-known site ID, not a raw token.
+See `services/event-collector/README.md`'s "Site projection" section for how these two are used
+(warm-up/resync vs. cache-miss fallback).
+
+## Consumer (M01.3)
+
+`site.created.v1`, `site.key.rotated.v1`, and `site.settings.changed.v1` now have a real subscriber:
+Event Collector's `SiteProjection` keeps an in-memory read-model of this data current from these three
+events (plus the two internal endpoints above for warm-up/cache-miss). All three contracts are covered
+by `tests/integration/Telumera.Tests.Integration/`.

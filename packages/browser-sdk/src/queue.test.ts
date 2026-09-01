@@ -4,6 +4,7 @@ import type { OutgoingEvent } from './types'
 
 function makeEvent(name: string): OutgoingEvent {
   return {
+    id: crypto.randomUUID(),
     name,
     siteToken: 'site-1',
     environment: undefined,

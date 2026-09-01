@@ -373,7 +373,70 @@ app.MapPatch("/sites/{id:guid}/modules/{module}", async (Guid id, string module,
 .WithName("UpdateSiteModule")
 .RequireAuthorization("ApiScope");
 
+// Deliberately unauthenticated at the HTTP level, same rationale and pattern as identity-workspace's
+// GetInternalMembership: reached only via Dapr service invocation from within the compose network
+// (see event-collector's SiteRegistryClient), trusting the network boundary since no
+// service-to-service auth scheme exists yet. Always 200, never 404 — "unknown/revoked token" is a
+// normal outcome for the Collector to handle (reject the request), not a failure worth Dapr's
+// resiliency retry/circuit-breaker treating it as one.
+app.MapGet("/internal/tokens/{token}", async (string token, SiteRegistryDbContext db) =>
+{
+    var tokenRow = await db.SiteTokens.FirstOrDefaultAsync(t => t.Token == token && t.RevokedAt == null);
+    if (tokenRow is null)
+    {
+        return Results.Ok(InternalTokenLookupResponse.NotFound);
+    }
+
+    var site = await db.Sites.FindAsync(tokenRow.SiteId);
+    if (site is null)
+    {
+        return Results.Ok(InternalTokenLookupResponse.NotFound);
+    }
+
+    var enabledModules = await GetEnabledModuleNamesAsync(db, site.Id);
+
+    return Results.Ok(new InternalTokenLookupResponse(true, site.Id, site.WorkspaceId, site.AllowedOrigins, enabledModules));
+})
+.WithName("GetInternalTokenLookup");
+
+// The Collector's projection is in-memory and rebuilds on restart (it owns no persistent data —
+// docs/architecture/bounded-contexts-and-data-ownership.md) — this is its startup warm-up / periodic
+// full-resync source. Same unauthenticated, network-boundary-trusting pattern as the endpoint above.
+// Not paginated — the active-token count is small enough today that it doesn't need it; revisit if
+// that stops being true.
+app.MapGet("/internal/tokens", async (SiteRegistryDbContext db) =>
+{
+    var activeTokens = await db.SiteTokens
+        .Where(t => t.RevokedAt == null)
+        .Join(db.Sites, t => t.SiteId, s => s.Id, (t, s) => new { t.Token, s.Id, s.WorkspaceId, s.AllowedOrigins })
+        .ToListAsync();
+
+    var enabledModulesBySite = await db.SiteModuleSettings
+        .Where(m => m.Enabled)
+        .Select(m => new { m.SiteId, Module = m.Module.ToString() })
+        .ToListAsync();
+
+    var result = activeTokens
+        .Select(t => new InternalTokenListEntry(
+            t.Token,
+            t.Id,
+            t.WorkspaceId,
+            t.AllowedOrigins,
+            enabledModulesBySite.Where(m => m.SiteId == t.Id).Select(m => m.Module).ToArray()))
+        .ToList();
+
+    return Results.Ok(result);
+})
+.WithName("ListInternalTokens");
+
 app.Run();
+
+static async Task<string[]> GetEnabledModuleNamesAsync(SiteRegistryDbContext db, Guid siteId) =>
+    (await db.SiteModuleSettings
+        .Where(m => m.SiteId == siteId && m.Enabled)
+        .Select(m => m.Module.ToString())
+        .ToListAsync())
+    .ToArray();
 
 static string GenerateSiteToken() => Convert.ToBase64String(RandomNumberGenerator.GetBytes(32))
     .TrimEnd('=')
@@ -425,6 +488,17 @@ internal sealed record SiteTokenDto(Guid Id, string Token, DateTimeOffset Create
 internal sealed record SiteModuleSettingDto(Module Module, bool Enabled, DateTimeOffset UpdatedAt);
 
 internal sealed record UpdateModuleSettingRequest(bool Enabled);
+
+/// <summary>Response shape for GET /internal/tokens/{token} — see the endpoint's doc comment.</summary>
+internal sealed record InternalTokenLookupResponse(
+    bool Found, Guid? SiteId, Guid? WorkspaceId, string[]? AllowedOrigins, string[]? EnabledModules)
+{
+    public static readonly InternalTokenLookupResponse NotFound = new(false, null, null, null, null);
+}
+
+/// <summary>One row of GET /internal/tokens — see the endpoint's doc comment.</summary>
+internal sealed record InternalTokenListEntry(
+    string Token, Guid SiteId, Guid WorkspaceId, string[] AllowedOrigins, string[] EnabledModules);
 
 /// <summary>Event-specific payload carried in site.created.v1's EventEnvelope.Data (ADR 0002).</summary>
 internal sealed record SiteCreatedEventData(

@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- No DB/EF Core, no Microsoft.Identity.Web, no packages/outbox — this service owns no
+         persistent data (docs/architecture/bounded-contexts-and-data-ownership.md) and is the
+         one public/anonymous backend endpoint in the repo (docs/adr/0006). -->
+    <PackageReference Include="Dapr.AspNetCore" Version="1.18.5" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.10" />
+    <PackageReference Include="Microsoft.OpenApi" Version="2.11.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\packages\dotnet-service-defaults\Telumera.ServiceDefaults.csproj" />
+    <ProjectReference Include="..\..\packages\event-contracts\Telumera.EventContracts.csproj" />
+  </ItemGroup>
+
+</Project>

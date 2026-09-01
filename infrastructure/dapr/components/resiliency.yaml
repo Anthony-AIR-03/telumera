@@ -12,6 +12,7 @@ metadata:
 scopes:
   - smoke-test
   - site-registry
+  - event-collector
   # Add each real service's app-id here once it publishes or subscribes through
   # "pubsub", or makes outbound Dapr service-invocation calls that only ever expect success
   # responses (see infrastructure/dapr/README.md and the note on gateway's exclusion below).
@@ -62,5 +63,11 @@ spec:
       # is safe here. Per ADR 0002. Do not add gateway's invoke targets here — see the note on
       # scopes above for why.
       identity-workspace:
+        retry: invoke-retry
+        circuitBreaker: invoke-circuit-breaker
+      # Bounds event-collector's SiteRegistryClient calls (GET /internal/tokens[/{token}]) — same
+      # clean success-or-transport-error shape as identity-workspace's internal membership endpoint
+      # above, so the same blanket retry-on-any-error policy is safe here too.
+      site-registry:
         retry: invoke-retry
         circuitBreaker: invoke-circuit-breaker

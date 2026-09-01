@@ -37,6 +37,8 @@ jobs:
             dockerfile: services/site-registry/Dockerfile
           - service: gateway
             dockerfile: gateway/Dockerfile
+          - service: event-collector
+            dockerfile: services/event-collector/Dockerfile
     steps:
       - uses: actions/checkout@v4
 

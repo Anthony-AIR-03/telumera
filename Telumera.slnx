@@ -32,8 +32,14 @@
   <Folder Name="/services/site-registry/">
     <Project Path="services/site-registry/Telumera.Services.SiteRegistry.Api.csproj" />
   </Folder>
+  <Folder Name="/services/event-collector/">
+    <Project Path="services/event-collector/Telumera.Services.EventCollector.Api.csproj" />
+  </Folder>
   <Folder Name="/tests/" />
   <Folder Name="/tests/integration/">
     <Project Path="tests/integration/Telumera.Tests.Integration/Telumera.Tests.Integration.csproj" />
+  </Folder>
+  <Folder Name="/tests/load/">
+    <Project Path="tests/load/Telumera.LoadTests/Telumera.LoadTests.csproj" />
   </Folder>
 </Solution>

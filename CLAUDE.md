@@ -274,7 +274,53 @@ automation in this environment refuses `file://` navigation, so the built bundle
 executed in a small jsdom harness (Node), confirming `window.telumera` is set, the router double-fire is
 suppressed against the init page view, nothing is sent before `setConsent(true)`, and after consent the
 debug transport logs the exact payload while still making zero real network calls. Covers all 12 M01.2
-Asana subtasks. What's left before real traffic: the Event Collector itself (M01.3).
+Asana subtasks.
+
+M01.3 ("Collection API") is complete: `services/event-collector` accepts the SDK's batched
+`POST /v1/events` and publishes accepted events onto Dapr pub/sub — the browser-facing counterpart to
+M01.2. It's a genuinely different shape of service from identity-workspace/site-registry: its bounded-
+contexts row says it owns "none persistent" data, and ADR 0004 explicitly exempts its high-volume
+ingestion path from the transactional-outbox pattern those two use — so no PostgreSQL database, no EF
+Core, no Entra auth (it's the one public/anonymous backend endpoint, per ADR 0006). Three design
+decisions were confirmed before building: publish via an in-memory bounded `Channel` +
+`BackgroundService` (not a synchronous per-request Dapr call) so ingestion latency is decoupled from
+publish latency, at the ADR-0004-sanctioned cost of dropping an event on a crash between accept and
+publish; load-test with NBomber (`tests/load/Telumera.LoadTests`) to stay in the .NET ecosystem rather
+than adding k6 as a second tooling family; and a small, additive patch to the already-shipped
+`packages/browser-sdk` (M01.2) adding a client-generated `id` to `OutgoingEvent`, since the Collector's
+duplicate-protection subtask needed a per-event id the SDK didn't emit before this epic.
+
+Site Registry gained two new internal endpoints (`GET /internal/tokens/{token}`,
+`GET /internal/tokens`) — no existing endpoint could resolve a raw token string to a site, since every
+one is keyed by an authenticated caller's already-known site ID. Same unauthenticated,
+trust-the-Dapr-network-boundary pattern identity-workspace's internal membership endpoint already
+established. The Collector keeps an in-memory `SiteProjection` (token → site/workspace/allowed-origins/
+enabled-modules) built from these two endpoints and kept current by subscribing to
+`site.created.v1`/`site.settings.changed.v1`/`site.key.rotated.v1` on site-registry's existing
+`site-events` topic — the first real Dapr pub/sub *subscriber* in the repo (via `Dapr.AspNetCore`'s
+`.WithTopic()` on a minimal API endpoint, since site-registry multiplexes three different payload shapes
+onto that one topic, dispatched by inspecting the CloudEvent's own `type` field rather than binding a
+single typed model).
+
+Verified live against a real `docker compose up` stack (Docker Desktop wasn't running at first; the user
+started it mid-session specifically so this could be verified for real rather than just compiled) —
+this caught two real bugs `dotnet build`/`dotnet format` couldn't have: (1) a startup race where the
+app's one-shot projection warm-up ran before its own Dapr sidecar's HTTP port was ready, silently
+degrading to cache-miss-only forever with no self-healing — fixed by moving warm-up into a
+`BackgroundService` (`SiteProjectionSyncService`) that retries quickly on startup and periodically
+resyncs; (2) `EventValidation` rejected the SDK's own built-in `page_view` events, because it mirrored
+`events.ts`'s scalar-only property-value rule, but that rule only actually applies to the SDK's public
+`track()` API — `page_view`'s own `properties.query` is a legitimate nested object the built-in event
+never validates client-side. Fixed by bounding property values by serialized size instead of value kind.
+After both fixes, confirmed end-to-end: a real batch through `/v1/events` returns 202 and actually lands
+on the `collector-events` RabbitMQ exchange (checked via its `publish_in` counter, before/after); a
+retried duplicate event id increments that counter by zero extra; an unknown token 404s and a
+mismatched Origin 403s while a missing one passes through (defense-in-depth per ADR 0006, not the access
+boundary); a malformed event inside an otherwise-valid batch is rejected without failing the whole
+batch; and — the most load-bearing check — publishing synthetic `site.settings.changed.v1` and
+`site.key.rotated.v1` events directly against the running stack changed the Collector's live in-memory
+projection within seconds with no restart, proving the subscription wiring actually works end-to-end,
+not just that it compiles. Covers all 8 M01.3 Asana subtasks.
 
 ## Planning artifacts (`planning/`)
 

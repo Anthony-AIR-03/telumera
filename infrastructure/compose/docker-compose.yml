@@ -2,10 +2,9 @@
 # infrastructure — Postgres, ClickHouse, RabbitMQ, Redis, MinIO, an OTel
 # Collector, a Dapr placement service + one headless "smoke-test" Dapr
 # sidecar — plus the real application services built so far:
-# identity-workspace, site-registry, and gateway (a transparent reverse
-# proxy in front of both — see gateway/README.md). services/event-collector/
-# is still an empty scaffold and gets its own compose entry the same way,
-# once built.
+# identity-workspace, site-registry, gateway (a transparent reverse proxy in
+# front of both — see gateway/README.md), and event-collector (the one
+# public/anonymous endpoint — see services/event-collector/README.md).
 #
 # Usage: see infrastructure/compose/README.md. Quick start:
 #   cp .env.example .env   # then fill in local values
@@ -349,6 +348,61 @@ services:
     network_mode: "service:gateway"
     depends_on:
       gateway:
+        condition: service_started
+      dapr-placement:
+        condition: service_started
+      otel-collector:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
+
+  # M01.3's Event Collector — no ConnectionStrings__* here, unlike every other real service: it owns
+  # no persistent data (docs/architecture/bounded-contexts-and-data-ownership.md), only an in-memory
+  # projection of site-registry data. Depends on site-registry only loosely (via Dapr invoke/pub-sub at
+  # runtime, not a compose-level dependency) since its projection warm-up degrades gracefully — see
+  # services/event-collector/README.md.
+  event-collector:
+    build:
+      context: ../..
+      dockerfile: services/event-collector/Dockerfile
+    restart: unless-stopped
+    environment:
+      DAPR_HTTP_PORT: "3500" # matches event-collector-dapr's -dapr-http-port below (shared network namespace)
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"
+    ports:
+      - "5103:8080" # HTTP API
+      - "3505:3500" # event-collector-dapr's HTTP API (shared namespace; published here since network_mode: service:x sidecars can't publish their own ports)
+      - "50006:50001" # event-collector-dapr's gRPC API
+    depends_on:
+      otel-collector:
+        condition: service_started
+    networks:
+      - telumera-net
+
+  # event-collector's own sidecar — -app-port is required even though nothing Dapr-invokes *into* this
+  # service: Dapr pub/sub delivery for its site.created.v1/site.settings.changed.v1/site.key.rotated.v1
+  # subscriptions works by the sidecar calling back into the app's /dapr/subscribe and topic-handler
+  # routes, which needs -app-port regardless of inbound service-invocation.
+  event-collector-dapr:
+    image: daprio/daprd:1.14.4
+    restart: unless-stopped
+    command:
+      - "./daprd"
+      - "-app-id=event-collector"
+      - "-app-port=8080"
+      - "-dapr-http-port=3500"
+      - "-dapr-grpc-port=50001"
+      - "-placement-host-address=dapr-placement:50006"
+      - "-resources-path=/components"
+      - "-config=/config/config.yaml"
+    environment:
+      RABBITMQ_CONNECTION_STRING: "amqp://${RABBITMQ_DEFAULT_USER}:${RABBITMQ_DEFAULT_PASS}@rabbitmq:5672"
+    volumes:
+      - ../dapr/components:/components:ro
+      - ../dapr/config:/config:ro
+    network_mode: "service:event-collector"
+    depends_on:
+      event-collector:
         condition: service_started
       dapr-placement:
         condition: service_started
