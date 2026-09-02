@@ -119,6 +119,52 @@ Two patterns, chosen by whether there's anything to look at read-only:
 - **`:disabled` on the action** for mutating something already visible (rotate/revoke token, toggle a
   module) — Viewers should still see the tokens/modules list, just not act on it.
 
+## Analytics components (M01.7, `src/components/analytics/`)
+
+Shipped as an extension of the pre-existing "Telumera Dashboard Concept" design mockup
+(`https://claude.ai/code/artifact/77de8a9c-0318-4088-8a85-854e8b7cc442` — this doc's own `--page-bg`/
+`--surface-sunken`/`--ink-*` token names were originally extracted from that same artifact), not a
+from-scratch build — check it for an equivalent pattern before inventing a new one for a future screen.
+
+- **`MetricCard.vue`** — label + `(i)` glossary trigger row, big value (`text-2xl font-bold font-display`),
+  an optional delta row (`brand-700` up-arrow / `neutral-500` down-arrow — **never red**; red stays
+  reserved for destructive actions per the Color section above). Only render a delta when the *comparison
+  period actually had data* (`previous.sessions > 0`), not just when a previous object exists — a
+  metric's own previous value can be non-zero by construction even with zero prior sessions (e.g.
+  `bounceRate`'s empty-period fallback is 100%, not 0%), so checking a single metric's own value against
+  zero doesn't reliably detect "no prior data." Caught live: a fresh site's first week showed
+  "Bounce rate ↓ 0.0% vs prior period" before this fix.
+- **`TrafficChart.vue`** — hand-rolled inline SVG, Catmull-Rom-smoothed lines (not straight polylines),
+  one shared linear y-axis from 0 (never a truncated or dual axis). Palette validated with the `dataviz`
+  skill's `validate_palette.js` against this doc's own tokens: `#008055` (brand-700, Views), `#00BD7E`
+  (brand-500, Visitors), `#838F88` dashed (neutral-500, Sessions — muted + shape-coded on purpose, not a
+  4th hue). Two of the three checks land as WARN, not PASS (brand-500 vs. neutral-500 CVD separation in
+  the 6-8 "floor" band; brand-500's contrast vs. the chart surface) — both are only legal with secondary
+  encoding, which the dashed Sessions stroke and the always-visible legend + hover-tooltip text labels
+  both provide. Never drop those text labels when reusing this chart elsewhere.
+- **Categorical donut palette** (`TechnologyBreakdown.vue`, and any future segmented breakdown) —
+  `#2a78d6, #eb6834, #1baf7a, #eda100, #e87ba4, #4a3aa7` (blue/orange/aqua/yellow/magenta/violet), the
+  same 6-color set the original concept mockup used for this exact purpose, separately validated clean.
+  Always pair segments with a text legend (WARNs on contrast-vs-surface for 3 of the 6 steps) — never
+  color-only.
+- **`AnalyticsDateRangeControl.vue`** — preset pills (`bg-brand-50 font-bold text-brand-700` when
+  selected, matching the active-tab/active-nav treatment) + native `<input type="date">` + a
+  "Shareable link" copy-to-clipboard button. State lives in the route query (`from`/`to`), via
+  `lib/date-range.ts`'s `resolveDateRange` — reuse that helper rather than re-deriving the "defaults to
+  last 7 days" logic anywhere else that needs the same range.
+- **Tab strip** (inline in `SiteAnalyticsView.vue`, not yet its own component — only one screen uses it
+  so far) — `role="tablist"`/`role="tab"`, active tab styled identically to the date-range presets
+  (`bg-brand-50 font-bold text-brand-700`), active tab tracked in the route query (`tab`) so a shared
+  link reopens on the same breakdown.
+- **`SiteSwitcher.vue`** — dropdown, current site checked, closes on an outside click (a
+  `document`-level listener scoped to the component's root ref — confirmed live this doesn't fire
+  spuriously for clicks on the toggle button itself, since that element is inside the ref's own subtree).
+- **`GlossaryDrawer.vue`** — a native `<dialog>` (`showModal()`/`close()`), not a hand-rolled modal — free
+  focus trap, Esc-to-close, and backdrop. **`left-auto` is load-bearing** on a right-anchored `<dialog>`:
+  confirmed live that `right-0` alone renders the panel pinned to the *left* edge, because a modal
+  `<dialog>`'s UA stylesheet sets `inset: 0` (including `left: 0`) on the top-layer element, and an
+  author `right-0` utility doesn't clear that `left: 0` — only an explicit `left-auto` does.
+
 ## When to componentize
 
 Componentize a pattern once it's **genuinely repeated 3+ times** with the same shape (this is why

@@ -495,6 +495,85 @@ quoting behavior. All 25 integration tests in the repo now pass together against
 first time the complete suite has ever been run end-to-end, not just individually verified per-milestone.
 Covers all 10 M01.6 Asana subtasks.
 
+M01.7 ("Analytics dashboard") is complete: `apps/dashboard-web` gained a full `/sites/:id/analytics`
+screen consuming all seven M01.6 endpoints — the first UI for any of this module's data. Before writing
+any Vue, the design was mocked up and approved as a working HTML prototype
+(`https://claude.ai/code/artifact/77de8a9c-0318-4088-8a85-854e8b7cc442`) — not a fresh build, but an
+extension of a pre-existing "Telumera Dashboard Concept" artifact from before M01 started, which
+`docs/design/housestyle.md` was itself originally extracted from; a first attempt built a separate new
+mockup from scratch and was corrected mid-session to update the existing one instead, on user direction,
+along with adding a site-switcher (not in the original plan) and building out all five breakdown tabs
+with real interactivity rather than a single static one. The mockup's own smooth Catmull-Rom traffic
+chart, three-donut technology breakdown, and honest "not available yet" geography state all carried
+straight into the real components essentially unchanged.
+
+Route: `/sites/:id/analytics`, `from`/`to`/`tab` all persisted in the query string (`lib/date-range.ts`
+shared between the page shell and the date-range control) — genuinely shareable, confirmed live by
+navigating a full query string cold and getting the exact same preset/range/tab state back, not just
+inferred from the code. Seven new components under `components/analytics/`: `MetricCard`,
+`TrafficChart`, `PagesTable`, `AcquisitionTable`, `TechnologyBreakdown`, `GeographyTable`,
+`CustomEventExplorer`, `GlossaryDrawer` (native `<dialog>`, no hand-rolled modal), `AnalyticsDateRangeControl`,
+`SiteSwitcher`. `lib/analytics-types.ts` mirrors `AnalyticsQueryDtos.cs` exactly. Zero new runtime
+dependencies — the traffic chart is hand-rolled inline SVG (no charting library existed in
+`package.json` before this, matching the app's existing zero-incidental-dependency ethos), reusing the
+mockup's own Catmull-Rom smoothing code. The `dataviz` skill's palette validator was run for real before
+picking chart colors: the traffic chart's three series (`#008055`/`#00BD7E`/dashed `#838F88`) passed with
+two WARNs (a CVD floor-band pair, a contrast-vs-surface warning) both resolved by the design's own
+always-visible legend and hover-tooltip text labels, never color-alone; the technology donuts reuse the
+6-color categorical set the original concept mockup already had (`--cat-1`..`--cat-6`), separately
+validated clean. Engaged rate and bounce rate are always rendered as a pair per
+`docs/analytics/definitions-and-privacy-model.md` §4, never bounce alone. "Filters and segments" (CSV:
+"page, source, device and country filters") was scoped to what M01.6's API actually supports per-endpoint
+(pages' `search`/`pathPrefix`, events' `eventName`) rather than a new cross-cutting segment bar the
+backend has no query params for — flagged as a deliberate scope decision, not silently narrowed.
+
+Verified in a real browser (`claude-in-chrome`) against the live M01.6 backend from the previous epic's
+own verification session — not just type-check/lint/build, though all three passed clean (zero new
+runtime deps confirmed in the production build output). Signing in via MSAL's popup flow worked silently
+in this session (an already-live Microsoft SSO session in the user's real Chrome profile), so the full
+flow was driven for real: Workspaces → a site → "View analytics" → all five tabs individually confirmed
+against real ClickHouse-backed data (Technology's three donuts matched the exact Chrome/Windows/Desktop
+UA posted during M01.6's own verification; Geography correctly showed its honest empty state; Events
+correctly showed empty since that test site only ever received page_view/engagement events) → the
+chart's hover tooltip → the pages table's live search (typing "pricing" server-side-filtered to exactly
+`/pricing`) → the site-switcher (including its correct empty state, since this test workspace has only
+one site) → the glossary drawer → date-range presets updating the URL → and finally, a cold navigation to
+a copied full query string reproducing the exact same range/tab state, the actual test of "shareable."
+This live pass caught two real bugs no type-checker or lint rule would have: `bounceRate`'s
+zero-prior-period fallback is 100% (`1 - engagedRate`'s 0%), not 0%, so checking a single metric's own
+previous value against zero never caught "no prior data" for bounce rate specifically — a fresh site's
+first-ever week showed "Bounce rate ↓ 0.0% vs prior period," fixed by gating all five cards' deltas on
+`previous.sessions > 0` instead; and the glossary drawer rendered pinned to the **left** edge despite
+`right-0` in its classes, because a native `<dialog>`'s UA stylesheet sets `inset: 0` (including `left:
+0`) on the top-layer element, which author `right-0` alone doesn't clear — fixed with an explicit
+`left-auto`. A third, smaller gap (the site-switcher not closing on an outside click) was caught the same
+way and fixed with a document-level click listener. Covers all 11 M01.7 Asana subtasks.
+
+Post-M01.7 follow-up, same session: the user reviewing the live app asked why there was no sidebar
+"Analytics" nav item (the approved mockup has one) and asked to prune the dozens of leftover test
+workspaces/sites accumulated across every prior milestone's live verification. The mockup's link isn't a
+direct port candidate — it assumes a single-site fiction with no real multi-tenancy, so a bare top-level
+link has no unambiguous destination once there's more than one site. Resolved with a new
+`AnalyticsSitesView.vue` at `/analytics` (sidebar nav item added, reusing the mockup's own bar-chart icon)
+listing every site the caller can view analytics for, grouped by workspace — no new backend endpoint,
+just a client-side fan-out (`GET /workspaces` then each workspace's `GET /workspaces/{id}/sites` in
+parallel), since any workspace membership already clears the Viewer-level bar every M01.6 endpoint
+requires. Three layout options (grouped-by-workspace, flat-list-with-badge, card-grid-with-traffic-preview)
+were sketched as `AskUserQuestion` previews before building; grouped-by-workspace was picked specifically
+for reusing the exact list-row pattern already used everywhere else in the app. The workspace/site cleanup
+was done directly against the local dev databases (no delete endpoint exists in either
+identity-workspace or site-registry — confirmed by grep, matching a comment already in the approved
+mockup noting this is a deliberately unbuilt "speculative" feature) — `memberships`/`workspaces` in
+`telumera_access`, `site_tokens`/`site_module_settings`/`outbox_events`/`sites` in `telumera_sites` (no
+FK constraints between any of these tables, confirmed via `\d`, so plain `DELETE ... WHERE id != <kept>`
+was safe without cascade ordering), and matching ClickHouse rows across `events`/`sessions`/all five
+`daily_*_rollup` tables via `ALTER TABLE ... DELETE`. Left exactly one real workspace/site behind
+("Verify Query API Workspace" / "Verify Query API Site," the one with genuine multi-page, multi-tech
+demo data from M01.6's own live verification) — confirmed by signing into the real app fresh afterward
+and seeing exactly that one workspace. `docs/design/housestyle.md` gained a full write-up of every new
+`components/analytics/` pattern from this session (not just the two follow-up items) as part of this
+pass, since it hadn't been updated since before M01.7 shipped.
+
 ## Planning artifacts (`planning/`)
 
 - `Telumera_Modular_Project_Plan.md` — the full architecture/roadmap doc summarized above; treat as the

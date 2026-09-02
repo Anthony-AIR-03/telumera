@@ -116,9 +116,14 @@ const canManage = computed(() => roleAtLeast(site.value?.role ?? null, 'Develope
     >
       {{ t('common.backToWorkspace') }}
     </RouterLink>
-    <h1 class="font-display mt-2 text-xl font-bold text-neutral-900">
-      {{ site?.name ?? siteId }}
-    </h1>
+    <div class="mt-2 flex items-center justify-between">
+      <h1 class="font-display text-xl font-bold text-neutral-900">
+        {{ site?.name ?? siteId }}
+      </h1>
+      <RouterLink v-if="site" :to="`/sites/${siteId}/analytics`">
+        <AppButton variant="secondary">{{ t('sites.viewAnalytics') }}</AppButton>
+      </RouterLink>
+    </div>
 
     <StateMessage v-if="error" state="error" :message="error" class="mt-6" />
     <StateMessage v-else-if="loading" state="loading" :message="t('common.loading')" class="mt-6" />

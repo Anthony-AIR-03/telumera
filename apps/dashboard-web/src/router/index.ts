@@ -23,9 +23,21 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/analytics',
+      name: 'analytics-sites',
+      component: () => import('../views/AnalyticsSitesView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/sites/:id',
       name: 'site-detail',
       component: () => import('../views/SiteDetailView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/sites/:id/analytics',
+      name: 'site-analytics',
+      component: () => import('../views/SiteAnalyticsView.vue'),
       meta: { requiresAuth: true },
     },
   ],

@@ -4,6 +4,7 @@
   },
   "nav": {
     "dashboard": "Dashboard",
+    "analytics": "Analytics",
     "logout": "Log out"
   },
   "login": {
@@ -33,7 +34,8 @@
     "create": "Add site",
     "empty": "No sites yet — add one above.",
     "loadError": "Couldn't load this site.",
-    "createError": "Couldn't create the site."
+    "createError": "Couldn't create the site.",
+    "viewAnalytics": "View analytics"
   },
   "members": {
     "title": "Members",
@@ -54,5 +56,118 @@
     "enabled": "Enabled",
     "disabled": "Disabled",
     "toggleError": "Couldn't update that module."
+  },
+  "analyticsSites": {
+    "title": "Analytics",
+    "loadError": "Couldn't load your sites.",
+    "empty": "No sites yet — add one from a workspace to see analytics here."
+  },
+  "analytics": {
+    "loadError": "Couldn't load this site.",
+    "overviewError": "Couldn't load the overview metrics.",
+    "chartError": "Couldn't load the traffic chart.",
+    "privacyFloor": "too few to show",
+    "siteSwitcher": {
+      "trigger": "Switch site",
+      "empty": "No other sites in this workspace."
+    },
+    "dateRange": {
+      "presetGroup": "Date range preset",
+      "preset": "{days}d",
+      "from": "From date",
+      "to": "To date",
+      "shareableLink": "Shareable link",
+      "linkCopied": "Copied!"
+    },
+    "overview": {
+      "visitors": "Visitors",
+      "sessions": "Sessions",
+      "views": "Views",
+      "engagedRate": "Engaged rate",
+      "bounceRate": "Bounce rate",
+      "deltaLabel": "{percent}% vs prior period"
+    },
+    "chart": {
+      "title": "Traffic over time",
+      "views": "Views",
+      "visitors": "Visitors",
+      "sessions": "Sessions"
+    },
+    "tabs": {
+      "label": "Breakdown",
+      "pages": "Pages",
+      "acquisition": "Acquisition",
+      "technology": "Technology",
+      "geography": "Geography",
+      "events": "Events"
+    },
+    "pages": {
+      "searchPlaceholder": "Search paths…",
+      "loadError": "Couldn't load pages.",
+      "empty": "No pages match your search.",
+      "path": "Path",
+      "views": "Views",
+      "visitors": "Visitors",
+      "entries": "Entries",
+      "exits": "Exits",
+      "engaged": "Engaged",
+      "pageOf": "Page {page} of {total}",
+      "prev": "Previous",
+      "next": "Next"
+    },
+    "acquisition": {
+      "loadError": "Couldn't load acquisition data.",
+      "empty": "No acquisition data for this range.",
+      "channel": "Channel",
+      "campaign": "Source / medium / campaign",
+      "sessions": "Sessions",
+      "visitors": "Visitors",
+      "engagedSessions": "Engaged sessions"
+    },
+    "technology": {
+      "loadError": "Couldn't load technology data.",
+      "empty": "No technology data for this range.",
+      "device": "Device",
+      "browser": "Browser",
+      "os": "OS"
+    },
+    "geography": {
+      "loadError": "Couldn't load geography data.",
+      "notAvailable": "Geography isn't available yet",
+      "notAvailableDetail": "Country data ships with a real GeoIP provider (M01.8) — every event is already collected, but no location is attached to it yet.",
+      "country": "Country",
+      "sessions": "Sessions",
+      "visitors": "Visitors",
+      "views": "Views",
+      "unknown": "Unknown"
+    },
+    "events": {
+      "loadError": "Couldn't load custom events.",
+      "empty": "No custom events for this range.",
+      "filterPlaceholder": "Filter by event name…",
+      "count": "{count} events",
+      "uniqueSessions": "{count} sessions",
+      "noProperties": "No properties observed."
+    },
+    "glossary": {
+      "link": "Metric definitions",
+      "title": "Metric definitions",
+      "close": "Close",
+      "openFor": "Metric definitions for {label}",
+      "terms": {
+        "visitor": "Visitor",
+        "visitorBody": "A daily unique identifier derived server-side from the site, a rotating salt, and the visitor's truncated IP and browser. It resets every 24 hours, so totals across more than one day are a sum of daily uniques, not a true distinct count over the whole range.",
+        "session": "Session",
+        "sessionBody": "A run of activity from one visitor. It ends after 30 minutes with no tracked event, and a new campaign context (e.g. arriving from a new ad click) always starts a new session.",
+        "engagedSession": "Engaged session",
+        "engagedSessionBody": "A session is engaged if it has at least 10 seconds of active time or at least 2 page views. Engaged rate is the share of sessions meeting that bar.",
+        "bounceRate": "Bounce rate",
+        "bounceRateBody": "1 minus engaged rate. Always shown alongside engaged rate, never on its own — a bounce rate with no visible engagement threshold is easy to misread.",
+        "comparisonPeriod": "Comparison period",
+        "comparisonPeriodBody": "The immediately preceding period of equal length — a 7-day range compares against the 7 days right before it, so the delta is always like-for-like in duration.",
+        "privacyFloor": "\"Too few to show\"",
+        "privacyFloorBody": "A breakdown row covering fewer than 5 distinct visitors is flagged rather than hidden — the underlying number is real, but small enough that showing it standalone could identify an individual visit."
+      }
+    }
   }
 }
