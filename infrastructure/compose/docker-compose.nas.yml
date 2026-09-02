@@ -1,0 +1,112 @@
+# NAS production override for docker-compose.yml — see docs/architecture/nas-deployment-profile.md and
+# docs/runbooks/analytics-module.md.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.nas.yml --env-file .env.nas up -d --build
+#
+# What this changes vs. local dev:
+#   - No published host ports (`ports: !reset []`) — nothing on the NAS is reachable except through the
+#     existing Nginx Proxy Manager + Cloudflare Tunnel. Needs Compose >= 2.24 for the `!reset` tag; on
+#     an older Compose, drop the `ports:` blocks from the base file by hand instead.
+#   - gateway / event-collector / analytics / dashboard-web also join the pre-existing external `npm`
+#     Docker network so NPM can proxy to them by container name (api./hubs./collect./apex telumera.nl).
+#   - mem_limit / cpus per the profile's §6 table — tune to the actual NAS.
+#   - A dashboard-web container (static nginx) — the Vue app isn't containerised for local dev.
+#
+# Cross-origin CORS in prod is handled by the NAS .env alone: set CORS_ALLOWED_ORIGINS=https://telumera.nl
+# and both the gateway and analytics pick it up (they already read it). No env override needed here.
+
+networks:
+  npm:
+    external: true
+
+services:
+  postgres:
+    ports: !reset []
+    mem_limit: 512m
+
+  clickhouse:
+    ports: !reset []
+    mem_limit: 2g
+
+  rabbitmq:
+    ports: !reset []
+    mem_limit: 256m
+
+  redis:
+    ports: !reset []
+    mem_limit: 128m
+
+  minio:
+    ports: !reset []
+    mem_limit: 256m
+
+  otel-collector:
+    ports: !reset []
+    mem_limit: 192m
+
+  dapr-placement:
+    mem_limit: 128m
+
+  dapr-smoke-test-sidecar:
+    ports: !reset []
+    mem_limit: 128m
+
+  identity-workspace:
+    ports: !reset []
+    mem_limit: 256m
+
+  identity-workspace-dapr:
+    mem_limit: 128m
+
+  site-registry:
+    ports: !reset []
+    mem_limit: 256m
+
+  site-registry-dapr:
+    mem_limit: 128m
+
+  gateway:
+    ports: !reset []
+    mem_limit: 256m
+    networks:
+      - telumera-net
+      - npm
+
+  gateway-dapr:
+    mem_limit: 128m
+
+  event-collector:
+    ports: !reset []
+    mem_limit: 256m
+    networks:
+      - telumera-net
+      - npm
+
+  event-collector-dapr:
+    mem_limit: 128m
+
+  analytics:
+    ports: !reset []
+    mem_limit: 512m
+    networks:
+      - telumera-net
+      - npm
+
+  analytics-dapr:
+    mem_limit: 128m
+
+  dashboard-web:
+    build:
+      context: ../..
+      dockerfile: apps/dashboard-web/Dockerfile
+      args:
+        VITE_API_BASE_URL: "https://api.telumera.nl"
+        VITE_HUBS_ORIGIN: "https://hubs.telumera.nl"
+        VITE_COLLECTOR_ORIGIN: "https://collect.telumera.nl"
+        VITE_AZURE_AD_TENANT_ID: "${AZURE_AD_TENANT_ID}"
+        VITE_AZURE_AD_CLIENT_ID: "${AZURE_AD_DASHBOARD_CLIENT_ID}"
+        VITE_AZURE_AD_API_SCOPE: "${AZURE_AD_API_SCOPE}"
+    restart: unless-stopped
+    mem_limit: 64m
+    networks:
+      - npm

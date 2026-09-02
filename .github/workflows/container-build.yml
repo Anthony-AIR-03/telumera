@@ -41,6 +41,8 @@ jobs:
             dockerfile: services/event-collector/Dockerfile
           - service: analytics
             dockerfile: services/analytics/Dockerfile
+          - service: dashboard-web
+            dockerfile: apps/dashboard-web/Dockerfile
     steps:
       - uses: actions/checkout@v4
 

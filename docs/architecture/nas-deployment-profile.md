@@ -151,12 +151,23 @@ Retention policy, backup destination (a second NAS volume vs. off-site), and res
 deliberately left open — revisit once there's real user data at stake, i.e. once M01 actually ships
 events into this stack.
 
-## 8. Why this isn't a second compose file (yet)
+## 8. The override file (added M01.8)
 
-A `docker-compose.nas.yml` override is the obvious next artifact, but writing one now would mean
-maintaining an override for a deployment target with no services running behind it (`gateway/` and
-`services/*` are still empty — see `infrastructure/compose/README.md`) and no way to test it against a
-real NAS from this environment. This document captures the decisions (reverse proxy choice, TLS mode,
-network exposure, resource limits, backup inventory) so the override file is a mechanical translation of
-already-made decisions when it's actually needed — expected around the time `gateway/` exists (M00.4) and
-there's a first real vertical-slice deployment target (`docs/architecture/vision-and-scope.md` §7).
+`infrastructure/compose/docker-compose.nas.yml` now exists — the mechanical translation of the
+decisions above, written once M01 had a real vertical slice to deploy. It:
+
+- `ports: !reset []` on every service (needs Compose ≥ 2.24) so nothing is published on the NAS —
+  ingress is the existing Nginx Proxy Manager + `<tunnel>` only.
+- attaches `gateway`, `event-collector`, `analytics`, and a new static `dashboard-web` container to
+  the pre-existing external `npm` network so NPM proxies to them by name
+  (`api.` / `hubs.` / `collect.` / apex `telumera.nl`).
+- sets `mem_limit` per the §6 table.
+
+Cross-origin CORS in prod needs no override — `CORS_ALLOWED_ORIGINS=https://telumera.nl` in the NAS
+`.env` is read by both the gateway and analytics. Operational steps (the `docker compose` invocation,
+the four NPM proxy hosts, the Cloudflare/Entra prerequisites) are in
+`docs/runbooks/analytics-module.md`; the NAS env template is
+`infrastructure/compose/.env.nas.example`.
+
+Reverse-proxy choice: this deployment reuses the NAS's existing Nginx Proxy Manager rather than adding
+Caddy (§4's recommendation stands for a NAS that has no proxy yet — this one does).

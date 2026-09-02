@@ -8,3 +8,6 @@ runbook started early, in M00.3:
   secrets model, and a debugging checklist for the Dapr sidecar/RabbitMQ pub/sub setup.
 - `rollback-and-migrations.md` — what "rollback" means per environment (self-hosted, Azure), and the
   expand/contract rule for database migrations that keeps a rollback from also being broken.
+- `analytics-module.md` — operating the Product Analytics pipeline (M01.8): health checks, event
+  replay, GeoIP database refresh, the live panel and data-quality dashboard, deploying to the NAS on
+  `telumera.nl`, and backup/restore.
