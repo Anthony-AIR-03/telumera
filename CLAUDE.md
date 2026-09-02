@@ -427,6 +427,74 @@ written and confirmed to build and skip cleanly, but not run against a real Entr
 session — no interactive device-code login was available; the aggregation logic itself was validated at
 the ClickHouse layer directly instead. Covers all 11 M01.5 Asana subtasks.
 
+M01.6 ("Analytics query API") is complete: `services/analytics` gained seven `GET
+/sites/{siteId:guid}/analytics/...` endpoints (overview, time-series, pages, acquisition, technology,
+geography, custom-events) reading M01.5's `sessions`/`daily_*_rollup` tables — the first read surface for
+any of this module's data. This is also the first authenticated surface on this service (the existing
+`/subscriptions/collector-events` endpoint stays unauthenticated, coexisting via ASP.NET Core's per-endpoint
+`.RequireAuthorization` rather than a blanket policy) and the first real consumer of the `redis` container
+that's run unused since M00.3 (`Microsoft.Extensions.Caching.StackExchangeRedis`'s standard
+`IDistributedCache`, not a hand-rolled client — unlike `ClickHouseWriter`'s raw-HTTP approach, Redis's
+official client has no net10.0 compatibility gap to work around). Four design questions
+`docs/architecture/c4-container.md` explicitly left open for this epic were resolved and documented in
+`services/analytics/README.md`'s new section: siteId→workspaceId resolution (a new unauthenticated `GET
+/internal/sites/{id}` on `services/site-registry`, mirroring its existing `/internal/tokens/{token}`
+exactly, feeding a duplicated `MembershipClient`/`Role.cs` pair rather than forwarding the caller's own
+bearer token onward — the latter would have been genuinely new, unprecedented plumbing); the pagination
+envelope (`{ items, total, page, pageSize }`, `total` via `count() OVER()` in the same query rather than a
+second round trip — the first paginated endpoint in the repo); the cache key/TTL shape; and the query
+timeout mechanism (`ClickHouseQueryClient`, a second HttpClient/class separate from the aggregation
+writer's, pairing a client-side `HttpClient.Timeout` with a server-side `SETTINGS max_execution_time` —
+the client timeout alone stops this service from waiting but doesn't stop ClickHouse itself from burning
+CPU on a runaway query, which is the actual "protect ClickHouse" goal). `gateway/GatewayForwarder.cs`
+needed one more routing carve-out (`/sites/{id}/analytics/**`, mirroring its existing
+`workspaces/.../sites` one) since its table already routes the `sites` segment to site-registry. Every
+query-string value not validated against a fixed C# allowlist (sort column/direction, time-series
+interval) is passed through ClickHouse's native `{name:Type}` parameter binding rather than string-
+interpolated — verified live against a real ClickHouse instance that this rejects injection attempts as
+inert literal data, the same live-first discipline M01.5 established (the window-function pagination
+count, hourly time-series bucketing, and the custom-events "allowed properties"
+`JSONExtractKeys`/`arrayJoin` query were all developed and confirmed against real data before being
+written into C#). Comparison periods (`?compare=true`) are wired into the overview endpoint as their
+primary, reusable home (`DateRangeParsing.GetPreviousPeriod`) rather than all seven, per the CSV's own
+singular framing. Two interpretation calls are flagged rather than treated as literal spec: "allowed
+properties" on the custom-events endpoint means observed property keys, not a platform-enforced allowlist
+(none exists); the technology endpoint has no screen/viewport dimension since no SDK signal for one exists
+anywhere in the pipeline, a gap M01.5 already carried forward rather than a new omission.
+
+Initially verified as far as this session's tooling allowed without an interactive Entra ID login
+(`get-dev-token.sh`/`.ps1` requires a human to complete a device-code browser sign-in): build/format
+clean; every ClickHouse query validated live against real data (including a live-caught raw-string-
+interpolation brace-escaping bug, `$"""..."""` vs. `$$"""..."""`, that would not have compiled); the full
+stack rebuilt and restarted with the three changed services (`analytics`, `site-registry`, `gateway`) plus
+their Dapr sidecars recreated (the same known network-namespace quirk M01.3/M01.4 already hit); confirmed
+live that an unauthenticated call 401s through both the gateway and the service directly, a malformed
+bearer token 401s cleanly with no unhandled exception, the new internal site-lookup endpoint returns the
+right not-found shape, and the new gateway carve-out reaches `analytics` (not a stray 404) while the
+existing `/sites/{id}` route is unaffected.
+
+The authorized path itself was then closed out the same session, at the user's prompt: the user ran
+`get-dev-token.sh` themselves (the interactive device-code sign-in this environment can't complete
+unattended) and shared the resulting token. Against it: registered a real workspace/site through the
+gateway, posted real events through the Collector, confirmed the aggregation pipeline picked them up, and
+called all seven query endpoints through the gateway with real auth — overview (with `?compare=true`),
+paginated/sorted pages, technology all returned correct values; an unknown site 404s; a real member 200s.
+Confirmed the Redis cache directly (`redis-cli KEYS`/`TTL`) — the correct key present with the correct
+~60s TTL, not just inferred from response timing. Then ran the actual automated suites against the same
+token rather than relying only on ad hoc curl checks: all 4 `AnalyticsQueryTests` pass, and all 4 M01.5
+`AnalyticsAggregationTests` pass too — closing a verification gap that milestone had also left open, as a
+bonus. Running the full pre-existing suite alongside these surfaced one real, pre-existing bug unrelated
+to this epic: `AnalyticsProcessingTests.CountClickHouseRowsAsync` (M01.3/M01.4) called
+`JsonNode.GetValue<int>()` directly on a ClickHouse `count()` result, which is `UInt64` and therefore
+quoted as a JSON string by ClickHouse's output format — throws `InvalidOperationException`, not a silent
+wrong answer, so this specific automated test had apparently never actually been run to a passing state
+before (M01.4's own "verified live" checks were the manual curl-based kind, not `dotnet test` itself, per
+CLAUDE.md's own account of that session). Fixed using the same `JsonElement.ValueKind`-branching pattern
+this epic's own `ClickHouseJsonExtensions.GetLong` already uses rather than guessing at ClickHouse's
+quoting behavior. All 25 integration tests in the repo now pass together against a real token — likely the
+first time the complete suite has ever been run end-to-end, not just individually verified per-milestone.
+Covers all 10 M01.6 Asana subtasks.
+
 ## Planning artifacts (`planning/`)
 
 - `Telumera_Modular_Project_Plan.md` — the full architecture/roadmap doc summarized above; treat as the

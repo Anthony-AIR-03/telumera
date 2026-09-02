@@ -429,6 +429,20 @@ app.MapGet("/internal/tokens", async (SiteRegistryDbContext db) =>
 })
 .WithName("ListInternalTokens");
 
+// M01.6's Analytics Query API needs to resolve siteId -> workspaceId before it can run its own
+// membership check against identity-workspace — it has no local site->workspace projection (unlike
+// event-collector's SiteProjection, which exists for its hot ingestion path, not a fit for a low-QPS
+// query API). Same unauthenticated, network-boundary-trusting, always-200 convention as the two
+// endpoints above, not a new pattern.
+app.MapGet("/internal/sites/{id:guid}", async (Guid id, SiteRegistryDbContext db) =>
+{
+    var site = await db.Sites.FindAsync(id);
+    return Results.Ok(site is null
+        ? InternalSiteLookupResponse.NotFound
+        : new InternalSiteLookupResponse(true, site.WorkspaceId));
+})
+.WithName("GetInternalSiteLookup");
+
 app.Run();
 
 static async Task<string[]> GetEnabledModuleNamesAsync(SiteRegistryDbContext db, Guid siteId) =>
@@ -494,6 +508,12 @@ internal sealed record InternalTokenLookupResponse(
     bool Found, Guid? SiteId, Guid? WorkspaceId, string[]? AllowedOrigins, string[]? EnabledModules)
 {
     public static readonly InternalTokenLookupResponse NotFound = new(false, null, null, null, null);
+}
+
+/// <summary>Response shape for GET /internal/sites/{id} — see the endpoint's doc comment.</summary>
+internal sealed record InternalSiteLookupResponse(bool Found, Guid? WorkspaceId)
+{
+    public static readonly InternalSiteLookupResponse NotFound = new(false, null);
 }
 
 /// <summary>One row of GET /internal/tokens — see the endpoint's doc comment.</summary>

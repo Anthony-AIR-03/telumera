@@ -2,7 +2,9 @@ using System.Text.Json;
 
 using Dapr.AspNetCore;
 
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Identity.Web;
 
 using Telumera.EventContracts;
 using Telumera.ServiceDefaults;
@@ -22,9 +24,30 @@ builder.Services.AddDbContext<AnalyticsDbContext>(options =>
     options.UseNpgsql(connectionString).UseSnakeCaseNamingConvention());
 builder.Services.AddHealthChecks().AddNpgSql(connectionString, tags: ["ready"]);
 
+// M01.6: the query endpoints are the first authenticated surface this service exposes — the existing
+// /subscriptions/collector-events endpoint below stays unauthenticated (it simply omits
+// .RequireAuthorization), same coexistence pattern site-registry's internal endpoints already use
+// alongside its own protected ones.
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddMicrosoftIdentityWebApi(builder.Configuration.GetSection("AzureAd"));
+builder.Services.AddAuthorization(options => options.AddPolicy("ApiScope", policy =>
+    policy.RequireClaim(ClaimConstants.Scope, "access_as_user")));
+
+// First real Redis consumer in the repo — see Telumera.Services.Analytics.Api.csproj's comment for why
+// this is the standard IDistributedCache abstraction rather than a hand-rolled client.
+var redisHost = builder.Configuration["Redis:Host"] ?? "localhost";
+var redisPort = builder.Configuration["Redis:Port"] ?? "6379";
+var redisPassword = builder.Configuration["Redis:Password"] ?? string.Empty;
+builder.Services.AddStackExchangeRedisCache(options =>
+    options.Configuration = $"{redisHost}:{redisPort},password={redisPassword}");
+
 builder.Services.AddHttpClient();
 builder.Services.AddSingleton<ClickHouseWriter>();
+builder.Services.AddSingleton<ClickHouseQueryClient>();
 builder.Services.AddSingleton<IGeoLookup, NoOpGeoLookup>();
+builder.Services.AddSingleton<MembershipClient>();
+builder.Services.AddSingleton<SiteLookupClient>();
+builder.Services.AddSingleton<QueryCache>();
 builder.Services.AddScoped<EventProcessor>();
 builder.Services.AddHostedService<AnalyticsAggregationService>();
 
@@ -49,6 +72,11 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseAuthentication();
+app.UseAuthorization();
+
+app.MapAnalyticsQueryEndpoints();
 
 // Deliberately unauthenticated — reached only via Dapr pub/sub delivery from within the compose
 // network, same as every subscription/internal endpoint elsewhere in this repo.

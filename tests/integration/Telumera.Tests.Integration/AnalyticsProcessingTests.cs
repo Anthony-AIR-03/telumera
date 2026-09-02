@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 
 namespace Telumera.Tests.Integration;
@@ -215,7 +216,19 @@ public sealed class AnalyticsProcessingTests
         response.EnsureSuccessStatusCode();
 
         var body = (await response.Content.ReadAsStringAsync()).Trim();
-        return JsonNode.Parse(body)?["c"]?.GetValue<int>() ?? 0;
+        var node = JsonNode.Parse(body)?["c"];
+        if (node is null)
+        {
+            return 0;
+        }
+
+        // count() is UInt64, which ClickHouse's JSON output formats quote as a string by default
+        // (output_format_json_quote_64bit_integers, avoids precision loss for JS-style consumers) —
+        // GetValue<int>() throws on that quoted form (confirmed live: "An element of type 'String'
+        // cannot be converted to a 'System.Int32'"), so branch on the actual token kind instead of
+        // assuming either representation.
+        var element = node.GetValue<JsonElement>();
+        return element.ValueKind == JsonValueKind.String ? int.Parse(element.GetString()!) : element.GetInt32();
     }
 
     private static HttpClient CreateClickHouseClient()

@@ -20,6 +20,12 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
+    <!-- M01.6: Entra ID auth for the new query endpoints (same package/version site-registry and
+         identity-workspace already use) and the repo's first real Redis consumer — the standard
+         IDistributedCache abstraction, not a hand-rolled client, since (unlike ClickHouse.Client)
+         StackExchange.Redis has no net10.0 compatibility gap to work around. -->
+    <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Identity.Web" Version="4.14.2" />
     <PackageReference Include="Microsoft.OpenApi" Version="2.11.0" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
   </ItemGroup>

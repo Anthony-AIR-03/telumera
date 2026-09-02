@@ -415,7 +415,8 @@ services:
 
   # M01.4's Analytics Service — the first real subscriber of event-collector's collector-events topic.
   # Owns telumera_analytics (ClickHouse, event data) and telumera_analytics_control (Postgres,
-  # packages/idempotency's consumer-dedup markers only) — see services/analytics/README.md.
+  # packages/idempotency's consumer-dedup markers only) — see services/analytics/README.md. M01.6 added
+  # the Analytics Query API (Entra ID auth + a Redis response cache) on top of this same service.
   analytics:
     build:
       context: ../..
@@ -430,6 +431,11 @@ services:
       ClickHouse__Password: "${CLICKHOUSE_APP_PASSWORD}"
       DAPR_HTTP_PORT: "3500" # matches analytics-dapr's -dapr-http-port below (shared network namespace)
       OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"
+      AzureAd__TenantId: "${AZURE_AD_TENANT_ID}"
+      AzureAd__ClientId: "${AZURE_AD_API_CLIENT_ID}"
+      Redis__Host: "redis"
+      Redis__Port: "6379"
+      Redis__Password: "${REDIS_PASSWORD}"
     ports:
       - "5104:8080" # HTTP API
       - "3506:3500" # analytics-dapr's HTTP API (shared namespace; published here since network_mode: service:x sidecars can't publish their own ports)
@@ -438,6 +444,8 @@ services:
       postgres:
         condition: service_healthy
       clickhouse:
+        condition: service_healthy
+      redis:
         condition: service_healthy
       otel-collector:
         condition: service_started

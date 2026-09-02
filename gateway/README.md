@@ -8,14 +8,16 @@ identity-workspace/site-registry. Holds no module data of its own (see
 
 A transparent reverse-proxy forwarder (`GatewayForwarder.cs`) — same paths, same request/response shapes
 as the underlying services, not hand-written routes per existing endpoint. `/workspaces/**` forwards to
-identity-workspace, `/sites/**` to site-registry; anything else `404`s. One carved-out exception:
-`GET /workspaces/{id}/sites` is site-registry's endpoint (a workspace's sites, not one of
+identity-workspace, `/sites/**` to site-registry; anything else `404`s. Two carved-out exceptions, same
+shape: `GET /workspaces/{id}/sites` is site-registry's endpoint (a workspace's sites, not one of
 identity-workspace's own resources), so the forwarder checks for that specific three-segment shape before
 falling back to the first-segment table — found as a real bug during dashboard verification, where the
-naive table sent it to identity-workspace and got a `404` back. Real response-composition endpoints
-(aggregating multiple services into one call, e.g. "workspace overview") are deliberately not built yet —
-no dashboard screen exists to consume one. Add those when an actual UI need justifies them, not
-speculatively.
+naive table sent it to identity-workspace and got a `404` back. `/sites/{id}/analytics/**` (M01.6) is the
+same problem one level deeper — the Analytics Query API's endpoints, not one of site-registry's own
+resources — carved out identically rather than teaching the table about sub-resources. Real
+response-composition endpoints (aggregating multiple services into one call, e.g. "workspace overview")
+are deliberately not built yet — no dashboard screen exists to consume one. Add those when an actual UI
+need justifies them, not speculatively.
 
 ## Two design questions `docs/architecture/c4-container.md` left open, resolved here
 

@@ -152,9 +152,63 @@ shown for context only, explicitly labeled cumulative-since-broker-start rather 
 per-day input — RabbitMQ has no historical per-day counter, and showing false per-day precision there
 would violate the Accuracy Principle this whole module is built around.
 
+## Analytics Query API (M01.6)
+
+Seven `GET /sites/{siteId:guid}/analytics/...` endpoints (`AnalyticsQueryEndpoints.cs`) — overview,
+time-series, pages, acquisition, technology, geography, custom-events — reading the M01.5 tables above.
+This is the first authenticated surface on this service; `/subscriptions/collector-events` stays
+unauthenticated, unaffected (see `Program.cs`'s comment on why both coexist safely). Four design
+questions `docs/architecture/c4-container.md` left open for whichever epic actually built this API are
+resolved here:
+
+- **siteId → workspaceId resolution.** Analytics has no local site→workspace projection — `event-collector`'s
+  `SiteProjection` exists specifically for its *hot* ingestion path, not the right precedent for a
+  low-QPS, cache-backed query API. Chose a new unauthenticated `GET /internal/sites/{id}` on
+  `services/site-registry` (mirroring its existing `/internal/tokens/{token}` exactly) over forwarding the
+  caller's own bearer token to site-registry's authenticated `GET /sites/{id}` — the latter would have
+  been genuinely new plumbing (no existing service forwards a caller's own token onward); the former reuses
+  the already-established two-internal-call pattern (`SiteLookupClient.cs` → `MembershipClient.cs`,
+  duplicated from `services/site-registry/MembershipClient.cs`/`Role.cs`) verbatim.
+- **Pagination/sort/filter shape.** No endpoint in this repo paginated before the pages endpoint — settled
+  on a plain `{ items, total, page, pageSize }` envelope (`PagedResult<T>`), `sort`/`sortDir` validated
+  against a fixed C# allowlist (never interpolated raw), `search`/`pathPrefix` as ClickHouse-parameterized
+  substring/prefix filters. `total` comes from `count() OVER()` in the same query (verified live) rather
+  than a second round trip.
+- **Cache key/TTL shape.** `QueryCache.cs` wraps `IDistributedCache` (Redis, `AddStackExchangeRedisCache`)
+  — the first real Redis consumer in the repo (`infrastructure/compose/docker-compose.yml`'s `redis`
+  container has run since M00.3 with nothing using it). Key = endpoint + siteId + every query param that
+  affects the result; TTL `Cache:TtlSeconds` (60s default).
+- **Query protection.** `ClickHouseQueryClient.cs` is a *second*, separate `HttpClient`/class from
+  `ClickHouseWriter.cs` — a short `HttpClient.Timeout` (`ClickHouse:QueryTimeoutSeconds`, 10s default)
+  alone only stops this service from waiting; every query also carries a server-side
+  `SETTINGS max_execution_time` a couple of seconds below that, so ClickHouse itself aborts a runaway
+  query rather than just being abandoned by an impatient client.
+
+**Injection safety**: every value derived from a query-string parameter that isn't validated against a
+fixed C# allowlist (sort column, sort direction, time-series interval) goes through ClickHouse's native
+`{name:Type}` parameter binding (`ClickHouseQueryClient.QueryAsync`'s `parameters` argument), not string
+interpolation — verified live against a real ClickHouse instance that a value like `x' OR '1'='1'` is
+treated as inert literal data, never re-parsed as SQL.
+
+**Gateway routing**: `/sites/{id}/analytics/**` needed a carve-out in `gateway/GatewayForwarder.cs`
+(mirroring its existing `workspaces/.../sites` one) — its `RouteToAppId` table already maps the `sites`
+first-path-segment to `site-registry`, which would otherwise misroute every one of these seven endpoints.
+
+**Comparison periods**: `?compare=true` on the overview endpoint returns a `previous` field computed for
+the immediately-preceding period of equal length (`DateRangeParsing.GetPreviousPeriod`) — the epic's
+"Implement comparison periods" subtask's primary, reusable home; the helper isn't wired into the other six
+endpoints yet (not asked for, easy to extend later).
+
+**Interpretation calls worth flagging** (the CSV backlog's wording is compressed): the custom-events
+endpoint's "allowed properties" is read as *observed* property keys per event name
+(`groupUniqArray(arrayJoin(JSONExtractKeys(properties_json)))`, verified live), not a platform-enforced
+allowlist — no such enforcement mechanism exists anywhere in the pipeline. The technology endpoint has no
+screen/viewport dimension (CSV: "...and viewport categories") — no SDK signal for it exists, same
+documented gap M01.5 already carried forward, not stubbed with fake data here either.
+
 ## Not in this service
 
 A real GeoIP provider, the metric-window/anomaly rollup event types, `viewport_category` capture, per-site
-configurable retention, and multi-instance-safe sharing of anything (single-instance only, same caveat
+configurable retention, multi-instance-safe sharing of anything (single-instance only, same caveat
 `event-collector`'s dedup cache already carries — now also true of `AnalyticsAggregationService`'s
-watermark).
+watermark), and comparison periods on endpoints other than overview.

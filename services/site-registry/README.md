@@ -107,6 +107,16 @@ every other endpoint here is keyed by an authenticated caller's already-known si
 See `services/event-collector/README.md`'s "Site projection" section for how these two are used
 (warm-up/resync vs. cache-miss fallback).
 
+## Internal site lookup (M01.6)
+
+A third unauthenticated internal endpoint, same "trusts the Dapr-invoke network boundary, always 200,
+never 404" pattern as the two above: `GET /internal/sites/{id}` → `{ found, workspaceId }`. Added because
+`services/analytics`'s new Query API needs to resolve a `siteId` to its owning `workspaceId` before it can
+run its own membership check against identity-workspace, and — unlike Event Collector's hot ingestion
+path — a full `SiteProjection`-style cached projection wasn't judged worth it for a low-QPS,
+already-cached query API; see `services/analytics/README.md`'s Analytics Query API section for the
+comparison.
+
 ## Consumer (M01.3)
 
 `site.created.v1`, `site.key.rotated.v1`, and `site.settings.changed.v1` now have a real subscriber:

@@ -41,6 +41,15 @@ public sealed class GatewayForwarder(IHttpClientFactory httpClientFactory, IConf
         {
             appId = "site-registry";
         }
+        // Same reasoning, M01.6: /sites/{id}/analytics/** is the Analytics Service's query API, not one
+        // of site-registry's own resources — without this carve-out the table's ["sites"] entry would
+        // misroute every one of these seven endpoints to site-registry.
+        else if (firstSegment.Equals("sites", StringComparison.OrdinalIgnoreCase)
+            && segments.Length >= 3
+            && segments[2].Equals("analytics", StringComparison.OrdinalIgnoreCase))
+        {
+            appId = "analytics";
+        }
         else if (!RouteToAppId.TryGetValue(firstSegment, out appId))
         {
             httpContext.Response.StatusCode = StatusCodes.Status404NotFound;
