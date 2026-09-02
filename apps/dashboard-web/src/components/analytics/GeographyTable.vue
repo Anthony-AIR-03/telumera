@@ -34,10 +34,47 @@ async function load() {
 
 watch(() => [props.siteId, props.from, props.to], load, { immediate: true })
 
-/** No GeoIP provider exists yet (M01.8) — every row's country is null until then, so a table would be one meaningless "Unknown: 100%" row. Showing that plainly instead of a near-empty table. */
+/** Until a GeoIP database is installed (M01.8), or for a site with no located events, every row's country is null — a table would be one meaningless "Unknown: 100%" row. Show that plainly instead. */
 const hasRealData = computed(
   () => rows.value !== null && rows.value.some((r) => r.country !== null),
 )
+
+const regionNames =
+  typeof Intl !== 'undefined' && 'DisplayNames' in Intl
+    ? new Intl.DisplayNames(['en'], { type: 'region' })
+    : null
+
+function countryLabel(code: string | null): string {
+  if (!code) return t('analytics.geography.unknown')
+  try {
+    return regionNames?.of(code.toUpperCase()) ?? code
+  } catch {
+    return code
+  }
+}
+
+/** Below-privacy-floor rows (<5 visitors) collapse into a single "Other" row rather than listing a
+ *  handful of individually identifiable countries — "marked, not hidden" (definitions §8 addendum). */
+const displayRows = computed(() => {
+  const source = rows.value ?? []
+  const named = source.filter((r) => r.country !== null && !r.isBelowPrivacyFloor)
+  const below = source.filter((r) => r.country !== null && r.isBelowPrivacyFloor)
+  const result = named.map((r) => ({ label: countryLabel(r.country), row: r, isOther: false }))
+  if (below.length > 0) {
+    result.push({
+      label: t('analytics.geography.other'),
+      isOther: true,
+      row: {
+        country: null,
+        sessions: below.reduce((s, r) => s + r.sessions, 0),
+        visitors: below.reduce((s, r) => s + r.visitors, 0),
+        views: below.reduce((s, r) => s + r.views, 0),
+        isBelowPrivacyFloor: true,
+      } as GeographyMetric,
+    })
+  }
+  return result
+})
 </script>
 
 <template>
@@ -89,19 +126,24 @@ const hasRealData = computed(
           </tr>
         </thead>
         <tbody>
-          <tr v-for="(row, i) in rows" :key="i" class="border-t border-neutral-200">
-            <td class="px-2 py-2.5">{{ row.country ?? t('analytics.geography.unknown') }}</td>
+          <tr
+            v-for="(entry, i) in displayRows"
+            :key="i"
+            class="border-t border-neutral-200"
+            :class="{ 'text-neutral-500': entry.isOther }"
+          >
+            <td class="px-2 py-2.5">{{ entry.label }}</td>
             <td class="px-2 py-2.5 text-right tabular-nums">
-              {{ row.sessions.toLocaleString('en-US') }}
+              {{ entry.row.sessions.toLocaleString('en-US') }}
             </td>
             <td class="px-2 py-2.5 text-right tabular-nums">
-              {{ row.visitors.toLocaleString('en-US') }}
-              <AppBadge v-if="row.isBelowPrivacyFloor" tone="neutral" class="ml-1">{{
+              {{ entry.row.visitors.toLocaleString('en-US') }}
+              <AppBadge v-if="entry.isOther" tone="neutral" class="ml-1">{{
                 t('analytics.privacyFloor')
               }}</AppBadge>
             </td>
             <td class="px-2 py-2.5 text-right tabular-nums">
-              {{ row.views.toLocaleString('en-US') }}
+              {{ entry.row.views.toLocaleString('en-US') }}
             </td>
           </tr>
         </tbody>

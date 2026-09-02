@@ -26,6 +26,10 @@
          StackExchange.Redis has no net10.0 compatibility gap to work around. -->
     <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="10.0.0" />
     <PackageReference Include="Microsoft.Identity.Web" Version="4.14.2" />
+    <!-- M01.8: real geography enrichment. Reads a local MaxMind-format .mmdb country DB in-process
+         (GeoLite2 Country or DB-IP Lite Country — same format); no visitor IP leaves the box, and the
+         DB file itself is never committed (see .gitignore / scripts/refresh-geoip.sh). -->
+    <PackageReference Include="MaxMind.GeoIP2" Version="6.1.0" />
     <PackageReference Include="Microsoft.OpenApi" Version="2.11.0" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
   </ItemGroup>

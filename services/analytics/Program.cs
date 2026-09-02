@@ -44,7 +44,26 @@ builder.Services.AddStackExchangeRedisCache(options =>
 builder.Services.AddHttpClient();
 builder.Services.AddSingleton<ClickHouseWriter>();
 builder.Services.AddSingleton<ClickHouseQueryClient>();
-builder.Services.AddSingleton<IGeoLookup, NoOpGeoLookup>();
+
+// M01.8: use the local MMDB country database if it's mounted (prod / anyone who ran
+// scripts/refresh-geoip.sh), otherwise degrade to no geography enrichment rather than failing to
+// start — a fresh clone / CI has no .mmdb file and events must still flow. definitions §7: country
+// granularity only, from an already-truncated IP that is never persisted.
+var geoIpDatabasePath = builder.Configuration["GeoIp:DatabasePath"] ?? "/geoip/GeoLite2-Country.mmdb";
+builder.Services.AddSingleton<IGeoLookup>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Program>>();
+    if (File.Exists(geoIpDatabasePath))
+    {
+        logger.LogInformation("GeoIP: reading MMDB country database from {Path}.", geoIpDatabasePath);
+        return new MmdbGeoLookup(geoIpDatabasePath);
+    }
+
+    logger.LogWarning(
+        "GeoIP: no MMDB database at {Path} — geography enrichment disabled (events.country stays empty). "
+        + "Run infrastructure/compose/scripts/refresh-geoip.sh to install one.", geoIpDatabasePath);
+    return new NoOpGeoLookup();
+});
 builder.Services.AddSingleton<MembershipClient>();
 builder.Services.AddSingleton<SiteLookupClient>();
 builder.Services.AddSingleton<QueryCache>();

@@ -133,13 +133,17 @@
     },
     "geography": {
       "loadError": "Couldn't load geography data.",
-      "notAvailable": "Geography isn't available yet",
-      "notAvailableDetail": "Country data ships with a real GeoIP provider (M01.8) — every event is already collected, but no location is attached to it yet.",
+      "notAvailable": "No location data yet",
+      "notAvailableDetail": "Every event is collected, but no country is attached to it. This is normal for a brand-new site, or until a GeoIP database is installed on the analytics service.",
       "country": "Country",
       "sessions": "Sessions",
       "visitors": "Visitors",
       "views": "Views",
-      "unknown": "Unknown"
+      "unknown": "Unknown",
+      "other": "Other (below privacy floor)",
+      "mapTitle": "Visitors by country",
+      "mapLegend": "Shading by visitor count",
+      "belowFloorHint": "Below the 5-visitor privacy floor"
     },
     "events": {
       "loadError": "Couldn't load custom events.",

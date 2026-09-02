@@ -31,3 +31,7 @@ npm-debug.log*
 # Bicep build output (ARM JSON) — the .bicep/.bicepparam source is what's committed
 infrastructure/bicep/**/*.json
 infrastructure/bicep/*.local.bicepparam
+
+# GeoIP databases — downloaded at deploy time (MaxMind licensing / file size), never committed.
+# See infrastructure/compose/scripts/refresh-geoip.sh and infrastructure/compose/geoip/README.md
+*.mmdb

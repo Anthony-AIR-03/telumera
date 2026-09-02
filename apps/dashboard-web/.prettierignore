@@ -1,0 +1,3 @@
+# Generated data asset — a pre-minified { ISO: SVG path } map (see scripts/build-world-map.mjs).
+# Pretty-printing it would bloat it ~5x for no benefit.
+src/assets/world-countries.json

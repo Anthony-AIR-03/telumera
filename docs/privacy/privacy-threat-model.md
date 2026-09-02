@@ -63,6 +63,9 @@ the mitigation.
   — the architecture must support a cookie-free limited mode and a consent-aware persistent mode, but
   which mode is lawful for a given deployment needs a concrete legal check at launch time, not just at
   design time.
-- Confirm the exact geography-enrichment granularity (country vs. region) against the same guidance.
+- ~~Confirm the exact geography-enrichment granularity (country vs. region) against the same guidance.~~
+  **Resolved (M01.8):** country-only, via an in-process lookup against a local MaxMind-format database
+  keyed on the already-truncated IP, storing only the ISO country code (never the IP). Region-level is
+  an unbuilt per-site opt-in. See `docs/analytics/definitions-and-privacy-model.md` §7.
 - Confirm the query-string allowlist for campaign parameters doesn't inadvertently include anything
   identifying before the SDK ships to a real site.

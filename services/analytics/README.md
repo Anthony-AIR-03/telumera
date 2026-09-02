@@ -58,8 +58,23 @@ client-side rather than re-implementing classification) → device/browser/OS ca
 UA-parsing library, which would produce more entropy than the privacy threat model's "bounded
 categories... not full high-entropy fingerprint strings" row wants) → bot detection (`BotDetector.cs`,
 marks `is_bot` rather than dropping — "marked, not silently deleted, so data quality is inspectable") →
-coarse geography (`IGeoLookup`, moved here from `event-collector` in this same epic — still a
-`NoOpGeoLookup` stub, a real provider is deferred to M01.8 exactly as it was there).
+coarse geography (`IGeoLookup` — see "Geography enrichment (M01.8)" below).
+
+## Geography enrichment (M01.8)
+
+`GeoLookup.cs` has two implementations behind `IGeoLookup`:
+
+- `MmdbGeoLookup` — opens a local MaxMind-format `.mmdb` **country** database (`MaxMind.GeoIP2`,
+  `FileAccessMode.Memory`) and returns the ISO country code for the Collector's already-truncated IP.
+  Registered when `GeoIp:DatabasePath` (default `/geoip/GeoLite2-Country.mmdb`) exists.
+- `NoOpGeoLookup` — returned when no database file is present (fresh clone, CI, anyone who hasn't run
+  `infrastructure/compose/scripts/refresh-geoip.sh`). `events.country` stays empty; the pipeline is
+  otherwise unaffected. A one-line startup warning says which mode is active.
+
+The `.mmdb` file is **never committed** (`.gitignore`: `*.mmdb`) — MaxMind's GeoLite2 licence forbids
+redistribution. `refresh-geoip.sh` fetches it from MaxMind (needs `MAXMIND_LICENSE_KEY`) or DB-IP Lite
+(no account). Country-only by design (`docs/analytics/definitions-and-privacy-model.md` §7); no
+historical backfill is possible because the source IP is never stored.
 
 ## `analytics.processed.v1` scope
 
@@ -126,8 +141,8 @@ branches for the same `(site_id, date, path)` key is a correct, simpler combine.
 
 Every rollup row carries `is_below_privacy_floor` (`visitors_count < 5`, flagged not suppressed — see
 `docs/analytics/definitions-and-privacy-model.md` §8's addendum). `daily_geography_rollup.country` is
-100% empty until M01.8 ships a real `IGeoLookup` (still `NoOpGeoLookup`); no `viewport_category` column
-exists anywhere — no SDK signal produces one.
+populated once an MMDB database is installed ("Geography enrichment (M01.8)" above), empty before that;
+no `viewport_category` column exists anywhere — no SDK signal produces one.
 
 Raw `events` gets a 90-day TTL (`ALTER TABLE events MODIFY TTL toDateTime(received_at) + INTERVAL 90 DAY
 DELETE`, applied idempotently in `EnsureSchemaAsync` alongside its `CREATE TABLE IF NOT EXISTS` — TTL
@@ -208,7 +223,7 @@ documented gap M01.5 already carried forward, not stubbed with fake data here ei
 
 ## Not in this service
 
-A real GeoIP provider, the metric-window/anomaly rollup event types, `viewport_category` capture, per-site
+The metric-window/anomaly rollup event types, `viewport_category` capture, per-site
 configurable retention, multi-instance-safe sharing of anything (single-instance only, same caveat
 `event-collector`'s dedup cache already carries — now also true of `AnalyticsAggregationService`'s
 watermark), and comparison periods on endpoints other than overview.

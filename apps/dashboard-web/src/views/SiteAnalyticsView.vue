@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { apiClient } from '@/lib/api-client'
@@ -16,6 +16,9 @@ import GeographyTable from '@/components/analytics/GeographyTable.vue'
 import CustomEventExplorer from '@/components/analytics/CustomEventExplorer.vue'
 import GlossaryDrawer from '@/components/analytics/GlossaryDrawer.vue'
 import type { OverviewResponse, TimeSeriesResponse } from '@/lib/analytics-types'
+
+// Async: pulls in the ~68KB vendored world-map paths, only when the geography tab is opened.
+const GeographyMap = defineAsyncComponent(() => import('@/components/analytics/GeographyMap.vue'))
 
 interface SiteSummary {
   id: string
@@ -289,12 +292,10 @@ const cards = computed(() => {
           :from="range.from"
           :to="range.to"
         />
-        <GeographyTable
-          v-else-if="activeTab === 'geography'"
-          :site-id="siteId"
-          :from="range.from"
-          :to="range.to"
-        />
+        <div v-else-if="activeTab === 'geography'" class="space-y-4">
+          <GeographyMap :site-id="siteId" :from="range.from" :to="range.to" />
+          <GeographyTable :site-id="siteId" :from="range.from" :to="range.to" />
+        </div>
         <CustomEventExplorer
           v-else-if="activeTab === 'events'"
           :site-id="siteId"

@@ -151,10 +151,21 @@ browser at all, the strongest privacy posture available (per
   GeoIP lookup.
 - **Geography granularity: country only, by default.** Region/state-level granularity is available as an
   explicit **per-site opt-in** for site owners who need finer geography — country-only is the safer,
-  less-identifying default and sufficient for most portfolio-analytics use. This resolves the "confirm
-  exact geography-enrichment granularity" open item `docs/privacy/privacy-threat-model.md` flagged before
-  the `anthony-air.nl` launch (M01.8) — still worth a final check against current guidance at that point,
-  per that document's own note.
+  less-identifying default and sufficient for most portfolio-analytics use.
+- **Resolved (M01.8):** the "confirm exact geography-enrichment granularity" open item
+  `docs/privacy/privacy-threat-model.md` flagged before the `anthony-air.nl` launch is closed. The
+  implementation (`services/analytics/GeoLookup.cs` → `MmdbGeoLookup`) does an **in-process lookup
+  against a local MaxMind-format country database** — no visitor IP is ever sent to a third-party API —
+  keyed on the **already-truncated** IP the Collector passes (last IPv4 octet / last 80 IPv6 bits
+  zeroed), and stores **only the ISO country code**, never the IP. Combined with no cookie and the daily
+  visitor hash (§3), country-level geography on this basis is consistent with current Dutch/EU (AP /
+  EDPB) guidance for cookieless analytics. The **per-site region/subdivision opt-in is not built** —
+  it would require a GeoLite2-City database and a Site Registry configuration field; deferred with no
+  loss of the default guarantee. Re-confirm against then-current guidance at the actual launch, per the
+  threat model's standing note.
+- **No historical backfill.** Geography is correct from the moment a database is installed forward only.
+  Events collected earlier cannot be enriched retroactively — the IP they were derived from was never
+  stored (see the no-raw-IP-storage rule below), so there is nothing to re-run a lookup against.
 - **No raw IP storage — schema-level, not just policy.** No Analytics ClickHouse table has an IP column at
   all. This is a stronger guarantee than "we don't store it by policy": there's no column for a future
   change to accidentally start populating.

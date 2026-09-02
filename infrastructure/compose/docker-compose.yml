@@ -436,6 +436,9 @@ services:
       Redis__Host: "redis"
       Redis__Port: "6379"
       Redis__Password: "${REDIS_PASSWORD}"
+      GeoIp__DatabasePath: "/geoip/GeoLite2-Country.mmdb" # populated by scripts/refresh-geoip.sh; absent = geography enrichment off
+    volumes:
+      - ./geoip:/geoip:ro # MMDB country DB (git-ignored, not committed — see scripts/refresh-geoip.sh)
     ports:
       - "5104:8080" # HTTP API
       - "3506:3500" # analytics-dapr's HTTP API (shared namespace; published here since network_mode: service:x sidecars can't publish their own ports)
