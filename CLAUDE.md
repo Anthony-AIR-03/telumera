@@ -648,13 +648,36 @@ processed>stored gap from earlier same-day testing is older data, correctly flag
   metric deltas they should produce, for reconciling a run.
 - **Verification**: `tests/integration/M018Tests.cs` (`[SkippableFact]`) — all 4 pass live.
 
-**Still open in M01.8** (all need the live `telumera.nl` environment): the actual NAS deploy (the
-`docker-compose.nas.yml` artifacts are done, the user has the Cloudflare tunnel route + 4 NPM proxy
-hosts + Entra SPA redirect URIs set); installing the SDK on the `anthony-air.nl` portfolio and
-reconciling synthetic acceptance traffic there; running `backup.sh`/`restore-test.sh` against real
-data; the portfolio case study; and updating the "Telumera Dashboard Concept" Artifact mockup with
-the live panel, the quality screen, and the geography map (`housestyle.md` was updated; the mockup
-was not, to avoid a blind edit).
+**Still open in M01.8 — next session's checklist** (all need the live `telumera.nl` environment; the
+user's Cloudflare/NPM/Entra side is already done: `*.telumera.nl` tunnel route → NPM, four proxy
+hosts `telumera.nl`/`api.`/`hubs.`/`collect.` — `hubs.` has Websockets Support on — and the
+`Telumera Dashboard` SPA registration has `https://telumera.nl` + `.../auth-popup.html` redirect
+URIs):
+
+1. **Deploy to the NAS.** On the NAS: `cp infrastructure/compose/.env.nas.example .env.nas`, fill it
+   in (fresh prod passwords, `CORS_ALLOWED_ORIGINS=https://telumera.nl`, `MAXMIND_LICENSE_KEY`,
+   `AZURE_AD_*`), then `docker compose -f docker-compose.yml -f docker-compose.nas.yml --env-file
+   .env.nas up -d --build` (needs Compose ≥ 2.24 for `!reset`), then `./scripts/refresh-geoip.sh` and
+   `./scripts/health-check.sh`. Do the vertical-slice check in `docs/runbooks/analytics-module.md`
+   ("Deploying to the NAS").
+2. **Install the SDK on `anthony-air.nl`.** Register the portfolio as a site via
+   `https://api.telumera.nl`, paste the Install-card snippet into the Vue portfolio
+   (`projects/Portfolio/Vue-portfolio/`, `environment: 'staging'` first), deploy, click through, then
+   `tools/synthetic-traffic --token <site token> --collector https://collect.telumera.nl` and
+   reconcile with `tools/reconciliation-report` + the dashboard's data-quality screen. Promote to
+   `production`.
+3. **Backup/restore.** Run `infrastructure/compose/scripts/backup.sh` on the NAS, then
+   `restore-test.sh <dir>`; wire `backup.sh` into cron; fill in retention/destination in the runbook.
+4. **Portfolio case study.** `docs/case-studies/product-analytics.md` (new) + a portfolio page — real
+   screenshots from the live `telumera.nl` dashboard, real reconciliation numbers.
+5. **Design mockup.** Update the "Telumera Dashboard Concept" Artifact
+   (`https://claude.ai/code/artifact/77de8a9c-0318-4088-8a85-854e8b7cc442`) with the live-visitors
+   panel, the data-quality screen, and the geography map — `housestyle.md`'s "Live & data-quality
+   components (M01.8)" section is the spec; do it as a visual pass, not blind.
+6. **Asana** (board `1217238110202107`): mark the 10 M01.8 subtasks (CSV rows 125–134) done as each
+   real-world item above completes — `completed: true` + rewrite the `Status:` line to
+   `Status: Complete`. GeoIP provider / SDK hosting / `docker-compose.nas.yml` / client-IP fix have
+   no subtask → comment on the epic.
 
 ## Planning artifacts (`planning/`)
 
