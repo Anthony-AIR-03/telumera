@@ -96,3 +96,20 @@ export interface LivePage {
   path: string
   visitors: number
 }
+
+/** Mirrors services/analytics QualityResponse. `dimensions` / `totals` keys: accepted,
+ *  rejected_validation, rejected_unknown_token, rejected_origin, rejected_module_disabled,
+ *  duplicate, dropped_overload, bot, delayed. */
+export interface QualityResponse {
+  from: string
+  to: string
+  series: QualityDayPoint[]
+  totals: Record<string, number>
+  deadLetterQueueDepth: number
+  definitions: Record<string, string>
+}
+
+export interface QualityDayPoint {
+  date: string
+  dimensions: Record<string, number>
+}

@@ -6,20 +6,22 @@ using Npgsql;
 
 // M01.5's "Implement data reconciliation job" subtask — compares accepted/processed/stored event counts
 // for one UTC date, following tools/dead-letter-recovery's own established shape (bare console tool, no
-// compose service, run on demand). Two of the four numbers are exact and directly comparable:
+// compose service, run on demand). Three of the numbers are now exact and directly comparable:
 //
+//   Accepted  — ClickHouse `event_quality_daily`, dimension 'accepted' (M01.8): the collector's own
+//   per-day tally of events it queued for processing, published as collector.quality.v1 deltas. This
+//   replaces the old RabbitMQ cumulative counter as the exact per-day "accepted" figure.
 //   Processed — Postgres `processed_events` (telumera_analytics_control): every event EventProcessor
 //   began handling gets a marker row here, committed BEFORE the ClickHouse write
 //   (services/analytics/README.md's disclosed crash-window trade-off).
 //   Stored     — ClickHouse `events`: the actual row EventProcessor wrote after the marker.
 //
-// processed > stored is exactly that disclosed trade-off surfacing for real — the first time it's had an
-// actual detection mechanism rather than being a documented-but-unverified risk.
+// processed > stored is exactly that disclosed trade-off surfacing for real. accepted > stored is
+// expected while events are in flight; a persistent gap means events are stuck in the dead-letter queue.
 //
-// "Accepted" (RabbitMQ's collector-events/analytics-events exchange publish_in counters) is shown for
-// context only — it's cumulative since the broker last reset, not scoped to the requested date, so it is
-// NOT treated as a precise reconciliation input. Showing it with false per-day precision would violate
-// the Accuracy Principle (docs/architecture/vision-and-scope.md §5) this whole module is built around.
+// The RabbitMQ exchange publish_in counters (still shown at the bottom) stay context-only — cumulative
+// since the broker last reset, not scoped to the date. Showing them with false per-day precision would
+// violate the Accuracy Principle (docs/architecture/vision-and-scope.md §5) this whole module is built around.
 //
 // Usage:
 //   dotnet run --project tools/reconciliation-report -- [--date yyyy-MM-dd]
@@ -41,12 +43,21 @@ var rabbitPassword = Environment.GetEnvironmentVariable("RABBITMQ_DEFAULT_PASS")
 
 var processedCount = await GetProcessedCountAsync(postgresConnectionString, date);
 var (storedCount, botCount) = await GetStoredCountsAsync(clickHouseUrl, clickHouseUser, clickHousePassword, date);
+var acceptedCount = await GetAcceptedCountAsync(clickHouseUrl, clickHouseUser, clickHousePassword, date);
 
 Console.WriteLine($"Reconciliation report for {date:yyyy-MM-dd} (UTC)");
 Console.WriteLine("----------------------------------------------------");
+Console.WriteLine($"Accepted  (ClickHouse event_quality_daily, exact): {acceptedCount}");
 Console.WriteLine($"Processed (Postgres processed_events, exact)     : {processedCount}");
 Console.WriteLine($"Stored    (ClickHouse events, exact)             : {storedCount}");
 Console.WriteLine($"  of which flagged is_bot (kept, not dropped)    : {botCount}");
+
+if (acceptedCount > 0 && acceptedCount > storedCount)
+{
+    Console.WriteLine();
+    Console.WriteLine($"NOTE: {acceptedCount - storedCount} event(s) the collector accepted are not yet in ClickHouse for this date.");
+    Console.WriteLine("Expected while events are in flight; a persistent gap means events are stuck in the dead-letter queue (tools/dead-letter-recovery).");
+}
 
 if (processedCount > storedCount)
 {
@@ -100,6 +111,17 @@ static async Task<(long Stored, long Bot)> GetStoredCountsAsync(string baseUrl, 
         $"SELECT count() AS c FROM events WHERE toDate(processed_at) = '{date:yyyy-MM-dd}' AND is_bot = 1");
 
     return (stored, bot);
+}
+
+static async Task<long> GetAcceptedCountAsync(string baseUrl, string user, string password, DateOnly date)
+{
+    using var httpClient = new HttpClient();
+    httpClient.DefaultRequestHeaders.TryAddWithoutValidation("X-ClickHouse-User", user);
+    httpClient.DefaultRequestHeaders.TryAddWithoutValidation("X-ClickHouse-Key", password);
+
+    // event_quality_daily is a SummingMergeTree of collector.quality.v1 deltas — sum, never FINAL.
+    return await RunClickHouseCountAsync(httpClient, baseUrl,
+        $"SELECT sum(count) AS c FROM event_quality_daily WHERE date = '{date:yyyy-MM-dd}' AND dimension = 'accepted'");
 }
 
 static async Task<long> RunClickHouseCountAsync(HttpClient httpClient, string baseUrl, string query)

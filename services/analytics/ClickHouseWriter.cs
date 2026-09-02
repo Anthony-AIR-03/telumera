@@ -12,6 +12,9 @@ public sealed record AnalyticsEventRow(
     string? Country, int IsBot, string? Environment, string PropertiesJson, int DataVersion,
     string ClientTimestamp, string ReceivedAt, string ProcessedAt);
 
+/// <summary>One delta row for <c>event_quality_daily</c> (<see cref="ClickHouseWriter.InsertQualityDeltasAsync"/>).</summary>
+public sealed record QualityDeltaRow(string SiteId, string Date, string Dimension, long Count);
+
 /// <summary>
 /// Writes to ClickHouse via its plain HTTP interface rather than a NuGet client library —
 /// ClickHouse.Client's latest stable has no confirmed net10.0 target, an unnecessary compatibility
@@ -244,10 +247,41 @@ public sealed class ClickHouseWriter
             ORDER BY (site_id, date, country)
             """,
             cancellationToken);
+
+        // M01.8 data-quality dashboard: per-(site, day, dimension) counts of ingestion outcomes only
+        // this pipeline stage can see — the collector's accept/reject/duplicate/overload tallies,
+        // published as collector.quality.v1 delta batches. SummingMergeTree so each delta batch is a
+        // plain INSERT that accumulates; reads use `sum(count) ... GROUP BY`, never FINAL. Bot and
+        // delayed counts are NOT stored here — they're derived from the durable `events` table at
+        // query time (AnalyticsQueryEndpoints' quality handler). site_id '00000000-…' holds
+        // unattributable rejections (unknown token). count is Int64 (signed) to tolerate a correction.
+        await ExecuteAsync(
+            """
+            CREATE TABLE IF NOT EXISTS event_quality_daily
+            (
+                site_id String,
+                date Date,
+                dimension LowCardinality(String),
+                count Int64
+            )
+            ENGINE = SummingMergeTree
+            PARTITION BY toYYYYMM(date)
+            ORDER BY (site_id, date, dimension)
+            """,
+            cancellationToken);
     }
 
     public Task InsertEventAsync(AnalyticsEventRow row, CancellationToken cancellationToken = default) =>
         ExecuteAsync("INSERT INTO events FORMAT JSONEachRow", cancellationToken, JsonSerializer.Serialize(row, RowJsonOptions));
+
+    /// <summary>Appends collector.quality.v1 delta rows to the SummingMergeTree — see event_quality_daily's DDL.</summary>
+    public Task InsertQualityDeltasAsync(IEnumerable<QualityDeltaRow> rows, CancellationToken cancellationToken = default)
+    {
+        var body = string.Join('\n', rows.Select(r => JsonSerializer.Serialize(r, RowJsonOptions)));
+        return string.IsNullOrEmpty(body)
+            ? Task.CompletedTask
+            : ExecuteAsync("INSERT INTO event_quality_daily FORMAT JSONEachRow", cancellationToken, body);
+    }
 
     /// <summary>
     /// Recomputes every session that has at least one event landed since <paramref name="watermark"/> —

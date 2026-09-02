@@ -245,9 +245,34 @@ the same `QueryAuthorization.AuthorizeSiteReadAsync` membership check the REST e
 itself is multi-instance-safe, but a scale-out would want the broadcast loop to coordinate or the
 hub backplane to be Redis. Single-instance for now, same caveat as the aggregation watermark below.
 
+## Data-quality dashboard (M01.8)
+
+`GET /sites/{siteId:guid}/analytics/quality?from&to` returns a per-day series plus totals for the
+ingestion-quality dimensions, feeding `apps/dashboard-web`'s `/sites/:id/analytics/quality` screen.
+Two sources are merged:
+
+- **`event_quality_daily`** (new ClickHouse table) — the collector's own outcome counts
+  (`accepted` / `rejected_*` / `duplicate` / `dropped_overload`), delivered as `collector.quality.v1`
+  delta batches on the `quality-events` topic (handler in `Program.cs`, deduped via
+  `packages/idempotency` before applying since the deltas are additive and Dapr is at-least-once).
+  `SummingMergeTree` — reads use `sum(count) … GROUP BY`, never `FINAL`. `site_id` `00000000-…` holds
+  unattributable unknown-token rejections.
+- **`events`** — `bot` (`countIf(is_bot = 1)`) and `delayed`
+  (`dateDiff('second', received_at, processed_at) > Quality:DelayedThresholdSeconds`, default 120) are
+  computed from the durable table at query time rather than stored, so they can't drift from the
+  source of truth.
+
+`DeadLetterProbe` (a `BackgroundService`) reads the depth of `dlq-analytics-collector-events` from
+RabbitMQ's management API every 30s into `DeadLetterGauge`; the endpoint returns it as
+`deadLetterQueueDepth` — a point-in-time "still failing" gauge, deliberately not a per-day dimension.
+`tools/reconciliation-report` now reads `event_quality_daily`'s `accepted` total as its exact per-day
+"accepted" figure, replacing the old RabbitMQ cumulative counter for that role.
+
 ## Not in this service
 
 The metric-window/anomaly rollup event types, `viewport_category` capture, per-site
 configurable retention, multi-instance-safe sharing of anything (single-instance only, same caveat
 `event-collector`'s dedup cache already carries — now also true of `AnalyticsAggregationService`'s
-watermark and `LiveSubscriptions`), and comparison periods on endpoints other than overview.
+watermark and `LiveSubscriptions`), OpenTelemetry metric instruments for the quality dimensions (the
+persisted `event_quality_daily` series is the chosen mechanism; a live `Meter` mirror is a possible
+future add), and comparison periods on endpoints other than overview.

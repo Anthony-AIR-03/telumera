@@ -94,6 +94,30 @@
       "reconnecting": "reconnecting…",
       "offline": "offline"
     },
+    "quality": {
+      "link": "Data quality",
+      "backToAnalytics": "Back to analytics",
+      "heading": "Data quality — {site}",
+      "blurb": "What happened to events on their way into storage: how many were accepted, rejected and why, deduplicated, dropped under load, flagged as bots, or delayed.",
+      "loadError": "Couldn't load data-quality metrics.",
+      "chartTitle": "Collector outcomes by day",
+      "empty": "No events have arrived for this site in the selected range.",
+      "definitionsTitle": "What these mean",
+      "dim": {
+        "accepted": "Accepted",
+        "rejected": "Rejected",
+        "duplicate": "Duplicate",
+        "dropped_overload": "Dropped (overload)"
+      },
+      "card": {
+        "acceptanceRate": "Acceptance rate",
+        "rejectionRate": "Rejection rate",
+        "duplicateRate": "Duplicate rate",
+        "botShare": "Bot share (of stored)",
+        "delayed": "Delayed events",
+        "deadLetter": "Dead-letter queue"
+      }
+    },
     "chart": {
       "title": "Traffic over time",
       "views": "Views",

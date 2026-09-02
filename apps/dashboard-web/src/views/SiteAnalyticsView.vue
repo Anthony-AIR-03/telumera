@@ -208,9 +208,15 @@ const cards = computed(() => {
 
       <div class="mt-4 flex flex-wrap items-center gap-2.5">
         <AnalyticsDateRangeControl />
+        <RouterLink
+          :to="{ name: 'site-analytics-quality', params: { id: siteId }, query: route.query }"
+          class="ml-auto text-sm font-semibold text-brand-700 hover:text-brand-800"
+        >
+          {{ t('analytics.quality.link') }}
+        </RouterLink>
         <button
           type="button"
-          class="ml-auto border-none bg-transparent text-sm font-semibold text-brand-700 hover:text-brand-800"
+          class="border-none bg-transparent text-sm font-semibold text-brand-700 hover:text-brand-800"
           @click="glossaryOpen = true"
         >
           {{ t('analytics.glossary.link') }}

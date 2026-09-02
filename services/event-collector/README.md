@@ -91,6 +91,20 @@ since removed), which overlapped with `services/analytics`'s own "Enrich coarse 
 and browser categories" subtasks and worked against this service's own "no analytics queries or heavy
 processing" design. `services/analytics/README.md` covers the actual enrichment.
 
+## Data-quality tallies (M01.8)
+
+`QualityCounters` accumulates a per-`(siteId, outcome)` count in memory as `/v1/events` runs —
+`accepted`, `rejected_validation`, `rejected_unknown_token`, `rejected_origin`,
+`rejected_module_disabled`, `duplicate`, `dropped_overload`. `QualityRollupPublisher` (a
+`BackgroundService`) drains and publishes them every `Quality:PublishIntervalSeconds` (60s) as
+`collector.quality.v1` **delta batches** onto a new `quality-events` topic; `services/analytics`
+dedups on the CloudEvent id and sums them into `event_quality_daily`. Best-effort by design: a crash
+between accept and the next publish loses that partial interval, and a failed publish restores the
+deltas for the next attempt. Unknown-token rejections are recorded under `Guid.Empty` since they can't
+be attributed to a site — they surface only in a platform-level view, not a per-site one. `bot` and
+`delayed` are **not** counted here — they're derived by `services/analytics` from the durable `events`
+table at query time.
+
 ## `packages/browser-sdk` patches
 
 - Added `id: string` (client-generated via `crypto.randomUUID()`) to `OutgoingEvent` — this service's

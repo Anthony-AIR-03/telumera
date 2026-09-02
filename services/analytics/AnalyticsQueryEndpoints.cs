@@ -50,6 +50,10 @@ public static class AnalyticsQueryEndpoints
             .WithName("GetAnalyticsCustomEvents")
             .RequireAuthorization("ApiScope");
 
+        app.MapGet("/sites/{siteId:guid}/analytics/quality", GetQualityAsync)
+            .WithName("GetAnalyticsQuality")
+            .RequireAuthorization("ApiScope");
+
         return;
 
         async Task<IResult> GetOverviewAsync(
@@ -408,6 +412,92 @@ public static class AnalyticsQueryEndpoints
 
             return Results.Ok(response);
         }
+
+        async Task<IResult> GetQualityAsync(
+            Guid siteId, HttpContext httpContext, SiteLookupClient siteLookupClient, MembershipClient membershipClient,
+            ClickHouseQueryClient clickHouse, QueryCache cache, DeadLetterGauge deadLetterGauge,
+            IConfiguration configuration, CancellationToken cancellationToken)
+        {
+            var auth = await QueryAuthorization.AuthorizeSiteReadAsync(httpContext, siteId, siteLookupClient, membershipClient, cancellationToken);
+            if (auth.Error is not null)
+            {
+                return auth.Error;
+            }
+
+            var range = DateRangeParsing.Parse(httpContext);
+            if (range is null)
+            {
+                return Results.BadRequest("Invalid or excessive from/to date range.");
+            }
+
+            var delayedThresholdSeconds = configuration.GetValue("Quality:DelayedThresholdSeconds", 120);
+            var cacheKey = $"analytics:quality:{siteId}:{range.Value.From}:{range.Value.To}";
+
+            var series = await cache.GetOrSetAsync(cacheKey, cacheTtl, async () =>
+            {
+                var parameters = SiteRangeParameters(siteId, range.Value);
+                parameters["delayed"] = delayedThresholdSeconds.ToString();
+
+                // Collector-published outcome counts (SummingMergeTree — sum(), never FINAL).
+                var outcomeRows = await clickHouse.QueryAsync(
+                    """
+                    SELECT toString(date) AS date, dimension, sum(count) AS c
+                    FROM event_quality_daily
+                    WHERE site_id = {siteId:String} AND date BETWEEN {from:Date} AND {to:Date}
+                    GROUP BY date, dimension
+                    """,
+                    parameters, cancellationToken);
+
+                // bot / delayed are derived from the durable events table rather than stored — a
+                // denormalized copy could drift from the source of truth.
+                var derivedRows = await clickHouse.QueryAsync(
+                    """
+                    SELECT toString(toDate(received_at)) AS date,
+                        countIf(is_bot = 1) AS bot,
+                        countIf(dateDiff('second', received_at, processed_at) > {delayed:UInt32}) AS delayed
+                    FROM events
+                    WHERE site_id = {siteId:String} AND toDate(received_at) BETWEEN {from:Date} AND {to:Date}
+                    GROUP BY date
+                    """,
+                    parameters, cancellationToken);
+
+                var byDate = new SortedDictionary<DateOnly, Dictionary<string, long>>();
+                Dictionary<string, long> DayBucket(string date) =>
+                    byDate.TryGetValue(DateOnly.Parse(date), out var bucket)
+                        ? bucket
+                        : byDate[DateOnly.Parse(date)] = new Dictionary<string, long>();
+
+                foreach (var row in outcomeRows)
+                {
+                    DayBucket(row.GetText("date"))[row.GetText("dimension")] = row.GetLong("c");
+                }
+                foreach (var row in derivedRows)
+                {
+                    var bucket = DayBucket(row.GetText("date"));
+                    bucket["bot"] = row.GetLong("bot");
+                    bucket["delayed"] = row.GetLong("delayed");
+                }
+
+                return byDate
+                    .Select(kv => new QualityDayPoint(kv.Key, kv.Value))
+                    .ToList();
+            }, cancellationToken);
+
+            var totals = new Dictionary<string, long>();
+            foreach (var point in series)
+            {
+                foreach (var (dimension, count) in point.Dimensions)
+                {
+                    totals[dimension] = totals.GetValueOrDefault(dimension) + count;
+                }
+            }
+
+            var response = new QualityResponse(
+                range.Value.From, range.Value.To, series, totals,
+                Math.Max(0, deadLetterGauge.Depth), QualityDefinitions);
+
+            return Results.Ok(response);
+        }
     }
 
     private static async Task<OverviewMetrics> QueryOverviewMetricsAsync(
@@ -462,6 +552,20 @@ public static class AnalyticsQueryEndpoints
     };
 
     private static string? NullIfEmpty(string value) => value.Length == 0 ? null : value;
+
+    private static readonly IReadOnlyDictionary<string, string> QualityDefinitions = new Dictionary<string, string>
+    {
+        ["accepted"] = "Events the collector queued for processing (a retried duplicate the client already sent is not re-counted here).",
+        ["rejected_validation"] = "Events that failed schema/size validation at the collector (EventValidation.cs).",
+        ["rejected_unknown_token"] = "Batches rejected because the site token didn't resolve — not attributable to any one site, shown at the platform level only.",
+        ["rejected_origin"] = "Batches rejected because the Origin/Referer header didn't match the site's allowed origins (defense in depth, ADR 0006).",
+        ["rejected_module_disabled"] = "Events dropped because the Analytics module is turned off for the site.",
+        ["duplicate"] = "Events whose id was already seen within the collector's 10-minute dedup window — accepted for the client, not re-published.",
+        ["dropped_overload"] = "Events dropped because the collector's in-memory publish buffer was full (sustained overload).",
+        ["bot"] = "Events written to storage but flagged is_bot (BotDetector.cs) — kept, never silently deleted (definitions doc §8).",
+        ["delayed"] = "Events whose accept-to-process gap exceeded the delayed threshold (default 120s) — usually Dapr redelivery/retry lag.",
+        ["deadLetterQueueDepth"] = "Messages currently sitting in the analytics dead-letter queue (a point-in-time count, not a per-day total). Recover with tools/dead-letter-recovery.",
+    };
 
     private static readonly IReadOnlyDictionary<string, string> OverviewDefinitions = new Dictionary<string, string>
     {

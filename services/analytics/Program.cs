@@ -9,6 +9,7 @@ using Microsoft.Identity.Web;
 using StackExchange.Redis;
 
 using Telumera.EventContracts;
+using Telumera.Idempotency;
 using Telumera.ServiceDefaults;
 using Telumera.Services.Analytics.Api;
 
@@ -83,6 +84,11 @@ builder.Services.AddSingleton<IConnectionMultiplexer>(_ =>
 builder.Services.AddSingleton<LiveVisitorProjection>();
 builder.Services.AddSingleton<LiveSubscriptions>();
 builder.Services.AddHostedService<LiveBroadcastService>();
+
+// M01.8 data-quality dashboard: subscribes to collector.quality.v1 (handler below) and probes the
+// analytics dead-letter queue depth for the endpoint's "failed" figure.
+builder.Services.AddSingleton<DeadLetterGauge>();
+builder.Services.AddHostedService<DeadLetterProbe>();
 
 builder.Services.AddHttpClient();
 builder.Services.AddSingleton<ClickHouseWriter>();
@@ -174,6 +180,42 @@ app.MapPost("/subscriptions/collector-events", async (HttpContext httpContext, E
 })
 .WithTopic("pubsub", "collector-events")
 .WithName("HandleCollectorEvents");
+
+// M01.8: collector.quality.v1 delta batches → event_quality_daily (SummingMergeTree). Deduped on the
+// CloudEvent id before applying, since Dapr is at-least-once and these deltas are additive — same
+// marker-before-write pattern as EventProcessor.
+app.MapPost("/subscriptions/quality-events", async (
+    HttpContext httpContext, AnalyticsDbContext db, ClickHouseWriter clickHouse, ILogger<Program> logger) =>
+{
+    using var document = await JsonDocument.ParseAsync(httpContext.Request.Body, cancellationToken: httpContext.RequestAborted);
+    var root = document.RootElement;
+
+    if (root.GetProperty("type").GetString() != EventTypes.CollectorQualityV1
+        || root.GetProperty("id").GetString() is not { } cloudEventId
+        || !Guid.TryParse(cloudEventId, out var eventId))
+    {
+        return Results.Ok();
+    }
+
+    var payload = root.GetProperty("data").Deserialize<CollectorQualityPayload>(subscriptionJsonOptions);
+    if (payload is null || payload.Counts.Count == 0)
+    {
+        return Results.Ok();
+    }
+
+    if (!await db.TryBeginProcessingEventAsync(eventId, EventTypes.CollectorQualityV1, httpContext.RequestAborted))
+    {
+        return Results.Ok(); // already applied this delta batch
+    }
+    await db.SaveChangesAsync(httpContext.RequestAborted);
+
+    var rows = payload.Counts.Select(c => new QualityDeltaRow(c.SiteId, payload.Date, c.Dimension, c.Count));
+    await clickHouse.InsertQualityDeltasAsync(rows, httpContext.RequestAborted);
+    logger.LogDebug("Applied {Count} collector.quality.v1 deltas for {Date}.", payload.Counts.Count, payload.Date);
+    return Results.Ok();
+})
+.WithTopic("pubsub", "quality-events")
+.WithName("HandleQualityEvents");
 
 app.MapSubscribeHandler();
 

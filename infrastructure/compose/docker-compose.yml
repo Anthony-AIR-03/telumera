@@ -438,6 +438,9 @@ services:
       Redis__Password: "${REDIS_PASSWORD}"
       GeoIp__DatabasePath: "/geoip/GeoLite2-Country.mmdb" # populated by scripts/refresh-geoip.sh; absent = geography enrichment off
       Cors__AllowedOrigins: "${CORS_ALLOWED_ORIGINS}" # LiveHub SignalR: the dashboard connects to this service directly, cross-origin
+      Quality__RabbitMqManagementUrl: "http://rabbitmq:15672" # DeadLetterProbe: analytics DLQ depth for the data-quality dashboard
+      Quality__RabbitMqUser: "${RABBITMQ_DEFAULT_USER}"
+      Quality__RabbitMqPassword: "${RABBITMQ_DEFAULT_PASS}"
     volumes:
       - ./geoip:/geoip:ro # MMDB country DB (git-ignored, not committed — see scripts/refresh-geoip.sh)
     ports:

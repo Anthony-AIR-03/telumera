@@ -49,6 +49,10 @@ builder.Services.AddSingleton<SiteProjection>();
 builder.Services.AddSingleton<DuplicateEventCache>();
 builder.Services.AddSingleton<CollectorChannel>();
 builder.Services.AddHostedService<CollectorPublisher>();
+// M01.8: per-(site, outcome) tallies drained and published as collector.quality.v1 every 60s, feeding
+// the analytics data-quality dashboard. In-memory + best-effort — see QualityCounters.cs.
+builder.Services.AddSingleton<QualityCounters>();
+builder.Services.AddHostedService<QualityRollupPublisher>();
 // This service owns no persistent data (docs/architecture/bounded-contexts-and-data-ownership.md), so
 // its site projection is rebuilt from site-registry on every startup (and periodically resynced)
 // rather than restored from disk — see SiteProjectionSyncService.cs. Runs as a background service
@@ -77,6 +81,7 @@ app.MapPost("/v1/events", async (
     SiteProjection projection,
     CollectorChannel channel,
     DuplicateEventCache duplicateCache,
+    QualityCounters qualityCounters,
     IConfiguration configuration,
     IHostEnvironment env,
     ILogger<Program> logger) =>
@@ -101,6 +106,7 @@ app.MapPost("/v1/events", async (
     var site = await projection.ResolveAsync(siteToken, httpContext.RequestAborted);
     if (site is null)
     {
+        qualityCounters.Record(Guid.Empty, QualityDimensions.RejectedUnknownToken, request.Events.Length);
         return Results.NotFound();
     }
 
@@ -110,6 +116,7 @@ app.MapPost("/v1/events", async (
         ?? httpContext.Request.Headers.Referer.FirstOrDefault();
     if (origin is not null && !OriginMatches(origin, site.AllowedOrigins))
     {
+        qualityCounters.Record(site.SiteId, QualityDimensions.RejectedOrigin, request.Events.Length);
         return Results.StatusCode(StatusCodes.Status403Forbidden);
     }
 
@@ -128,6 +135,7 @@ app.MapPost("/v1/events", async (
         if (validationErrors.Count > 0)
         {
             rejected++;
+            qualityCounters.Record(site.SiteId, QualityDimensions.RejectedValidation);
             errors?.AddRange(validationErrors.Select(e => $"{evt.Id}: {e}"));
             continue;
         }
@@ -137,12 +145,14 @@ app.MapPost("/v1/events", async (
         if (!site.EnabledModules.Contains("Analytics"))
         {
             rejected++;
+            qualityCounters.Record(site.SiteId, QualityDimensions.RejectedModuleDisabled);
             continue;
         }
 
         if (!duplicateCache.TryClaim(evt.Id))
         {
             accepted++; // a retried duplicate is a success from the client's perspective, not an error
+            qualityCounters.Record(site.SiteId, QualityDimensions.Duplicate);
             continue;
         }
 
@@ -158,6 +168,11 @@ app.MapPost("/v1/events", async (
         if (!channel.TryEnqueue(enrichedEvent))
         {
             logger.LogWarning("Collector channel full; dropped event {EventId}.", evt.Id);
+            qualityCounters.Record(site.SiteId, QualityDimensions.DroppedOverload);
+        }
+        else
+        {
+            qualityCounters.Record(site.SiteId, QualityDimensions.Accepted);
         }
 
         accepted++;

@@ -40,6 +40,12 @@ const router = createRouter({
       component: () => import('../views/SiteAnalyticsView.vue'),
       meta: { requiresAuth: true },
     },
+    {
+      path: '/sites/:id/analytics/quality',
+      name: 'site-analytics-quality',
+      component: () => import('../views/SiteQualityView.vue'),
+      meta: { requiresAuth: true },
+    },
   ],
 })
 

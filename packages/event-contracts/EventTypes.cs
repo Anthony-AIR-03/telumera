@@ -14,6 +14,7 @@ public static class EventTypes
     public const string AnalyticsPageViewReceivedV1 = "analytics.page-view.received.v1";
     public const string AnalyticsCustomEventReceivedV1 = "analytics.custom-event.received.v1";
     public const string AnalyticsProcessedV1 = "analytics.processed.v1";
+    public const string CollectorQualityV1 = "collector.quality.v1";
     public const string PerformanceSampleReceivedV1 = "performance.sample.received.v1";
     public const string ErrorOccurrenceReceivedV1 = "error.occurrence.received.v1";
     public const string ErrorIssueChangedV1 = "error.issue.changed.v1";

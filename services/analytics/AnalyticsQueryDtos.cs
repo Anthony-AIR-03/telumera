@@ -31,3 +31,18 @@ public sealed record TechnologyMetric(
 public sealed record GeographyMetric(string? Country, long Sessions, long Visitors, long Views, bool IsBelowPrivacyFloor);
 
 public sealed record CustomEventMetric(string EventName, long Count, long UniqueSessions, IReadOnlyList<string> AllowedProperties);
+
+/// <summary>
+/// M01.8 data-quality dashboard. <c>Series</c> is per-day; each day's <c>Dimensions</c> map holds the
+/// collector-published outcome counts (accepted / rejected_* / duplicate / dropped_overload) plus
+/// <c>bot</c> and <c>delayed</c> derived from the durable events table. <c>DeadLetterQueueDepth</c> is
+/// a point-in-time gauge (messages currently stuck in the DLQ), not a per-day figure.
+/// </summary>
+public sealed record QualityDayPoint(DateOnly Date, IReadOnlyDictionary<string, long> Dimensions);
+
+public sealed record QualityResponse(
+    DateOnly From, DateOnly To,
+    IReadOnlyList<QualityDayPoint> Series,
+    IReadOnlyDictionary<string, long> Totals,
+    long DeadLetterQueueDepth,
+    IReadOnlyDictionary<string, string> Definitions);
