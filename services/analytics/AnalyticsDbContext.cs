@@ -12,8 +12,11 @@ namespace Telumera.Services.Analytics.Api;
 /// </summary>
 public sealed class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options) : DbContext(options)
 {
+    public DbSet<AggregationCheckpoint> AggregationCheckpoints => Set<AggregationCheckpoint>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ConfigureProcessedEvent();
+        modelBuilder.ConfigureAggregationCheckpoint();
     }
 }

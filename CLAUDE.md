@@ -373,6 +373,60 @@ network-namespace quirk M01.3 first surfaced (recreating an app container orphan
 sidecars alongside their apps, rather than rediscovering it as a new bug. Covers all 10 M01.4 Asana
 subtasks.
 
+M01.5 ("Analytics storage and aggregation") is complete: `services/analytics` gained a `sessions`
+ClickHouse table and five `daily_*_rollup` tables (site, page, acquisition, technology, geography) — the
+layer downstream of M01.4's raw `events` table that nothing consumed until now. Two architectural facts
+drove the design: no scheduled-job pattern existed anywhere in the repo (the closest precedent,
+`event-collector`'s `SiteProjectionSyncService`, is the `BackgroundService` + `PeriodicTimer` shape this
+epic's new `AnalyticsAggregationService` reuses), and no ClickHouse materialized view/TTL usage existed
+either — sessions and rollups are periodically *recomputed*, not streaming materialized views, because a
+30-minute inactivity gap (the session boundary, per `docs/analytics/definitions-and-privacy-model.md` §2)
+can't be resolved by an insert-triggered view that can't know whether a later event still belongs to the
+same session. A single watermark (`aggregation_checkpoints`, a new small Postgres control table next to
+`packages/idempotency`'s `processed_events`, same "control table beside the real ClickHouse data" pattern)
+drives both session recomputation and, cascading from it, rollup recomputation for exactly the (site,
+date) buckets touched — this single mechanism *is* the "late-event handling" subtask, not a separate
+window-recalculation path: a late event for a session closed days ago simply makes that session_id dirty
+on the next tick regardless of age. The watermark trails "now" by a configurable safety buffer (300s
+default) rather than advancing straight to the current time, to tolerate Dapr's at-least-once
+redelivery/retry lag (ADR 0004) without silently dropping a straggler. `events` also gained the "event
+version" M01.5's raw-event-table subtask asked for (`data_version`, from `EventEnvelope.DataVersion`) and
+a 90-day TTL (`docs/analytics/definitions-and-privacy-model.md` §8's raw-retention default) — TTL on a
+`DateTime64` column outright fails in ClickHouse 24.8 without a `toDateTime()` cast first, caught only by
+testing the DDL against a live instance. `sessions`/rollups get no TTL — §8 already treats aggregate
+retention as indefinite by default. The minimum-event-count-per-bucket floor §8 explicitly deferred to
+this epic is now decided and documented there: rollup rows with fewer than 5 distinct visitors get
+`is_below_privacy_floor = 1`, flagged not suppressed, same "marked not hidden" convention bot traffic
+already uses. `daily_page_rollup` — the one rollup needing both per-event and per-session source data —
+combines them via `UNION ALL` + `max()` per metric rather than a `FULL OUTER JOIN`, discovered to be both
+simpler and less error-prone after live-testing both approaches directly against ClickHouse. M01.5 also
+closes "Implement data reconciliation job" via a new `tools/reconciliation-report` console tool (following
+`tools/dead-letter-recovery`'s established bare-console-tool shape) comparing exact Postgres
+`processed_events` vs. ClickHouse `events` counts per day — giving the marker-before-write crash-window
+trade-off M01.4's README already disclosed an actual detection mechanism for the first time, rather than
+leaving it a documented-but-unverified risk; RabbitMQ's cumulative exchange counters are shown for context
+only, explicitly not treated as precise per-day inputs (no historical per-day counter exists there),
+per the Accuracy Principle. `viewport_category` (mentioned in the CSV's technology-rollup wording) and
+per-site configurable retention were both deliberately not built — no SDK signal or Site Registry field
+exists for either, and inventing one wasn't implied by a storage/aggregation epic; documented as gaps
+rather than stubbed. `daily_geography_rollup.country` will be 100% empty until M01.8 ships real GeoIP,
+same known limitation M01.1/M01.3/M01.4 already carry forward.
+
+Every aggregation query (session recompute, all five rollups, the tuple-based dirty-date scoping subquery,
+and a full late-event round trip) was developed and verified directly against a live ClickHouse instance
+before being committed to C# — this caught two real bugs no amount of code review would have: the TTL
+cast issue above, and a "ClickHouse: aggregate function found inside another aggregate function" error
+from reusing an outer SELECT alias inside a second expression in the same list (fixed by nesting the
+aggregation in its own subquery). Beyond that, the actual compiled `AnalyticsAggregationService` was
+verified running for real inside a freshly built `docker compose up` container — not just exercised via
+manual SQL: its first tick auto-backfilled all pre-existing session data with no errors, and a later tick
+picked up a directly-inserted new event entirely on its own periodic schedule with no manual trigger,
+producing the same result as the hand-verified queries. HTTP-level verification through the SDK's actual
+`/v1/events` path (`AnalyticsAggregationTests.cs`, following `AnalyticsProcessingTests.cs`'s pattern) was
+written and confirmed to build and skip cleanly, but not run against a real Entra ID token in this
+session — no interactive device-code login was available; the aggregation logic itself was validated at
+the ClickHouse layer directly instead. Covers all 11 M01.5 Asana subtasks.
+
 ## Planning artifacts (`planning/`)
 
 - `Telumera_Modular_Project_Plan.md` — the full architecture/roadmap doc summarized above; treat as the

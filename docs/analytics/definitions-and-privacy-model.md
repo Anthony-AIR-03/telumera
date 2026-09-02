@@ -183,3 +183,15 @@ is the operational mechanism; these are the default values:
 - Deletion mechanics for M01 are admin/CLI-only (no dashboard UI required yet) — matches
   `docs/privacy/privacy-threat-model.md`'s explicit statement that the polished self-serve version is
   scoped to M10, not M01.
+
+**Addendum (M01.5) — the minimum event-count-per-bucket floor this section deferred:** a daily rollup row
+(`daily_site_rollup`, `daily_page_rollup`, `daily_acquisition_rollup`, `daily_technology_rollup`,
+`daily_geography_rollup` — see `services/analytics/README.md`) with fewer than **5 distinct visitors**
+(`visitors_count`, not raw event/session count — visitor count is the actual re-identification risk) gets
+`is_below_privacy_floor = 1`. The row is still written and queryable — never silently hidden from the site
+owner, per the Accuracy Principle — but flagged so a future dashboard can group flagged buckets under
+"Other" rather than displaying a segment small enough to identify a handful of real visitors. Same
+"marked, not silently deleted" convention `docs/privacy/privacy-threat-model.md` already applies to bot
+traffic. Visitor count (not event count) is the floor's basis because it's what actually determines
+whether a bucket could be traced back to an individual — a bucket with 40 events from 2 visitors is a
+bigger privacy risk than one with 6 events from 6 visitors.

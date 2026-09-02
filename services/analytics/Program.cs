@@ -26,6 +26,7 @@ builder.Services.AddHttpClient();
 builder.Services.AddSingleton<ClickHouseWriter>();
 builder.Services.AddSingleton<IGeoLookup, NoOpGeoLookup>();
 builder.Services.AddScoped<EventProcessor>();
+builder.Services.AddHostedService<AnalyticsAggregationService>();
 
 var app = builder.Build();
 

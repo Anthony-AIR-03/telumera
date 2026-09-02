@@ -88,6 +88,7 @@ internal sealed class EventProcessor(
             IsBot: isBot ? 1 : 0,
             Environment: data.Environment,
             PropertiesJson: data.Properties is null ? "{}" : JsonSerializer.Serialize(data.Properties),
+            DataVersion: envelope.DataVersion,
             ClientTimestamp: FormatTimestamp(ParseClientTimestamp(data.ClientTimestamp, data.ReceivedAt)),
             ReceivedAt: FormatTimestamp(data.ReceivedAt),
             ProcessedAt: FormatTimestamp(processedAt));

@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- No project references, same as tools/dead-letter-recovery — direct HTTP/DB calls, no shared
+         packages/* dependency. Npgsql is the one addition over that tool's shape, needed for the exact
+         Postgres processed_events count (see top-of-file comment for why RabbitMQ counters alone aren't
+         enough here). -->
+    <PackageReference Include="Npgsql" Version="10.0.3" />
+  </ItemGroup>
+
+</Project>

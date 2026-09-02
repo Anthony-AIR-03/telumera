@@ -87,7 +87,74 @@ an aggregation-window subsystem for consumers that don't exist yet isn't implied
 A separate console tool (not part of this service) for the "Create dead-letter recovery command"
 subtask — see its own top-of-file comment.
 
+## Sessions and daily rollups (M01.5)
+
+`sessions` and five `daily_*_rollup` ClickHouse tables sit downstream of `events`, populated by
+`AnalyticsAggregationService` (a `BackgroundService`, same `PeriodicTimer` shape as
+`event-collector`'s `SiteProjectionSyncService`) rather than a streaming materialized view — a session's
+30-minute inactivity boundary can't be resolved by an insert-triggered view, since it can't know whether a
+later event will still land inside the same session. Every table is `ReplacingMergeTree(updated_at)`: an
+aggregation pass re-inserts the full row for anything it recomputes, and `FINAL` (or the aggregation
+queries' own re-read of the same table) sees the latest version even before a background merge physically
+collapses the older one away.
+
+Each tick (`Aggregation:IntervalSeconds`, 60s by default):
+1. Reads a watermark from `aggregation_checkpoints` (`telumera_analytics_control`, `AggregationCheckpoint.cs`
+   — same "small Postgres control table" pattern as `packages/idempotency`'s `processed_events`).
+2. `ClickHouseWriter.RecomputeSessionsAsync` recomputes every session with at least one event whose
+   `received_at` is newer than the watermark, straight from `events` via `argMin`/`argMax`/`sumIf`
+   combinators (definitions doc §2 entry-context attribution, §4's engaged-session formula, §5's
+   active-time via the SDK's `engagement` custom event) — no rows pulled into .NET.
+3. `ClickHouseWriter.RecomputeDailyRollupsAsync` recomputes the five rollups for exactly the (site, date)
+   buckets those sessions touched.
+4. The watermark advances to `now - Aggregation:WatermarkSafetyBufferSeconds` (300s default), not straight
+   to `now` — an event can land in ClickHouse noticeably after its own `received_at` (Dapr
+   redelivery/retry per ADR 0004, or ordinary publish-to-process lag), so the watermark trails "now" by a
+   fixed cushion rather than risking skipping a straggler on a later tick.
+
+**This watermark is also the entire late-event mechanism** — a late event landing today for a session
+"closed" days ago makes that `session_id` dirty on the very next tick regardless of the session's own age,
+and rollups cascade automatically since they're scoped to whatever dates that tick's sessions touched. No
+separate "recalculate window" logic exists or is needed. The very first run ever (watermark unset) rescans
+every event that already existed, which doubles as the initial backfill for data written before M01.5
+shipped.
+
+The page rollup (`daily_page_rollup`) combines per-event view counts (`events`) with per-session
+entry/exit counts (`sessions`) via `UNION ALL` + `max()` per metric rather than a `FULL OUTER JOIN` — each
+branch only ever populates its own metric column (`0` elsewhere for that branch), so taking `max()` across
+branches for the same `(site_id, date, path)` key is a correct, simpler combine.
+
+Every rollup row carries `is_below_privacy_floor` (`visitors_count < 5`, flagged not suppressed — see
+`docs/analytics/definitions-and-privacy-model.md` §8's addendum). `daily_geography_rollup.country` is
+100% empty until M01.8 ships a real `IGeoLookup` (still `NoOpGeoLookup`); no `viewport_category` column
+exists anywhere — no SDK signal produces one.
+
+Raw `events` gets a 90-day TTL (`ALTER TABLE events MODIFY TTL toDateTime(received_at) + INTERVAL 90 DAY
+DELETE`, applied idempotently in `EnsureSchemaAsync` alongside its `CREATE TABLE IF NOT EXISTS` — TTL
+needs a `DateTime`/`Date` expression, not `DateTime64` directly, which ClickHouse 24.8 rejects outright).
+ClickHouse enforces this via background merges (non-blocking for reads/writes) and drops whole monthly
+partitions once fully expired — definitions doc §8's "raw event retention: 90 days" default, satisfying
+the "delete expired data without blocking normal queries" subtask with no separate cleanup job. `sessions`
+and the five rollups get **no** TTL — §8 already says aggregate/rollup retention is indefinite by default.
+Per-site configurable retention is not built (no Site Registry field/sync exists for it) — deferred, same
+treatment as GeoIP.
+
+## `tools/reconciliation-report`
+
+M01.5's "Implement data reconciliation job" subtask, following `tools/dead-letter-recovery`'s own shape
+(bare console tool, no compose service, run on demand — `dotnet run --project tools/reconciliation-report
+-- [--date yyyy-MM-dd]`). Compares two *exact* per-day counts — Postgres `processed_events` ("processed",
+the idempotency marker `EventProcessor` commits before its ClickHouse write) against ClickHouse `events`
+("stored") — surfacing the marker-before-write crash-window trade-off documented above with an actual
+detection mechanism for the first time, rather than leaving it a documented-but-unverified risk. A third
+number (RabbitMQ's `collector-events`/`analytics-events` exchange `publish_in` counters, "accepted") is
+shown for context only, explicitly labeled cumulative-since-broker-start rather than treated as a precise
+per-day input — RabbitMQ has no historical per-day counter, and showing false per-day precision there
+would violate the Accuracy Principle this whole module is built around.
+
 ## Not in this service
 
-A real GeoIP provider, the metric-window/anomaly rollup event types, and multi-instance-safe sharing of
-anything (single-instance only, same caveat `event-collector`'s dedup cache already carries).
+A real GeoIP provider, the metric-window/anomaly rollup event types, `viewport_category` capture, per-site
+configurable retention, and multi-instance-safe sharing of anything (single-instance only, same caveat
+`event-collector`'s dedup cache already carries — now also true of `AnalyticsAggregationService`'s
+watermark).
