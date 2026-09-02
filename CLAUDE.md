@@ -576,11 +576,18 @@ pass, since it hadn't been updated since before M01.7 shipped.
 
 M01.8 ("Live analytics, quality and launch") is the final Product Analytics epic. Its plan was
 reconstructed first (`docs/plans/m01.8-implementation-plan.md`) after a prior session died before
-saving it, then executed workstream by workstream, one commit each. **Build-verified only** — Docker
-Desktop was down for the whole session, so `docker compose up` / integration-test / browser
-verification is deferred to the user (the M01.5/M01.6 precedent); every `dotnet build`,
-`vue-tsc`/`eslint`/`prettier`, and `dotnet format --verify` is clean, and the GeoIP reader was
-exercised against the real MaxMind DB standalone (Dutch IP → `NL`, private/reserved → null).
+saving it, then executed workstream by workstream, one commit each. Most of the session was
+build-verified only (Docker was down); the user then started Docker and provided a real Entra token,
+so a full live verification pass ran at the end: all 7 analytics endpoints return 200 through the
+gateway; **all 4 new `M018Tests` pass** (SignalR live panel connects and reflects recent events,
+rejects a non-member `Subscribe`; the quality endpoint; GeoIP country from the forwarded IP → `NL`);
+the **full 29-test integration suite passes**; `/telumera.js` serves the real 11KB bundle (the
+collector Dockerfile's node `sdk-build` stage works); `tools/synthetic-traffic` drives all six
+journeys; and 8 fresh events show exact `processed_events`/ClickHouse-row parity (a pre-existing
+processed>stored gap from earlier same-day testing is older data, correctly flagged by
+`reconciliation-report`, not a pipeline loss). Two real bugs were found and fixed in that pass
+(commit `2627c51`): a ClickHouse alias-shadowing 500 in `/analytics/quality`, and
+`reconciliation-report` counting `collector.quality.v1` dedup markers as processed analytics events.
 
 - **Real GeoIP** (`services/analytics/GeoLookup.cs`): `MmdbGeoLookup` reads a local MaxMind-format
   `.mmdb` country DB in-process (`MaxMind.GeoIP2`), swapped in for `NoOpGeoLookup` only when the file
@@ -639,16 +646,15 @@ exercised against the real MaxMind DB standalone (Dutch IP → `NL`, private/res
 - **`tools/synthetic-traffic`**: drives the real SDK→collector path with six scripted journeys
   (engaged session, bounce, bot UA, duplicate id, malformed event, unknown token) and prints the
   metric deltas they should produce, for reconciling a run.
-- **Verification tests written, not yet run**: `tests/integration/M018Tests.cs` (`[SkippableFact]`) —
-  live SignalR panel, quality endpoint, GeoIP country from the forwarded IP; ready to run once the
-  stack is up with a real token.
+- **Verification**: `tests/integration/M018Tests.cs` (`[SkippableFact]`) — all 4 pass live.
 
-**Still open in M01.8** (all need the live `telumera.nl` environment): the actual NAS deploy + the
-end-to-end verification pass; installing the SDK on the `anthony-air.nl` portfolio and reconciling
-synthetic acceptance traffic; running `backup.sh`/`restore-test.sh` against real data; the portfolio
-case study; and updating the "Telumera Dashboard Concept" Artifact mockup with the live panel, the
-quality screen, and the geography map (`housestyle.md` was updated; the mockup was not, to avoid a
-blind edit).
+**Still open in M01.8** (all need the live `telumera.nl` environment): the actual NAS deploy (the
+`docker-compose.nas.yml` artifacts are done, the user has the Cloudflare tunnel route + 4 NPM proxy
+hosts + Entra SPA redirect URIs set); installing the SDK on the `anthony-air.nl` portfolio and
+reconciling synthetic acceptance traffic there; running `backup.sh`/`restore-test.sh` against real
+data; the portfolio case study; and updating the "Telumera Dashboard Concept" Artifact mockup with
+the live panel, the quality screen, and the geography map (`housestyle.md` was updated; the mockup
+was not, to avoid a blind edit).
 
 ## Planning artifacts (`planning/`)
 
