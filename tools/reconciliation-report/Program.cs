@@ -92,8 +92,14 @@ static async Task<long> GetProcessedCountAsync(string connectionString, DateOnly
     await using var connection = new NpgsqlConnection(connectionString);
     await connection.OpenAsync();
 
+    // processed_events also holds dedup markers for collector.quality.v1 (M01.8) — those never produce
+    // a ClickHouse `events` row, so exclude them to keep "processed" comparable to "stored".
     await using var command = new NpgsqlCommand(
-        "SELECT count(*) FROM processed_events WHERE (processed_at AT TIME ZONE 'UTC')::date = @date", connection);
+        """
+        SELECT count(*) FROM processed_events
+        WHERE (processed_at AT TIME ZONE 'UTC')::date = @date
+          AND event_type IN ('analytics.page-view.received.v1', 'analytics.custom-event.received.v1')
+        """, connection);
     command.Parameters.AddWithValue("date", date);
 
     return (long)(await command.ExecuteScalarAsync() ?? 0L);

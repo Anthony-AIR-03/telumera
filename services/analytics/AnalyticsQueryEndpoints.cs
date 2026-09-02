@@ -438,10 +438,13 @@ public static class AnalyticsQueryEndpoints
                 var parameters = SiteRangeParameters(siteId, range.Value);
                 parameters["delayed"] = delayedThresholdSeconds.ToString();
 
-                // Collector-published outcome counts (SummingMergeTree — sum(), never FINAL).
+                // Collector-published outcome counts (SummingMergeTree — sum(), never FINAL). The
+                // output column is aliased `day`, not `date`: an alias that shadows the `date` column
+                // makes ClickHouse resolve the bare `date` in WHERE to `toString(date)` (a String),
+                // which then can't be compared to a Date parameter.
                 var outcomeRows = await clickHouse.QueryAsync(
                     """
-                    SELECT toString(date) AS date, dimension, sum(count) AS c
+                    SELECT toString(date) AS day, dimension, sum(count) AS c
                     FROM event_quality_daily
                     WHERE site_id = {siteId:String} AND date BETWEEN {from:Date} AND {to:Date}
                     GROUP BY date, dimension
@@ -452,28 +455,28 @@ public static class AnalyticsQueryEndpoints
                 // denormalized copy could drift from the source of truth.
                 var derivedRows = await clickHouse.QueryAsync(
                     """
-                    SELECT toString(toDate(received_at)) AS date,
+                    SELECT toString(toDate(received_at)) AS day,
                         countIf(is_bot = 1) AS bot,
                         countIf(dateDiff('second', received_at, processed_at) > {delayed:UInt32}) AS delayed
                     FROM events
                     WHERE site_id = {siteId:String} AND toDate(received_at) BETWEEN {from:Date} AND {to:Date}
-                    GROUP BY date
+                    GROUP BY toDate(received_at)
                     """,
                     parameters, cancellationToken);
 
                 var byDate = new SortedDictionary<DateOnly, Dictionary<string, long>>();
-                Dictionary<string, long> DayBucket(string date) =>
-                    byDate.TryGetValue(DateOnly.Parse(date), out var bucket)
+                Dictionary<string, long> DayBucket(string day) =>
+                    byDate.TryGetValue(DateOnly.Parse(day), out var bucket)
                         ? bucket
-                        : byDate[DateOnly.Parse(date)] = new Dictionary<string, long>();
+                        : byDate[DateOnly.Parse(day)] = new Dictionary<string, long>();
 
                 foreach (var row in outcomeRows)
                 {
-                    DayBucket(row.GetText("date"))[row.GetText("dimension")] = row.GetLong("c");
+                    DayBucket(row.GetText("day"))[row.GetText("dimension")] = row.GetLong("c");
                 }
                 foreach (var row in derivedRows)
                 {
-                    var bucket = DayBucket(row.GetText("date"));
+                    var bucket = DayBucket(row.GetText("day"));
                     bucket["bot"] = row.GetLong("bot");
                     bucket["delayed"] = row.GetLong("delayed");
                 }
