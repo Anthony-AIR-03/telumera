@@ -20,12 +20,17 @@ mode).
 
 ## Usage
 
+The Event Collector serves this exact bundle at `GET /telumera.js` (M01.8), so both the script and
+the ingestion endpoint sit behind one origin. The dashboard's **Install** card
+(`apps/dashboard-web` → a site → Install) generates this snippet with the site's active token
+already filled in — copy it from there rather than hand-writing it.
+
 ```html
-<script src="/path/to/browser-sdk.global.js"></script>
+<script src="https://collect.telumera.nl/telumera.js"></script>
 <script>
   const analytics = window.telumera.init({
     siteToken: 'the-site-registry-issued-token',
-    endpoint: 'https://collector.example.com/collect',
+    endpoint: 'https://collect.telumera.nl/v1/events',
     consent: 'required', // or 'none' to start tracking immediately
   })
 
@@ -36,7 +41,9 @@ mode).
 </script>
 ```
 
-Or as an ES module: `import { init } from '@telumera/browser-sdk'`.
+Or as an ES module: `import { init } from '@telumera/browser-sdk'` (same `init` config).
+Locally the collector serves `/telumera.js` from this package's own `dist/` output — run
+`npm run build:js -w @telumera/browser-sdk` first, or the container build bakes it in.
 
 ## Config (`SdkConfig`, see `src/types.ts`)
 

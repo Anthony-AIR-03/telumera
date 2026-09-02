@@ -57,6 +57,17 @@
     "disabled": "Disabled",
     "toggleError": "Couldn't update that module."
   },
+  "install": {
+    "title": "Install",
+    "blurb": "Paste this into the site to start collecting. It uses the site's active token and sends to the collector directly.",
+    "copy": "Copy",
+    "copied": "Copied!",
+    "noToken": "This site has no active token yet — rotate one above and the snippet will fill in.",
+    "flavor": {
+      "script": "Script tag",
+      "esm": "ESM / bundler"
+    }
+  },
   "analyticsSites": {
     "title": "Analytics",
     "loadError": "Couldn't load your sites.",

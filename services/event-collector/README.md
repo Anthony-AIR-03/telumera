@@ -91,6 +91,15 @@ since removed), which overlapped with `services/analytics`'s own "Enrich coarse 
 and browser categories" subtasks and worked against this service's own "no analytics queries or heavy
 processing" design. `services/analytics/README.md` covers the actual enrichment.
 
+## Serving the browser SDK (M01.8)
+
+`GET /telumera.js` returns `packages/browser-sdk`'s built IIFE bundle (`browser-sdk.global.js`), so a
+site's install snippet points at one public origin for both the script and `/v1/events`. The
+Dockerfile's `sdk-build` stage runs `npm run build:js -w @telumera/browser-sdk` and bakes the file in
+at `Sdk__BundlePath`; a local `dotnet run` falls back to this repo's own
+`packages/browser-sdk/dist/browser-sdk.global.js` (build it first) and 404s cleanly if it's absent.
+Anonymous, not rate-limited, `Cache-Control: public, max-age=3600` with an mtime/size `ETag`.
+
 ## Data-quality tallies (M01.8)
 
 `QualityCounters` accumulates a per-`(siteId, outcome)` count in memory as `/v1/events` runs —

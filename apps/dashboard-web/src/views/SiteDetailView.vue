@@ -105,6 +105,48 @@ onMounted(loadAll)
 
 /** Rotate/revoke/toggle all require Developer+ server-side (see services/site-registry/README.md). */
 const canManage = computed(() => roleAtLeast(site.value?.role ?? null, 'Developer'))
+
+// --- Install snippet (M01.8) ---
+const collectorOrigin = import.meta.env.VITE_COLLECTOR_ORIGIN ?? 'http://localhost:5103'
+const snippetFlavor = ref<'script' | 'esm'>('script')
+const activeToken = computed(() => tokens.value.find((tok) => !tok.revokedAt)?.token ?? null)
+
+// Built from parts so the closing script tag is never a literal token in this SFC's script block.
+const closeScript = '<' + '/script>'
+
+const snippet = computed(() => {
+  const tok = activeToken.value ?? 'YOUR_SITE_TOKEN'
+  if (snippetFlavor.value === 'esm') {
+    return `import { init } from '@telumera/browser-sdk'
+
+const analytics = init({
+  siteToken: '${tok}',
+  endpoint: '${collectorOrigin}/v1/events',
+})
+// SPA only: analytics.trackRouter(router)`
+  }
+  return `<script src="${collectorOrigin}/telumera.js">${closeScript}
+<script>
+  const analytics = window.telumera.init({
+    siteToken: '${tok}',
+    endpoint: '${collectorOrigin}/v1/events',
+  })
+  // SPA only: analytics.trackRouter(router)
+${closeScript}`
+})
+
+const copied = ref(false)
+let copiedTimer: ReturnType<typeof setTimeout> | undefined
+async function copySnippet() {
+  try {
+    await navigator.clipboard.writeText(snippet.value)
+    copied.value = true
+    clearTimeout(copiedTimer)
+    copiedTimer = setTimeout(() => (copied.value = false), 1400)
+  } catch {
+    /* clipboard blocked — the user can still select the text */
+  }
+}
 </script>
 
 <template>
@@ -156,6 +198,41 @@ const canManage = computed(() => roleAtLeast(site.value?.role ?? null, 'Develope
             </AppButton>
           </li>
         </ul>
+      </section>
+
+      <section class="mt-8">
+        <h2 class="font-display text-sm font-bold text-neutral-900">{{ t('install.title') }}</h2>
+        <p class="mt-1 text-sm text-neutral-500">{{ t('install.blurb') }}</p>
+
+        <div
+          class="mt-4 rounded-[14px] border border-neutral-200 bg-white p-5 shadow-[0_1px_2px_rgba(15,21,18,0.04),0_1px_1px_rgba(15,21,18,0.03)]"
+        >
+          <div class="flex items-center gap-2">
+            <button
+              v-for="flavor in ['script', 'esm'] as const"
+              :key="flavor"
+              type="button"
+              class="rounded-[9px] px-2.5 py-1 text-xs font-semibold"
+              :class="
+                snippetFlavor === flavor
+                  ? 'bg-brand-50 text-brand-700'
+                  : 'text-neutral-500 hover:text-neutral-700'
+              "
+              @click="snippetFlavor = flavor"
+            >
+              {{ t(`install.flavor.${flavor}`) }}
+            </button>
+            <AppButton class="ml-auto" variant="secondary" @click="copySnippet">
+              {{ copied ? t('install.copied') : t('install.copy') }}
+            </AppButton>
+          </div>
+          <pre
+            class="mt-3 overflow-x-auto rounded-[9px] bg-neutral-100 p-3 font-mono text-xs text-neutral-700"
+          ><code>{{ snippet }}</code></pre>
+          <p v-if="!activeToken" class="mt-2 text-xs text-neutral-400">
+            {{ t('install.noToken') }}
+          </p>
+        </div>
       </section>
 
       <section class="mt-8">

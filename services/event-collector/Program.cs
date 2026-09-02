@@ -183,6 +183,32 @@ app.MapPost("/v1/events", async (
 .WithName("CollectEvents")
 .RequireRateLimiting("collector");
 
+// M01.8: serve the browser SDK bundle so a site's install snippet points at one public origin
+// (collect.<host>/telumera.js + collect.<host>/v1/events). The file is baked into the image by the
+// Dockerfile's sdk-build stage; for a local `dotnet run` it falls back to the repo's own
+// packages/browser-sdk/dist output (run `npm run build:js -w @telumera/browser-sdk` first). Anonymous
+// and not rate-limited — it's a <script src> load, not ingestion.
+var sdkBundlePath = builder.Configuration["Sdk:BundlePath"];
+if (string.IsNullOrEmpty(sdkBundlePath))
+{
+    sdkBundlePath = Path.GetFullPath(Path.Combine(
+        app.Environment.ContentRootPath, "..", "..", "packages", "browser-sdk", "dist", "browser-sdk.global.js"));
+}
+app.MapGet("/telumera.js", (HttpContext httpContext) =>
+{
+    if (!File.Exists(sdkBundlePath))
+    {
+        return Results.NotFound("The browser SDK bundle is not available on this collector build.");
+    }
+
+    var info = new FileInfo(sdkBundlePath);
+    var etag = new Microsoft.Net.Http.Headers.EntityTagHeaderValue($"\"{info.LastWriteTimeUtc.Ticks:x}-{info.Length:x}\"");
+    httpContext.Response.Headers.CacheControl = "public, max-age=3600";
+    return Results.File(sdkBundlePath, "text/javascript; charset=utf-8",
+        lastModified: info.LastWriteTimeUtc, entityTag: etag);
+})
+.WithName("ServeBrowserSdk");
+
 // Site Registry publishes site.created.v1/site.settings.changed.v1/site.key.rotated.v1 all onto the
 // same "site-events" topic (see MembershipClient's sibling, SiteRegistryClient, and
 // services/site-registry/README.md) — one handler dispatches on the CloudEvent's own `type` field
