@@ -371,6 +371,9 @@ services:
     environment:
       DAPR_HTTP_PORT: "3500" # matches event-collector-dapr's -dapr-http-port below (shared network namespace)
       OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"
+      # Local dev has no proxy in front, so this is purely a test/synthetic-traffic affordance for
+      # exercising GeoIP — prod (docker-compose.nas.yml) overrides it to CF-Connecting-IP.
+      Collector__ForwardedForHeader: "X-Forwarded-For"
     ports:
       - "5103:8080" # HTTP API
       - "3505:3500" # event-collector-dapr's HTTP API (shared namespace; published here since network_mode: service:x sidecars can't publish their own ports)

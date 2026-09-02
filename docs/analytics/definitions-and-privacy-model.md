@@ -148,7 +148,12 @@ browser at all, the strongest privacy posture available (per
 
 - The collecting request's IP address (server-observed, never client-submitted — see the Collection API's
   trusted-metadata rule) is used only for: (a) the transient input to §3's daily visitor-hash, and (b) a
-  GeoIP lookup.
+  GeoIP lookup. **Behind a reverse proxy** (the NAS runs Cloudflare → tunnel → NPM → collector, with no
+  other path to the collector) the socket peer is the proxy, so the Collector reads the true client
+  address from a single configured proxy-set header (`Collector:ForwardedForHeader`, e.g.
+  `CF-Connecting-IP`, which Cloudflare overwrites and a client can't forge). Still server-observed — the
+  header is trusted only because the network topology guarantees it was set by the trusted proxy, not
+  the client. Unset by default, so a direct/local deployment is unaffected.
 - **Geography granularity: country only, by default.** Region/state-level granularity is available as an
   explicit **per-site opt-in** for site owners who need finer geography — country-only is the safer,
   less-identifying default and sufficient for most portfolio-analytics use.

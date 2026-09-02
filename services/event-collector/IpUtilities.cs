@@ -10,6 +10,31 @@ namespace Telumera.Services.EventCollector.Api;
 /// </summary>
 public static class IpUtilities
 {
+    /// <summary>
+    /// The client IP to feed the visitor hash + GeoIP lookup. Defaults to the raw socket peer
+    /// (<see cref="ConnectionInfo.RemoteIpAddress"/>) per the definitions doc's "server-observed,
+    /// never client-submitted" rule. In a deployment where the collector is <b>only</b> reachable
+    /// through a trusted reverse proxy (NAS: Cloudflare → tunnel → NPM → collector, no host port), the
+    /// real client is in a proxy-set header the client itself can't forge — set
+    /// <c>Collector:ForwardedForHeader</c> (e.g. <c>CF-Connecting-IP</c>) to trust it. Unset ⇒
+    /// unchanged behaviour, so local <c>docker compose</c> is unaffected.
+    /// </summary>
+    public static IPAddress? ResolveClientAddress(HttpContext httpContext, string? trustedHeaderName)
+    {
+        if (!string.IsNullOrWhiteSpace(trustedHeaderName)
+            && httpContext.Request.Headers.TryGetValue(trustedHeaderName, out var headerValue))
+        {
+            // X-Forwarded-For style: the left-most entry is the originating client.
+            var first = headerValue.ToString().Split(',', 2)[0].Trim();
+            if (IPAddress.TryParse(first, out var forwarded))
+            {
+                return forwarded;
+            }
+        }
+
+        return httpContext.Connection.RemoteIpAddress;
+    }
+
     public static string Truncate(IPAddress? address)
     {
         if (address is null)

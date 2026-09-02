@@ -78,6 +78,11 @@ services:
   event-collector:
     ports: !reset []
     mem_limit: 256m
+    environment:
+      # Behind Cloudflare → tunnel → NPM the socket peer is the proxy, not the visitor. Trust
+      # Cloudflare's own client-IP header (it strips/overwrites any client-supplied value) so the
+      # visitor hash + GeoIP see the real address. The collector is not reachable except via NPM.
+      Collector__ForwardedForHeader: "CF-Connecting-IP"
     networks:
       - telumera-net
       - npm

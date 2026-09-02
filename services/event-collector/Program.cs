@@ -120,7 +120,8 @@ app.MapPost("/v1/events", async (
         return Results.StatusCode(StatusCodes.Status403Forbidden);
     }
 
-    var truncatedIp = IpUtilities.Truncate(httpContext.Connection.RemoteIpAddress);
+    var truncatedIp = IpUtilities.Truncate(
+        IpUtilities.ResolveClientAddress(httpContext, configuration["Collector:ForwardedForHeader"]));
     var receivedAt = DateTimeOffset.UtcNow;
     var userAgent = httpContext.Request.Headers.UserAgent.ToString();
     var visitorHashSecret = configuration["Collector:VisitorHashSecret"] ?? "local-dev-secret-not-for-production";
