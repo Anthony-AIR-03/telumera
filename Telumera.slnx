@@ -45,6 +45,9 @@
   <Folder Name="/tools/reconciliation-report/">
     <Project Path="tools/reconciliation-report/Telumera.Tools.ReconciliationReport.csproj" />
   </Folder>
+  <Folder Name="/tools/synthetic-traffic/">
+    <Project Path="tools/synthetic-traffic/Telumera.Tools.SyntheticTraffic.csproj" />
+  </Folder>
   <Folder Name="/tests/" />
   <Folder Name="/tests/integration/">
     <Project Path="tests/integration/Telumera.Tests.Integration/Telumera.Tests.Integration.csproj" />
