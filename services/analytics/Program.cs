@@ -6,6 +6,8 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Identity.Web;
 
+using StackExchange.Redis;
+
 using Telumera.EventContracts;
 using Telumera.ServiceDefaults;
 using Telumera.Services.Analytics.Api;
@@ -33,13 +35,54 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddAuthorization(options => options.AddPolicy("ApiScope", policy =>
     policy.RequireClaim(ClaimConstants.Scope, "access_as_user")));
 
+// M01.8: the live-visitors panel (components/analytics/LiveVisitorsPanel.vue) holds a WebSocket to
+// LiveHub. A Dapr service-invocation forwarder can't proxy a WebSocket, so the dashboard connects to
+// this service's origin directly — cross-origin in prod (dashboard at the apex, this at
+// hubs.telumera.nl), hence a CORS policy this service didn't need before. AllowCredentials is
+// required for the SignalR handshake, which rules out AllowAnyOrigin.
+var corsAllowedOrigins = (builder.Configuration["Cors:AllowedOrigins"] ?? "http://localhost:5173")
+    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+builder.Services.AddCors(options => options.AddPolicy("LiveHub", policy =>
+    policy.WithOrigins(corsAllowedOrigins).AllowAnyHeader().AllowAnyMethod().AllowCredentials()));
+
+// SignalR reads the bearer from the access_token query param on WebSocket/SSE transports (a browser
+// WebSocket can't set an Authorization header). Scope that to /hubs so the header stays the source of
+// truth everywhere else.
+builder.Services.Configure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, options =>
+{
+    options.Events ??= new JwtBearerEvents();
+    var next = options.Events.OnMessageReceived;
+    options.Events.OnMessageReceived = async context =>
+    {
+        var accessToken = context.Request.Query["access_token"];
+        if (!string.IsNullOrEmpty(accessToken) && context.HttpContext.Request.Path.StartsWithSegments("/hubs"))
+        {
+            context.Token = accessToken;
+        }
+        if (next is not null)
+        {
+            await next(context);
+        }
+    };
+});
+
+builder.Services.AddSignalR();
+
 // First real Redis consumer in the repo — see Telumera.Services.Analytics.Api.csproj's comment for why
-// this is the standard IDistributedCache abstraction rather than a hand-rolled client.
+// the query cache uses the standard IDistributedCache abstraction rather than a hand-rolled client.
 var redisHost = builder.Configuration["Redis:Host"] ?? "localhost";
 var redisPort = builder.Configuration["Redis:Port"] ?? "6379";
 var redisPassword = builder.Configuration["Redis:Password"] ?? string.Empty;
-builder.Services.AddStackExchangeRedisCache(options =>
-    options.Configuration = $"{redisHost}:{redisPort},password={redisPassword}");
+var redisConfiguration = $"{redisHost}:{redisPort},password={redisPassword}";
+builder.Services.AddStackExchangeRedisCache(options => options.Configuration = redisConfiguration);
+
+// The live-visitor projection needs Redis sorted-set / hash operations IDistributedCache can't
+// express, so it talks to the same Redis through the raw StackExchange.Redis client.
+builder.Services.AddSingleton<IConnectionMultiplexer>(_ =>
+    ConnectionMultiplexer.Connect(redisConfiguration));
+builder.Services.AddSingleton<LiveVisitorProjection>();
+builder.Services.AddSingleton<LiveSubscriptions>();
+builder.Services.AddHostedService<LiveBroadcastService>();
 
 builder.Services.AddHttpClient();
 builder.Services.AddSingleton<ClickHouseWriter>();
@@ -92,10 +135,16 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+app.UseCors();
+
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapAnalyticsQueryEndpoints();
+
+// Live-visitors WebSocket — dashboard connects here directly (see LiveHub.cs). Its own CORS policy
+// (AllowCredentials) and the /hubs access_token wire-up are set up above.
+app.MapHub<LiveHub>("/hubs/live").RequireCors("LiveHub");
 
 // Deliberately unauthenticated — reached only via Dapr pub/sub delivery from within the compose
 // network, same as every subscription/internal endpoint elsewhere in this repo.

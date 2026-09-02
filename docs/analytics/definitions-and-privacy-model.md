@@ -206,3 +206,27 @@ owner, per the Accuracy Principle — but flagged so a future dashboard can grou
 traffic. Visitor count (not event count) is the floor's basis because it's what actually determines
 whether a bucket could be traced back to an individual — a bucket with 40 events from 2 visitors is a
 bigger privacy risk than one with 6 events from 6 visitors.
+
+## 9. Live visitor projection
+
+The dashboard's "Live" panel (`services/analytics` `LiveVisitorProjection` + `LiveHub`) shows a
+**count of distinct visitors seen in the last 5 minutes** (`Live:WindowSeconds`, configurable) and the
+**paths they were last on**. It is a convenience view, deliberately weaker than every other metric in
+this document:
+
+- **Never persisted.** It lives only in Redis, as a per-site sorted set keyed by the same daily
+  visitor identifier as §3 — entries expire out of the window automatically. It is `planning`
+  doc §9's "short-lived live visitor projection" and nothing more. A lost or flushed Redis is a
+  cosmetic outage; there is no recovery step because there is nothing to recover.
+- **Not authoritative and not reconciled.** It never feeds a session, a rollup, the reconciliation
+  report, or any historical number. The count on the panel and the count in the day's rollup are
+  computed from different stores at different times and are not expected to match — the panel is
+  "roughly who is here now," not "the first five minutes of today's sessions."
+- **No cross-day or cross-window linkage.** It uses the §3 daily hash, so it inherits the same
+  "returning visitor is structurally unavailable" property. A visitor idle longer than the window
+  simply disappears from it; there is no notion of a "live session".
+- **Bots excluded.** Events classified `is_bot` (`BotDetector`) are never recorded into the
+  projection, matching the panel's "real people on the site right now" intent. (They are still
+  written to `events` and flagged there, per the marked-not-dropped rule.)
+- **Access.** The panel's WebSocket runs the same site-membership check (`Viewer`+) as the query
+  API — a live count is site-owner data, not public.

@@ -221,9 +221,33 @@ allowlist — no such enforcement mechanism exists anywhere in the pipeline. The
 screen/viewport dimension (CSV: "...and viewport categories") — no SDK signal for it exists, same
 documented gap M01.5 already carried forward, not stubbed with fake data here either.
 
+## Live visitor projection + SignalR hub (M01.8)
+
+`LiveVisitorProjection` keeps a per-site rolling 5-minute (`Live:WindowSeconds`) window of active
+visitors in Redis — a sorted set scored by last-seen time plus a `visitorId → last path` hash, both
+with a self-expiring TTL so idle sites need no janitor. It is written best-effort from
+`EventProcessor` **after** the ClickHouse insert, non-bot events only. Per
+`docs/analytics/definitions-and-privacy-model.md` §9 it is explicitly **non-authoritative**: never
+persisted, never reconciled, never feeds a rollup.
+
+`LiveHub` (`/hubs/live`, `[Authorize("ApiScope")]`) is the first surface the dashboard talks to
+**not through the gateway** — a Dapr service-invocation forwarder can't carry a WebSocket, so the
+browser connects to this service's origin directly (`hubs.telumera.nl` in prod, `:5104` in dev).
+Consequences: a `LiveHub` CORS policy with `AllowCredentials` (this service had no CORS before), and a
+`JwtBearerEvents.OnMessageReceived` hook that accepts the bearer from the `access_token` query param
+for `/hubs` paths (a browser WebSocket can't set an `Authorization` header). `Subscribe(siteId)` runs
+the same `QueryAuthorization.AuthorizeSiteReadAsync` membership check the REST endpoints use.
+`LiveBroadcastService` (a `BackgroundService` + `PeriodicTimer`, same shape as
+`AnalyticsAggregationService`) pushes a `LiveSnapshot` to each watched site's group every
+`Live:BroadcastIntervalSeconds` (5s) — recompute-and-push on a timer, never a per-event fan-out.
+
+`LiveSubscriptions` (which sites have a live watcher) is per-instance — the Redis projection data
+itself is multi-instance-safe, but a scale-out would want the broadcast loop to coordinate or the
+hub backplane to be Redis. Single-instance for now, same caveat as the aggregation watermark below.
+
 ## Not in this service
 
 The metric-window/anomaly rollup event types, `viewport_category` capture, per-site
 configurable retention, multi-instance-safe sharing of anything (single-instance only, same caveat
 `event-collector`'s dedup cache already carries — now also true of `AnalyticsAggregationService`'s
-watermark), and comparison periods on endpoints other than overview.
+watermark and `LiveSubscriptions`), and comparison periods on endpoints other than overview.

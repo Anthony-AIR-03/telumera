@@ -87,6 +87,13 @@
       "bounceRate": "Bounce rate",
       "deltaLabel": "{percent}% vs prior period"
     },
+    "live": {
+      "title": "Live",
+      "activeVisitors": "no visitors in the last 5 min | 1 visitor in the last 5 min | {n} visitors in the last 5 min",
+      "noneOnPage": "No one on the site right now.",
+      "reconnecting": "reconnecting…",
+      "offline": "offline"
+    },
     "chart": {
       "title": "Traffic over time",
       "views": "Views",

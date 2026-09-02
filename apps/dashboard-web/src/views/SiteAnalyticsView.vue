@@ -8,6 +8,7 @@ import StateMessage from '@/components/StateMessage.vue'
 import AnalyticsDateRangeControl from '@/components/analytics/AnalyticsDateRangeControl.vue'
 import SiteSwitcher from '@/components/analytics/SiteSwitcher.vue'
 import MetricCard from '@/components/analytics/MetricCard.vue'
+import LiveVisitorsPanel from '@/components/analytics/LiveVisitorsPanel.vue'
 import TrafficChart from '@/components/analytics/TrafficChart.vue'
 import PagesTable from '@/components/analytics/PagesTable.vue'
 import AcquisitionTable from '@/components/analytics/AcquisitionTable.vue'
@@ -203,6 +204,8 @@ const cards = computed(() => {
     />
 
     <template v-else>
+      <LiveVisitorsPanel :site-id="siteId" class="mt-5" />
+
       <div class="mt-4 flex flex-wrap items-center gap-2.5">
         <AnalyticsDateRangeControl />
         <button

@@ -26,6 +26,7 @@ internal sealed class EventProcessor(
     AnalyticsDbContext db,
     ClickHouseWriter clickHouse,
     IGeoLookup geoLookup,
+    LiveVisitorProjection liveProjection,
     IHttpClientFactory httpClientFactory,
     IConfiguration configuration,
     ILogger<EventProcessor> logger)
@@ -94,6 +95,22 @@ internal sealed class EventProcessor(
             ProcessedAt: FormatTimestamp(processedAt));
 
         await clickHouse.InsertEventAsync(row, cancellationToken);
+
+        // Feed the short-lived live-visitors projection (M01.8) — non-bot traffic only, best-effort:
+        // it is explicitly non-authoritative (definitions §9), so a Redis blip must never fail
+        // processing an event that is already safely in ClickHouse.
+        if (!isBot && Guid.TryParse(envelope.SiteId, out var liveSiteId))
+        {
+            try
+            {
+                await liveProjection.RecordAsync(
+                    liveSiteId, data.VisitorId ?? data.SessionId, path, data.ReceivedAt);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Live projection update failed for event {EventId}; ignored.", cloudEventId);
+            }
+        }
 
         await PublishProcessedEventAsync(envelope, data, cloudEventId, isBot, processedAt, cancellationToken);
 

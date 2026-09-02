@@ -437,6 +437,7 @@ services:
       Redis__Port: "6379"
       Redis__Password: "${REDIS_PASSWORD}"
       GeoIp__DatabasePath: "/geoip/GeoLite2-Country.mmdb" # populated by scripts/refresh-geoip.sh; absent = geography enrichment off
+      Cors__AllowedOrigins: "${CORS_ALLOWED_ORIGINS}" # LiveHub SignalR: the dashboard connects to this service directly, cross-origin
     volumes:
       - ./geoip:/geoip:ro # MMDB country DB (git-ignored, not committed — see scripts/refresh-geoip.sh)
     ports:

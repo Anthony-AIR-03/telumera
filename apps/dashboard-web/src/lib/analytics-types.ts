@@ -85,3 +85,14 @@ export interface CustomEventMetric {
   uniqueSessions: number
   allowedProperties: string[]
 }
+
+/** Pushed over SignalR by services/analytics LiveHub — mirrors LiveSnapshot / LivePage. */
+export interface LiveSnapshot {
+  activeVisitors: number
+  pages: LivePage[]
+}
+
+export interface LivePage {
+  path: string
+  visitors: number
+}

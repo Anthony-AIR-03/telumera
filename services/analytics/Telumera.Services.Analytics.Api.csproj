@@ -32,6 +32,10 @@
     <PackageReference Include="MaxMind.GeoIP2" Version="6.1.0" />
     <PackageReference Include="Microsoft.OpenApi" Version="2.11.0" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
+    <!-- M01.8: the live-visitor projection needs a Redis sorted set / hash, which IDistributedCache
+         can't express — so it uses the StackExchange.Redis client directly. Version pinned to match
+         the transitive one Microsoft.Extensions.Caching.StackExchangeRedis already brings in. -->
+    <PackageReference Include="StackExchange.Redis" Version="2.7.27" />
   </ItemGroup>
 
   <ItemGroup>

@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "@azure/msal-browser": "^5.19.0",
+    "@microsoft/signalr": "^8.0.29",
     "@tailwindcss/vite": "^4.3.3",
     "pinia": "^4.0.2",
     "tailwindcss": "^4.3.3",
