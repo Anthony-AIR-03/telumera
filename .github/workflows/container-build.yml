@@ -43,6 +43,18 @@ jobs:
             dockerfile: services/analytics/Dockerfile
           - service: dashboard-web
             dockerfile: apps/dashboard-web/Dockerfile
+            # Vite inlines these at build time, so the NAS image must be built with the prod values
+            # baked in (docker-compose.nas.yml pulls this image, it can't pass build args at deploy).
+            # None are secret — a SPA ships all of them to every browser. The three Azure identifiers
+            # are repo Variables (Settings → Secrets and variables → Actions → Variables) to keep the
+            # tenant/client GUIDs out of tracked files, matching .env.nas.example.
+            build-args: |
+              VITE_API_BASE_URL=https://api.telumera.nl
+              VITE_HUBS_ORIGIN=https://hubs.telumera.nl
+              VITE_COLLECTOR_ORIGIN=https://collect.telumera.nl
+              VITE_AZURE_AD_TENANT_ID=${{ vars.VITE_AZURE_AD_TENANT_ID }}
+              VITE_AZURE_AD_CLIENT_ID=${{ vars.VITE_AZURE_AD_DASHBOARD_CLIENT_ID }}
+              VITE_AZURE_AD_API_SCOPE=${{ vars.VITE_AZURE_AD_API_SCOPE }}
     steps:
       - uses: actions/checkout@v4
 
@@ -76,6 +88,7 @@ jobs:
           context: .
           file: ${{ matrix.dockerfile }}
           push: ${{ github.event_name != 'pull_request' }}
+          build-args: ${{ matrix.build-args }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=${{ matrix.service }}

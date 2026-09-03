@@ -171,3 +171,18 @@ the four NPM proxy hosts, the Cloudflare/Entra prerequisites) are in
 
 Reverse-proxy choice: this deployment reuses the NAS's existing Nginx Proxy Manager rather than adding
 Caddy (§4's recommendation stands for a NAS that has no proxy yet — this one does).
+
+## 9. Auto-deploy (added M01.8)
+
+Deploys are continuous, not manual. `.github/workflows/deploy-nas.yml` runs on a dedicated
+self-hosted runner on the NAS after `container-build.yml` pushes fresh images to GHCR for a commit on
+`main`. The runner **pulls** the SHA-pinned images and runs `docker compose -f docker-compose.yml -f
+docker-compose.nas.yml … pull && up -d` — nothing is compiled on the NAS. `docker-compose.nas.yml`
+therefore replaces every app service's `build:` with `image:
+ghcr.io/anthony-air-03/telumera-<svc>:${TELUMERA_IMAGE_TAG:-latest}`.
+
+The runner syncs the repo tree into a fixed deploy directory (the `NAS_DEPLOY_DIR` repo Variable —
+the absolute path is kept out of git) rather than deploying from its own ephemeral workspace, so
+`docker compose` runs from a stable path and the two pieces of host-only state — `.env.nas` (never in
+git) and `geoip/*.mmdb` (git-ignored, refreshed out of band) — survive redeploys. Setup and
+troubleshooting: `docs/runbooks/nas-runner-setup.md`.

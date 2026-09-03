@@ -80,17 +80,30 @@ delivering (`analytics` debug log "Applied N collector.quality.v1 deltas") and t
 
 ## Deploying to the NAS (`telumera.nl`)
 
+Deploys are automated: every push to `main` triggers **Container Build** (builds + pushes the GHCR
+images) then **Deploy to NAS** (`.github/workflows/deploy-nas.yml`, a self-hosted runner on the NAS
+that pulls those images and runs `docker compose … up -d`). One-time runner/NAS setup and the
+pipeline diagram are in **`nas-runner-setup.md`**. Manual deploy or rollback: **Actions → Deploy to
+NAS → Run workflow** with an `image_tag`.
+
 Prereqs (one-time): `telumera.nl` in Cloudflare with `*.telumera.nl` → the existing `<tunnel>`;
-tunnel route `*.telumera.nl` → `Nginx Proxy Manager`; `.env.nas` on the NAS (from
-`infrastructure/compose/.env.nas.example`); the three Entra app registrations have `https://telumera.nl`
-and `https://telumera.nl/auth-popup.html` as redirect URIs.
+tunnel route `*.telumera.nl` → `Nginx Proxy Manager`; `.env.nas` in
+`$NAS_DEPLOY_DIR/infrastructure/compose/` on the NAS (from `infrastructure/compose/.env.nas.example`);
+the three Entra app registrations have `https://telumera.nl` and `https://telumera.nl/auth-popup.html`
+as redirect URIs. `$NAS_DEPLOY_DIR` is the `NAS_DEPLOY_DIR` repo Variable — see `nas-runner-setup.md`.
+
+To deploy by hand from the NAS deploy directory (what the workflow does):
 
 ```bash
-cd infrastructure/compose
-docker compose -f docker-compose.yml -f docker-compose.nas.yml --env-file .env.nas up -d --build
-./scripts/refresh-geoip.sh          # once, then monthly
-./scripts/health-check.sh
+cd "$NAS_DEPLOY_DIR/infrastructure/compose"
+docker compose -f docker-compose.yml -f docker-compose.nas.yml --env-file .env.nas pull
+docker compose -f docker-compose.yml -f docker-compose.nas.yml --env-file .env.nas up -d --remove-orphans
+./scripts/refresh-geoip.sh          # once, then monthly — NOT run by the deploy
 ```
+
+`scripts/health-check.sh` is a local-dev tool — it probes `localhost:` ports the NAS override
+unpublishes (`ports: !reset []`), so its RabbitMQ/MinIO/Dapr checks report false failures on the NAS.
+Use `docker compose … ps` plus the `/health/ready` checks the deploy workflow runs instead.
 
 Then in **Nginx Proxy Manager** (LAN-only admin), add four Proxy Hosts, all on the shared external
 `npm` network, Force SSL + HTTP/2, Block Common Exploits:

@@ -1,0 +1,139 @@
+name: Deploy to NAS
+
+# Auto-deploys the full Telumera stack to the self-hosted NAS after "Container Build" has published
+# fresh images to GHCR for a commit on main. The NAS never compiles anything — it pulls the
+# SHA-pinned images container-build.yml pushed and runs docker compose with the NAS override
+# (infrastructure/compose/docker-compose.nas.yml).
+#
+# Runner: a dedicated self-hosted runner registered to THIS repo, labelled `telumera`, running on the
+# NAS as a user in the `docker` group. One-time setup: docs/runbooks/nas-runner-setup.md.
+#
+# Repo Variable `NAS_DEPLOY_DIR` = the absolute deploy directory on the NAS (kept out of git —
+# concrete value lives in the operator's own notes). NAS prerequisites (one-time, see the runbook):
+#   - $NAS_DEPLOY_DIR/infrastructure/compose/.env.nas   filled in with prod values
+#   - $NAS_DEPLOY_DIR/infrastructure/compose/geoip/     (scripts/refresh-geoip.sh output)
+#   - the external `npm` Docker network exists (shared with Nginx Proxy Manager)
+
+on:
+  workflow_run:
+    workflows: ["Container Build"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "GHCR image tag to deploy (e.g. sha-1a2b3c4, or latest)"
+        default: latest
+
+permissions:
+  contents: read
+  packages: read
+
+concurrency:
+  group: deploy-nas
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    # workflow_run fires on success AND failure — only deploy when Container Build actually succeeded.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+    runs-on: [self-hosted, telumera]
+    timeout-minutes: 20
+    env:
+      DEPLOY_DIR: ${{ vars.NAS_DEPLOY_DIR }}
+      COMPOSE_DIR: ${{ vars.NAS_DEPLOY_DIR }}/infrastructure/compose
+      # Note: --env-file is relative, resolved from COMPOSE_DIR (steps below set working-directory).
+      COMPOSE_FILES: -f docker-compose.yml -f docker-compose.nas.yml --env-file .env.nas
+
+    steps:
+      - name: Check configuration
+        run: |
+          if [ -z "${{ vars.NAS_DEPLOY_DIR }}" ]; then
+            echo "::error::repo Variable NAS_DEPLOY_DIR is not set (Settings → Secrets and variables → Actions → Variables)"
+            exit 1
+          fi
+
+      - name: Resolve the commit to deploy
+        id: commit
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "sha=${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "sha=${{ github.event.workflow_run.head_sha }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.commit.outputs.sha }}
+
+      - name: Resolve image tag
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "value=${{ inputs.image_tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=sha-$(git rev-parse --short=7 HEAD)" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Sync the repo to the NAS deploy directory
+        run: |
+          if [ ! -f "$COMPOSE_DIR/.env.nas" ]; then
+            echo "::error::$COMPOSE_DIR/.env.nas is missing — create it from .env.nas.example (docs/runbooks/nas-runner-setup.md)"
+            exit 1
+          fi
+          mkdir -p "$DEPLOY_DIR"
+          # --delete keeps the deploy dir a mirror of the commit; the two excludes are host-only
+          # state that must survive redeploys (GeoIP DB is git-ignored, .env.nas is never in git).
+          rsync -a --delete \
+            --exclude '.git/' \
+            --exclude 'infrastructure/compose/geoip/' \
+            --exclude 'infrastructure/compose/.env.nas' \
+            ./ "$DEPLOY_DIR/"
+
+      - name: Log in to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Pull images and start the stack
+        working-directory: ${{ env.COMPOSE_DIR }}
+        env:
+          TELUMERA_IMAGE_TAG: ${{ steps.tag.outputs.value }}
+        run: |
+          echo "Deploying image tag: $TELUMERA_IMAGE_TAG"
+          if ! docker compose $COMPOSE_FILES pull; then
+            # On a push-to-main trigger `latest` points at the same commit's images, so this is a
+            # safe fallback if the sha-<short> tag can't be resolved (e.g. short-SHA length drift).
+            echo "::warning::pull failed for tag '$TELUMERA_IMAGE_TAG' — retrying with 'latest'"
+            export TELUMERA_IMAGE_TAG=latest
+            docker compose $COMPOSE_FILES pull
+          fi
+          docker compose $COMPOSE_FILES up -d --remove-orphans
+
+      - name: Log out of GHCR
+        if: always()
+        run: docker logout ghcr.io || true
+
+      - name: Wait for services to report ready
+        working-directory: ${{ env.COMPOSE_DIR }}
+        run: |
+          for svc in identity-workspace site-registry gateway event-collector analytics; do
+            ready=""
+            for _ in $(seq 1 45); do
+              if docker run --rm --network telumera-net curlimages/curl:8.10.1 \
+                   -sf "http://${svc}:8080/health/ready" >/dev/null 2>&1; then
+                ready=1; echo "  OK   $svc"; break
+              fi
+              sleep 2
+            done
+            if [ -z "$ready" ]; then
+              echo "::error::$svc did not become ready within ~90s"
+              docker compose $COMPOSE_FILES logs --tail 80 "$svc" || true
+              exit 1
+            fi
+          done
+
+      - name: Deployment summary
+        if: always()
+        working-directory: ${{ env.COMPOSE_DIR }}
+        run: docker compose $COMPOSE_FILES ps

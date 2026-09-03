@@ -11,3 +11,5 @@ runbook started early, in M00.3:
 - `analytics-module.md` — operating the Product Analytics pipeline (M01.8): health checks, event
   replay, GeoIP database refresh, the live panel and data-quality dashboard, deploying to the NAS on
   `telumera.nl`, and backup/restore.
+- `nas-runner-setup.md` — one-time setup for the self-hosted runner that auto-deploys the stack to
+  the NAS on every push to `main` (`.github/workflows/deploy-nas.yml`), and how that pipeline works.

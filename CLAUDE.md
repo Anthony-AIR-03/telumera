@@ -654,12 +654,22 @@ hosts `telumera.nl`/`api.`/`hubs.`/`collect.` — `hubs.` has Websockets Support
 `Telumera Dashboard` SPA registration has `https://telumera.nl` + `.../auth-popup.html` redirect
 URIs):
 
-1. **Deploy to the NAS.** On the NAS: `cp infrastructure/compose/.env.nas.example .env.nas`, fill it
-   in (fresh prod passwords, `CORS_ALLOWED_ORIGINS=https://telumera.nl`, `MAXMIND_LICENSE_KEY`,
-   `AZURE_AD_*`), then `docker compose -f docker-compose.yml -f docker-compose.nas.yml --env-file
-   .env.nas up -d --build` (needs Compose ≥ 2.24 for `!reset`), then `./scripts/refresh-geoip.sh` and
-   `./scripts/health-check.sh`. Do the vertical-slice check in `docs/runbooks/analytics-module.md`
-   ("Deploying to the NAS").
+1. **Deploy to the NAS.** *Auto-deploy pipeline is now built* (this session): `container-build.yml`
+   pushes all 6 images to GHCR on push to `main` (dashboard-web now gets its `VITE_*` build-args
+   baked in from repo Variables), then `.github/workflows/deploy-nas.yml` — a self-hosted runner on
+   the NAS labelled `telumera` — pulls the SHA-pinned images and runs `docker compose -f
+   docker-compose.yml -f docker-compose.nas.yml … pull && up -d`. `docker-compose.nas.yml` no longer
+   has `build:` for the app services; it references
+   `ghcr.io/<owner>/telumera-<svc>:${TELUMERA_IMAGE_TAG:-latest}`. Nothing compiles on the NAS. The
+   deploy path is the `NAS_DEPLOY_DIR` repo Variable (kept out of git — repo may go public). **Still
+   needs the NAS-side one-time setup in the new `docs/runbooks/nas-runner-setup.md`:** grant the
+   runner user Docker-group access; register the second self-hosted runner as a service; create the
+   deploy dir with a hand-filled `.env.nas` + `geoip/` (both rsync-excluded so they survive
+   redeploys); set repo Variables (`NAS_DEPLOY_DIR`, `VITE_AZURE_AD_TENANT_ID`,
+   `VITE_AZURE_AD_DASHBOARD_CLIENT_ID`, `VITE_AZURE_AD_API_SCOPE`); then first deploy via **Actions →
+   Deploy to NAS → Run workflow**, `./scripts/refresh-geoip.sh`, the 4 NPM proxy hosts, and the
+   vertical-slice check in `analytics-module.md`. Concrete NAS host/user/paths are in
+   `~/.claude/CLAUDE.md`, not here. NAS Compose is 2.26.1 (`!reset` OK).
 2. **Install the SDK on `anthony-air.nl`.** Register the portfolio as a site via
    `https://api.telumera.nl`, paste the Install-card snippet into the Vue portfolio
    (`projects/Portfolio/Vue-portfolio/`, `environment: 'staging'` first), deploy, click through, then
