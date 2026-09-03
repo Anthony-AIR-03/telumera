@@ -52,6 +52,8 @@ export interface PagedResult<T> {
 
 export interface AcquisitionMetric {
   channel: string
+  /** Referring domain (no scheme/path/query) — the fallback "source" when a visit carried no utm_* params. Null for direct / same-site / unparseable referrers. */
+  referrerHost: string | null
   utmSource: string | null
   utmMedium: string | null
   utmCampaign: string | null

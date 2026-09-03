@@ -143,6 +143,16 @@ browser at all, the strongest privacy posture available (per
   otherwise match an allowlist entry — denylist wins on conflict. Defense in depth against a site owner
   accidentally allowlisting something that turns out to carry a credential.
 - Path and fragment handling is governed by §1, not repeated here.
+- **Referrer**: the SDK sends `document.referrer` so the Collector can classify the acquisition
+  `channel` (§2) and so a referring domain can be surfaced as the "source" when a visit carried no
+  `utm_*` params (GA4 / Plausible / Matomo all do this). The **acquisition breakdown** (`GET
+  /sites/{id}/analytics/acquisition`, `daily_acquisition_rollup`) exposes only the referrer **host** —
+  `domainWithoutWWW(referrer)`, no scheme, path, query, or fragment — which is what carries the
+  attribution signal without the parts of a referrer URL that `docs/privacy/privacy-threat-model.md`'s
+  "Referrers and URLs" row warns can leak search queries or tokens. This is consistent with that row
+  (it asks for an allowlist-based policy "rather than storing full raw URLs"): the aggregate a site
+  owner reads is domain-only, and the sub-5-visitor privacy floor (§8) applies to every acquisition row
+  including referrer-host ones.
 
 ## 7. IP and geography policy
 

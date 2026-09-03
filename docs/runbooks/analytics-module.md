@@ -82,6 +82,21 @@ warning and `events.country` stays empty; the pipeline is otherwise fine.
 delivering (`analytics` debug log "Applied N collector.quality.v1 deltas") and that
 `Quality__RabbitMqUser/Password` are set so the DLQ probe can authenticate.
 
+## ClickHouse schema migrations
+
+`EnsureSchemaAsync` (runs at every `analytics` start) is the only migration path — `CREATE TABLE IF
+NOT EXISTS` plus idempotent `ALTER`s. A change to a `ReplacingMergeTree` **ORDER BY key** can't be an
+`ALTER`, so those are done drop-and-recompute from the durable `sessions` table
+(`docs/runbooks/rollback-and-migrations.md`). No manual SQL — a normal image deploy applies it.
+
+- **`daily_acquisition_rollup` → `referrer_host` dimension** (`analytics-referrer-source`): first start
+  of the new image drops the old-schema table and rebuilds it from every existing session. Expect two
+  `warn` lines from `ClickHouseWriter` in the `analytics` logs ("Migrating daily_acquisition_rollup…"
+  / "rebuilt from `sessions`: N rollup rows written"). Fires once per environment; a fresh deploy skips
+  it (table doesn't exist yet). Only this rollup is rebuilt — the aggregation watermark is not rewound.
+  Rolling `analytics` back past this needs a manual `DROP TABLE daily_acquisition_rollup` (the older
+  image's incremental INSERT is positional and errors against the wider table; reads still work).
+
 ## Deploying to the NAS (`telumera.nl`)
 
 Deploys are automated: every push to `main` triggers **Container Build** (builds + pushes the GHCR

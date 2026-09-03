@@ -82,6 +82,32 @@ public sealed class AnalyticsQueryTests
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
+    /// <summary>
+    /// A visit with no utm_* params but an external referrer must surface the referring domain as
+    /// `referrerHost` on the acquisition breakdown (domain only — `www.` and any path stripped),
+    /// matching GA4/Plausible/Matomo's referrer fallback.
+    /// </summary>
+    [SkippableFact]
+    public async Task Acquisition_ExposesReferrerHostForANonCampaignVisit()
+    {
+        var site = await RegisterSiteAsync("Query Acquisition Test", "query-acquisition-test.example");
+        var sessionId = Guid.NewGuid().ToString();
+        var referrerProps = new { referrer = "https://www.linkedin.com/feed/", channel = "social" };
+        await PostEventAsync(site.InitialToken, sessionId, "page_view", "https://query-acquisition-test.example/", referrerProps);
+        await PostEventAsync(site.InitialToken, sessionId, "page_view", "https://query-acquisition-test.example/pricing", referrerProps);
+        Assert.NotNull(await WaitForSessionRowAsync(sessionId, TimeSpan.FromSeconds(90)));
+
+        var response = await GetAsAsync($"/sites/{site.Id}/analytics/acquisition");
+        response.EnsureSuccessStatusCode();
+
+        var rows = await response.Content.ReadFromJsonAsync<JsonArray>();
+        Assert.NotNull(rows);
+        var row = rows!.Select(n => n!.AsObject())
+            .FirstOrDefault(o => o["referrerHost"]?.GetValue<string?>() == "linkedin.com");
+        Assert.NotNull(row);
+        Assert.True(row!["sessions"]!.GetValue<long>() >= 1);
+    }
+
     private static async Task<(CreateSiteResponseDto Site, string SessionId)> RegisterSiteWithEngagedSessionAsync(string name, string domain)
     {
         var site = await RegisterSiteAsync(name, domain);
@@ -91,7 +117,7 @@ public sealed class AnalyticsQueryTests
         return (site, sessionId);
     }
 
-    private static async Task PostEventAsync(string siteToken, string sessionId, string name, string url)
+    private static async Task PostEventAsync(string siteToken, string sessionId, string name, string url, object? properties = null)
     {
         var body = new
         {
@@ -107,7 +133,7 @@ public sealed class AnalyticsQueryTests
                     VisitorId = (string?)null,
                     Url = url,
                     Timestamp = DateTimeOffset.UtcNow.ToString("O"),
-                    Properties = new { },
+                    Properties = properties ?? new { },
                 },
             },
         };

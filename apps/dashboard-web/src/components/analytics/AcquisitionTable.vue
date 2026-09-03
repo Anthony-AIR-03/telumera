@@ -55,6 +55,9 @@ watch(() => [props.siteId, props.from, props.to], load, { immediate: true })
               {{ t('analytics.acquisition.channel') }}
             </th>
             <th scope="col" class="px-2 pb-2.5 text-left">
+              {{ t('analytics.acquisition.source') }}
+            </th>
+            <th scope="col" class="px-2 pb-2.5 text-left">
               {{ t('analytics.acquisition.campaign') }}
             </th>
             <th scope="col" class="px-2 pb-2.5 text-right">
@@ -72,6 +75,9 @@ watch(() => [props.siteId, props.from, props.to], load, { immediate: true })
           <tr v-for="(row, i) in items" :key="i" class="border-t border-neutral-200">
             <td class="px-2 py-2.5">
               <AppBadge>{{ row.channel }}</AppBadge>
+            </td>
+            <td class="px-2 py-2.5 text-xs text-neutral-500">
+              {{ row.referrerHost ?? '—' }}
             </td>
             <td class="px-2 py-2.5 text-xs text-neutral-500">
               {{

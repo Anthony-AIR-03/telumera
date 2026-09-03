@@ -28,10 +28,12 @@ public sealed class ClickHouseWriter
     private readonly HttpClient _httpClient;
     private readonly string _baseUrl;
     private readonly string _database;
+    private readonly ILogger<ClickHouseWriter> _logger;
 
-    public ClickHouseWriter(IHttpClientFactory httpClientFactory, IConfiguration configuration)
+    public ClickHouseWriter(IHttpClientFactory httpClientFactory, IConfiguration configuration, ILogger<ClickHouseWriter> logger)
     {
         _httpClient = httpClientFactory.CreateClient(nameof(ClickHouseWriter));
+        _logger = logger;
 
         var host = configuration["ClickHouse:Host"] ?? "localhost";
         var port = configuration["ClickHouse:Port"] ?? "8123";
@@ -180,9 +182,41 @@ public sealed class ClickHouseWriter
             """,
             cancellationToken);
 
-        // utm_source/medium/campaign are plain (non-nullable) String here, not Nullable — a ReplacingMergeTree
-        // ORDER BY can't contain a nullable column (`allow_nullable_key` is disabled by default), and these
-        // three are part of this table's key. Empty string is the "not set" sentinel instead of NULL.
+        // referrer_host and utm_source/medium/campaign are plain (non-nullable) String here, not Nullable —
+        // a ReplacingMergeTree ORDER BY can't contain a nullable column (`allow_nullable_key` is disabled
+        // by default), and all four are part of this table's key. Empty string is the "not set" sentinel
+        // instead of NULL. referrer_host (the referring domain, no scheme/path/query — see
+        // RecomputeDailyRollupsAsync) is the fallback "source" for a visit with no utm_* params, matching
+        // GA4/Plausible/Matomo; it's derived from the same `sessions.referrer` value the channel
+        // classification already uses.
+        //
+        // referrer_host was added to the ORDER BY key after this table first shipped (M01.5). A
+        // CREATE TABLE IF NOT EXISTS can't extend an existing table's sorting key and neither can
+        // ALTER TABLE ... ADD COLUMN, so an already-deployed old-schema table (local dev + the NAS) must
+        // be dropped and rebuilt from the durable `sessions` store — the sanctioned drop-and-recompute
+        // path for a ReplacingMergeTree key change (docs/runbooks/rollback-and-migrations.md). This is
+        // guarded on the exact new column so it fires exactly once per environment, logs at Warning, and
+        // is a no-op on a fresh deployment (the table doesn't exist yet) and on every restart afterwards.
+        var acquisitionColumns = await QuerySingleRowAsync(
+            """
+            SELECT countIf(name = 'referrer_host') AS has_referrer_host, count() AS total_columns
+            FROM system.columns
+            WHERE database = currentDatabase() AND table = 'daily_acquisition_rollup'
+            """,
+            cancellationToken);
+        var acquisitionTableExists = acquisitionColumns.Length > 1 && acquisitionColumns[1].Trim() != "0";
+        var acquisitionHasReferrerHost = acquisitionColumns.Length > 0 && acquisitionColumns[0].Trim() != "0";
+        var mustRebuildAcquisitionRollup = acquisitionTableExists && !acquisitionHasReferrerHost;
+
+        if (mustRebuildAcquisitionRollup)
+        {
+            _logger.LogWarning(
+                "Migrating daily_acquisition_rollup: adding the `referrer_host` dimension to its ORDER BY key. "
+                + "Dropping the existing table and rebuilding it from `sessions` (the durable store — no raw "
+                + "event or session data is lost). This runs once for this environment.");
+            await ExecuteAsync("DROP TABLE IF EXISTS daily_acquisition_rollup", cancellationToken);
+        }
+
         await ExecuteAsync(
             """
             CREATE TABLE IF NOT EXISTS daily_acquisition_rollup
@@ -190,6 +224,7 @@ public sealed class ClickHouseWriter
                 site_id String,
                 date Date,
                 channel LowCardinality(String),
+                referrer_host String,
                 utm_source String,
                 utm_medium String,
                 utm_campaign String,
@@ -201,9 +236,24 @@ public sealed class ClickHouseWriter
             )
             ENGINE = ReplacingMergeTree(updated_at)
             PARTITION BY toYYYYMM(date)
-            ORDER BY (site_id, date, channel, utm_source, utm_medium, utm_campaign)
+            ORDER BY (site_id, date, channel, referrer_host, utm_source, utm_medium, utm_campaign)
             """,
             cancellationToken);
+
+        if (mustRebuildAcquisitionRollup)
+        {
+            // The freshly recreated table is empty and the normal dirty-bucket recompute won't refill
+            // history — a dropped table is not a dirty session, and the shared aggregation watermark
+            // (AnalyticsAggregationService) isn't rewound. So do a one-shot full rebuild of just this
+            // rollup straight from every existing session, rather than resetting the global watermark
+            // (which would also needlessly re-run sessions + the other four rollups). now64(3) as
+            // updated_at means the next incremental tick's rows for a genuinely-changed bucket still win.
+            await ExecuteAsync(AcquisitionRollupInsertSql("now64(3)", string.Empty), cancellationToken);
+            var rebuilt = await QuerySingleRowAsync("SELECT count() FROM daily_acquisition_rollup", cancellationToken);
+            _logger.LogWarning(
+                "daily_acquisition_rollup rebuilt from `sessions`: {RowCount} rollup rows written.",
+                rebuilt.Length > 0 ? rebuilt[0].Trim() : "?");
+        }
 
         await ExecuteAsync(
             """
@@ -421,28 +471,9 @@ public sealed class ClickHouseWriter
             cancellationToken);
 
         await ExecuteAsync(
-            $"""
-            INSERT INTO daily_acquisition_rollup
-            SELECT
-                site_id, date, channel, utm_source, utm_medium, utm_campaign,
-                sessions_count, visitors_count, engaged_sessions_count,
-                if(visitors_count < 5, 1, 0) AS is_below_privacy_floor,
-                toDateTime64('{runStartedAtLiteral}', 3) AS updated_at
-            FROM
-            (
-                SELECT
-                    site_id, toDate(started_at) AS date, channel,
-                    coalesce(utm_source, '') AS utm_source,
-                    coalesce(utm_medium, '') AS utm_medium,
-                    coalesce(utm_campaign, '') AS utm_campaign,
-                    count() AS sessions_count,
-                    uniqExact(visitor_id) AS visitors_count,
-                    countIf(is_engaged = 1) AS engaged_sessions_count
-                FROM sessions FINAL
-                WHERE (site_id, toDate(started_at)) IN ({dirtyBucketsSql})
-                GROUP BY site_id, date, channel, utm_source, utm_medium, utm_campaign
-            )
-            """,
+            AcquisitionRollupInsertSql(
+                $"toDateTime64('{runStartedAtLiteral}', 3)",
+                $"WHERE (site_id, toDate(started_at)) IN ({dirtyBucketsSql})"),
             cancellationToken);
 
         await ExecuteAsync(
@@ -483,6 +514,62 @@ public sealed class ClickHouseWriter
     }
 
     private static string FormatTimestamp(DateTimeOffset value) => value.UtcDateTime.ToString("yyyy-MM-dd HH:mm:ss.fff");
+
+    /// <summary>
+    /// The acquisition rollup INSERT, shared between the incremental per-tick recompute
+    /// (<paramref name="sessionsWhereClause"/> scopes it to the dirty (site, date) buckets) and the
+    /// one-shot migration backfill (empty clause = every session). <c>referrer_host</c> is the referring
+    /// domain with any leading <c>www.</c> removed and no scheme/path/query — <c>domainWithoutWWW</c> of
+    /// the full referrer URL <c>sessions.referrer</c> already holds (returns '' for an unparseable value,
+    /// and the <c>coalesce</c> maps the NULL it returns for a NULL/direct referrer to the same '' "not
+    /// set" sentinel the utm_* columns use). Deriving only the host here means the aggregate never
+    /// carries the path/query the raw session row might.
+    /// </summary>
+    private static string AcquisitionRollupInsertSql(string updatedAtExpr, string sessionsWhereClause) =>
+        $"""
+        INSERT INTO daily_acquisition_rollup
+        SELECT
+            site_id, date, channel, referrer_host, utm_source, utm_medium, utm_campaign,
+            sessions_count, visitors_count, engaged_sessions_count,
+            if(visitors_count < 5, 1, 0) AS is_below_privacy_floor,
+            {updatedAtExpr} AS updated_at
+        FROM
+        (
+            SELECT
+                site_id, toDate(started_at) AS date, channel,
+                coalesce(domainWithoutWWW(referrer), '') AS referrer_host,
+                coalesce(utm_source, '') AS utm_source,
+                coalesce(utm_medium, '') AS utm_medium,
+                coalesce(utm_campaign, '') AS utm_campaign,
+                count() AS sessions_count,
+                uniqExact(visitor_id) AS visitors_count,
+                countIf(is_engaged = 1) AS engaged_sessions_count
+            FROM sessions FINAL
+            {sessionsWhereClause}
+            GROUP BY site_id, date, channel, referrer_host, utm_source, utm_medium, utm_campaign
+        )
+        """;
+
+    /// <summary>
+    /// Runs a SELECT that returns exactly one row over ClickHouse's HTTP interface and hands back its
+    /// column values (TabSeparated, the HTTP default). Only used by <see cref="EnsureSchemaAsync"/>'s
+    /// schema-probe queries — the query endpoints use <see cref="ClickHouseQueryClient"/> instead.
+    /// </summary>
+    private async Task<string[]> QuerySingleRowAsync(string query, CancellationToken cancellationToken)
+    {
+        var url = $"{_baseUrl}?database={Uri.EscapeDataString(_database)}&query={Uri.EscapeDataString(query)}";
+        using var content = new StringContent(string.Empty, Encoding.UTF8, "text/plain");
+        using var response = await _httpClient.PostAsync(url, content, cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var error = await response.Content.ReadAsStringAsync(cancellationToken);
+            throw new InvalidOperationException($"ClickHouse request failed ({response.StatusCode}): {error}");
+        }
+
+        var body = (await response.Content.ReadAsStringAsync(cancellationToken)).Trim();
+        return body.Length == 0 ? [] : body.Split('\n')[0].Split('\t');
+    }
 
     private async Task ExecuteAsync(string query, CancellationToken cancellationToken, string? body = null)
     {

@@ -245,18 +245,19 @@ public static class AnalyticsQueryEndpoints
                 var parameters = SiteRangeParameters(siteId, range.Value);
                 var rows = await clickHouse.QueryAsync(
                     """
-                    SELECT channel, utm_source, utm_medium, utm_campaign,
+                    SELECT channel, referrer_host, utm_source, utm_medium, utm_campaign,
                         sum(sessions_count) AS sessions, sum(visitors_count) AS visitors,
                         sum(engaged_sessions_count) AS engaged_sessions, if(sum(visitors_count) < 5, 1, 0) AS is_below_privacy_floor
                     FROM daily_acquisition_rollup FINAL
                     WHERE site_id = {siteId:String} AND date BETWEEN {from:Date} AND {to:Date}
-                    GROUP BY channel, utm_source, utm_medium, utm_campaign
+                    GROUP BY channel, referrer_host, utm_source, utm_medium, utm_campaign
                     ORDER BY sessions DESC
                     """,
                     parameters, cancellationToken);
 
                 return rows.Select(row => new AcquisitionMetric(
-                    row.GetText("channel"), NullIfEmpty(row.GetText("utm_source")), NullIfEmpty(row.GetText("utm_medium")),
+                    row.GetText("channel"), NullIfEmpty(row.GetText("referrer_host")),
+                    NullIfEmpty(row.GetText("utm_source")), NullIfEmpty(row.GetText("utm_medium")),
                     NullIfEmpty(row.GetText("utm_campaign")), row.GetLong("sessions"), row.GetLong("visitors"),
                     row.GetLong("engaged_sessions"), row.GetBool("is_below_privacy_floor"))).ToList();
             }, cancellationToken);

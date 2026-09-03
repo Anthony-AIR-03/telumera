@@ -161,7 +161,8 @@
       "loadError": "Couldn't load acquisition data.",
       "empty": "No acquisition data for this range.",
       "channel": "Channel",
-      "campaign": "Source / medium / campaign",
+      "source": "Source",
+      "campaign": "UTM source / medium / campaign",
       "sessions": "Sessions",
       "visitors": "Visitors",
       "engagedSessions": "Engaged sessions"

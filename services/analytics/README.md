@@ -144,6 +144,51 @@ Every rollup row carries `is_below_privacy_floor` (`visitors_count < 5`, flagged
 populated once an MMDB database is installed ("Geography enrichment (M01.8)" above), empty before that;
 no `viewport_category` column exists anywhere — no SDK signal produces one.
 
+### `daily_acquisition_rollup` — referrer host dimension
+
+`daily_acquisition_rollup` carries a `referrer_host` dimension alongside `channel` / `utm_*`: the
+referring **domain only** (no scheme, path, or query — `domainWithoutWWW(sessions.referrer)`, empty
+string for a direct / same-site / unparseable referrer, the same "not set" sentinel the `utm_*` columns
+use). It's the fallback "source" for a visit that carried no `utm_*` params — i.e. essentially all
+organic traffic from LinkedIn, Google, other sites — matching GA4 / Plausible / Matomo, which all fall
+back to the referrer hostname when there's no campaign tag. It sits in the `ReplacingMergeTree` ORDER BY
+key right after `channel`: `ORDER BY (site_id, date, channel, referrer_host, utm_source, utm_medium,
+utm_campaign)`. `GET /sites/{id}/analytics/acquisition` returns it as `referrerHost` (null when empty);
+the dashboard's acquisition table shows it in a dedicated "Source" column.
+
+**Deploy / migration — automatic, once per environment.** `referrer_host` is part of the sorting key,
+which `CREATE TABLE IF NOT EXISTS` can't extend and `ALTER TABLE ... ADD COLUMN` can't either. The
+rollup is fully recomputable from the durable `sessions` table, so `EnsureSchemaAsync` handles the
+change itself, following `docs/runbooks/rollback-and-migrations.md`'s drop-and-recompute path for a
+`ReplacingMergeTree` key change:
+
+1. It probes `system.columns` for `daily_acquisition_rollup.referrer_host`. Present ⇒ nothing to do.
+   Absent but the table exists ⇒ an old-schema deployment:
+2. `DROP TABLE IF EXISTS daily_acquisition_rollup` (logged at **Warning**), then the new `CREATE TABLE`,
+   then a **one-shot full rebuild** of the rollup straight from every existing `session` (`now64(3)` as
+   `updated_at`; a second Warning logs the row count written).
+3. On a **fresh** deployment the table doesn't exist yet, so step 2 is skipped — the normal aggregation
+   ticks populate it from scratch like any other rollup.
+
+No manual SQL is required on local dev or the NAS — a plain `docker compose … up -d` (or the
+`deploy-nas.yml` pipeline) of the new `analytics` image runs this on start. What you'll see in the
+`analytics` container logs on the first start after this change:
+
+```
+warn: …ClickHouseWriter[0] Migrating daily_acquisition_rollup: adding the `referrer_host` dimension …
+warn: …ClickHouseWriter[0] daily_acquisition_rollup rebuilt from `sessions`: <N> rollup rows written.
+```
+
+The one-shot rebuild targets only this rollup — the shared aggregation watermark
+(`aggregation_checkpoints`) is **not** rewound, so `sessions` and the other four rollups are untouched.
+
+**Rolling the `analytics` service back past this change** is not automatic: the previous image's
+incremental acquisition-rollup `INSERT` targets the old 11-column table positionally and will error
+every aggregation tick against the 12-column table (reads still work — the old query just `GROUP BY`s
+without `referrer_host`, correctly collapsing the dimension). If you must roll back, also
+`DROP TABLE daily_acquisition_rollup` and let the rolled-back service recreate + refill it (it's
+recomputable from `sessions` either way).
+
 Raw `events` gets a 90-day TTL (`ALTER TABLE events MODIFY TTL toDateTime(received_at) + INTERVAL 90 DAY
 DELETE`, applied idempotently in `EnsureSchemaAsync` alongside its `CREATE TABLE IF NOT EXISTS` — TTL
 needs a `DateTime`/`Date` expression, not `DateTime64` directly, which ClickHouse 24.8 rejects outright).

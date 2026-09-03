@@ -19,8 +19,13 @@ public sealed record PageMetric(
 
 public sealed record PagedResult<T>(IReadOnlyList<T> Items, long Total, int Page, int PageSize);
 
+/// <summary>
+/// <c>ReferrerHost</c> is the referring domain (no scheme/path/query) — the fallback "source" for a visit
+/// that carried no <c>utm_*</c> params, matching GA4/Plausible/Matomo. Null when the visit was direct or
+/// the referrer was same-site/unparseable.
+/// </summary>
 public sealed record AcquisitionMetric(
-    string Channel, string? UtmSource, string? UtmMedium, string? UtmCampaign,
+    string Channel, string? ReferrerHost, string? UtmSource, string? UtmMedium, string? UtmCampaign,
     long Sessions, long Visitors, long EngagedSessions, bool IsBelowPrivacyFloor);
 
 public sealed record TechnologyMetric(
