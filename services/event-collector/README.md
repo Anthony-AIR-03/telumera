@@ -50,6 +50,19 @@ transport exactly. Per event: `id`, `name`, `siteToken`, `sessionId`, `url`, `ti
 `siteToken` (a batch always comes from one SDK instance in practice; a mixed batch is rejected as
 malformed).
 
+### CORS
+
+The SDK runs in a browser on each site's own origin, so `POST /v1/events` is cross-origin with a
+non-safelisted `Content-Type`, which means the browser sends a preflight `OPTIONS` that must be
+answered or the request never leaves the page. This endpoint is multi-tenant, so — unlike
+`gateway`/`analytics`, which take one fixed dashboard origin from `Cors__AllowedOrigins` — the CORS
+allowlist is built dynamically: `SiteProjection.IsOriginAllowed` accepts an origin iff it appears in
+some registered site's `AllowedOrigins`. Still not `AllowAnyOrigin`; no credentials (the site token in
+the body is the boundary). A site therefore must have its browser origin registered for the SDK to
+reach the collector from a page — the same `AllowedOrigins` list the Origin check below uses. On a
+cold start only origins loaded by the projection warm-up are known; a brand-new site's origin is
+allowed once its `site.created.v1` is delivered or the next resync runs.
+
 Pipeline per request: resolve the site token against the projection (404 if unknown/revoked) → Origin/
 Referer check against `AllowedOrigins` (defense in depth per ADR 0006, not the access boundary — a
 *missing* Origin/Referer is let through, a *mismatched* one is rejected) → per-event schema validation

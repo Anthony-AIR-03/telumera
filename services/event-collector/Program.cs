@@ -70,6 +70,22 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+// The SDK runs in a real browser on each customer site's own origin, so POST /v1/events is
+// cross-origin with a non-safelisted Content-Type (application/json) and the browser sends a
+// preflight OPTIONS that must be answered with Access-Control-Allow-Origin or the request never
+// leaves the page. Unlike gateway/analytics (one fixed first-party dashboard origin from config),
+// this endpoint is multi-tenant: the allowlist is the union of every registered site's
+// AllowedOrigins, checked per-request against the same SiteProjection that backs the
+// defense-in-depth Origin check inside /v1/events (docs/adr/0006). Still not AllowAnyOrigin, and no
+// credentials — the site token in the body is the access boundary, not a cookie. Runs before the
+// rate limiter so a preflight is neither redirected nor counted against the per-IP window.
+var siteProjection = app.Services.GetRequiredService<SiteProjection>();
+app.UseCors(policy => policy
+    .SetIsOriginAllowed(siteProjection.IsOriginAllowed)
+    .AllowAnyHeader()
+    .AllowAnyMethod());
+
 app.UseRateLimiter();
 
 // Deliberately no UseAuthentication/UseAuthorization — this is the one public/anonymous backend

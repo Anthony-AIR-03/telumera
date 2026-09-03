@@ -66,6 +66,47 @@ public sealed class EventCollectorTests
     }
 
     [SkippableFact]
+    public async Task Preflight_FromRegisteredOrigin_IsAllowedByCors()
+    {
+        var site = await RegisterSiteAsync("Collector CORS Test", "collector-cors.example");
+        var origin = "https://collector-cors.example";
+
+        // A real POST first: it resolves the token via the projection's live cache-miss path, which
+        // populates the site's AllowedOrigins — a bodiless OPTIONS preflight can't do that itself, so
+        // it relies on the projection already knowing the origin.
+        var warm = await EventCollector.PostAsJsonAsync("/v1/events", new
+        {
+            Events = new[] { SamplePageView(site.InitialToken, $"{origin}/") },
+        });
+        warm.EnsureSuccessStatusCode();
+
+        var preflight = new HttpRequestMessage(HttpMethod.Options, "/v1/events");
+        preflight.Headers.Add("Origin", origin);
+        preflight.Headers.Add("Access-Control-Request-Method", "POST");
+        preflight.Headers.Add("Access-Control-Request-Headers", "content-type");
+
+        var response = await EventCollector.SendAsync(preflight);
+
+        Assert.True(response.IsSuccessStatusCode, $"preflight returned {(int)response.StatusCode}");
+        Assert.Equal(origin, Assert.Single(response.Headers.GetValues("Access-Control-Allow-Origin")));
+    }
+
+    [SkippableFact]
+    public async Task Preflight_FromUnregisteredOrigin_IsNotAllowedByCors()
+    {
+        Skip.If(string.IsNullOrWhiteSpace(AccessToken), SkipReason);
+
+        var preflight = new HttpRequestMessage(HttpMethod.Options, "/v1/events");
+        preflight.Headers.Add("Origin", "https://never-registered-anywhere.example");
+        preflight.Headers.Add("Access-Control-Request-Method", "POST");
+
+        var response = await EventCollector.SendAsync(preflight);
+
+        // No Access-Control-Allow-Origin → the browser blocks the request before it's ever sent.
+        Assert.False(response.Headers.Contains("Access-Control-Allow-Origin"));
+    }
+
+    [SkippableFact]
     public async Task PostEvents_SameEventIdTwice_SecondIsDeduplicated()
     {
         var site = await RegisterSiteAsync("Collector Dedup Test", "collector-dedup.example");

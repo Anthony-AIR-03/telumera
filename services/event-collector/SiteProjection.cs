@@ -75,6 +75,37 @@ public sealed class SiteProjection(SiteRegistryClient client, ILogger<SiteProjec
         return resolved;
     }
 
+    /// <summary>
+    /// Whether <paramref name="origin"/> (a browser <c>Origin</c> header value) matches any known
+    /// site's configured allowed origins. Backs the CORS policy in Program.cs: the collector is a
+    /// multi-tenant public endpoint, so there's no single static origin list the way there is for the
+    /// gateway/analytics dashboard origin — the allowlist is the union of every registered site's
+    /// <c>AllowedOrigins</c>. Only reflects sites already in the projection: on a cold start that's
+    /// whatever <see cref="WarmUpAsync"/> loaded; a brand-new site's origin becomes allowed once its
+    /// site.created.v1 arrives (<see cref="ApplySiteCreated"/>) or the next resync runs.
+    /// </summary>
+    public bool IsOriginAllowed(string origin)
+    {
+        if (string.IsNullOrWhiteSpace(origin))
+        {
+            return false;
+        }
+
+        var normalized = origin.TrimEnd('/');
+        foreach (var record in _sitesById.Values)
+        {
+            foreach (var allowed in record.AllowedOrigins)
+            {
+                if (string.Equals(allowed.TrimEnd('/'), normalized, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
     private void UpsertToken(SiteTokenLookup entry)
     {
         var record = _sitesById.AddOrUpdate(entry.SiteId,
