@@ -94,7 +94,9 @@ jobs:
           # read + directory-traverse across the tree, then re-lock the one secret file.
           find "$DEPLOY_DIR" -name .env.nas -prune -o -type d -exec chmod a+rx {} + 2>/dev/null || true
           find "$DEPLOY_DIR" -name .env.nas -prune -o -type f -exec chmod a+r {} + 2>/dev/null || true
-          chmod 600 "$COMPOSE_DIR/.env.nas"
+          # Best-effort re-lock; the finds above never touch .env.nas (pruned). If it's not owned by
+          # the runner user this no-ops — keep it 600 and runner-readable on the NAS by hand.
+          chmod 600 "$COMPOSE_DIR/.env.nas" 2>/dev/null || true
 
       - name: Log in to GHCR
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin

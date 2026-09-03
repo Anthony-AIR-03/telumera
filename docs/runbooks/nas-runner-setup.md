@@ -104,6 +104,14 @@ cd "$NAS_DEPLOY_DIR/infrastructure/compose"
 `.env.nas` and `geoip/` live only here — the workflow's `rsync --delete` excludes both, so redeploys
 never touch them.
 
+**Ownership matters:** `docker compose --env-file .env.nas` runs as `$RUNNER_USER`, so that file
+must be readable by it. If you created `.env.nas` with `sudo`, fix it up after:
+
+```bash
+sudo chown -R "$RUNNER_USER" "$NAS_DEPLOY_DIR"
+sudo chmod 600 "$NAS_DEPLOY_DIR/infrastructure/compose/.env.nas"
+```
+
 ### 5. The `npm` network
 
 `gateway` / `event-collector` / `analytics` / `dashboard-web` join the external `npm` Docker network
