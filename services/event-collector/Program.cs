@@ -18,6 +18,10 @@ var builder = WebApplication.CreateBuilder(args);
 builder.AddApiServiceDefaults();
 builder.Services.AddOpenApi();
 
+// CORS services for the browser-preflight policy applied in the pipeline below (see the UseCors call
+// for why this endpoint's allowlist is per-site rather than a fixed config origin).
+builder.Services.AddCors();
+
 // The SDK sends camelCase field names (packages/browser-sdk); case-insensitive matching makes those
 // bind onto this service's PascalCase record properties without a separate naming-policy dependency.
 builder.Services.ConfigureHttpJsonOptions(options => options.SerializerOptions.PropertyNameCaseInsensitive = true);
