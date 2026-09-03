@@ -32,8 +32,12 @@ side paths:
 
 - **Sidecar orphaned after recreating an app container.** Recreating `analytics` / `event-collector`
   alone leaves its `network_mode: service:x` Dapr sidecar bound to a dead namespace — pub/sub silently
-  stops. Always recreate both together: `docker compose up -d --force-recreate analytics analytics-dapr`.
-  (Hit in M01.3/M01.4/M01.6.)
+  stops, and `localhost:3500` refuses inside the new app container so every Dapr service-invocation
+  path 500s (on the NAS this surfaced as the whole dashboard showing "Couldn't load" and the live
+  panel offline). Always recreate both together:
+  `docker compose up -d --force-recreate analytics analytics-dapr`. (Hit in M01.3/M01.4/M01.6, and on
+  the first NAS deploy.) `deploy-nas.yml` force-recreates all 5 `*-dapr` sidecars after every `up -d`
+  for this reason.
 - **ClickHouse down / unreachable.** `EventProcessor` throws after committing the idempotency marker →
   the event is redelivered by Dapr (5 retries, exp backoff) → then dead-lettered to
   `dlq-analytics-collector-events`. Fix ClickHouse, then

@@ -663,14 +663,24 @@ URIs):
    docker-compose.yml -f docker-compose.nas.yml … pull && up -d`, then waits on `/health/ready` for
    the 5 .NET services. Nothing compiles on the NAS; `docker-compose.nas.yml` references
    `ghcr.io/anthony-air-03/telumera-<svc>:${TELUMERA_IMAGE_TAG:-latest}` instead of `build:`. Manual
-   deploy/rollback: Actions → Deploy to NAS → Run workflow (`image_tag`). Three NAS quirks bit the
-   first runs, all handled now: the NAS has **no `git` binary** (tag is sliced from the SHA in the
-   workflow, not `git rev-parse`); its **umask gives bind-mounted config files modes containers
-   can't read** (the Sync step `chmod`s the tree world-readable, re-locks `.env.nas`); and
-   **`.env.nas` must be owned by the runner user** (`docker compose --env-file` reads it). Setup is
-   in `docs/runbooks/nas-runner-setup.md`; concrete NAS host/user/paths in `~/.claude/CLAUDE.md`.
-   **Left in this item:** `./scripts/refresh-geoip.sh` on the NAS, the 4 NPM proxy hosts, and the
-   vertical-slice check in `analytics-module.md`.
+   deploy/rollback: Actions → Deploy to NAS → Run workflow (`image_tag`). Four NAS quirks bit the
+   first runs, all handled in `deploy-nas.yml` now: the NAS has **no `git` binary** (tag is sliced
+   from the SHA in the workflow, not `git rev-parse`); its **umask gives bind-mounted config files
+   modes containers can't read** (the Sync step `chmod`s the tree world-readable, re-locks
+   `.env.nas`); **`.env.nas` must be owned by the runner user** (`docker compose --env-file` reads
+   it); and **the `network_mode: "service:<app>"` Dapr sidecars are not re-attached when only the
+   app container is recreated on a new image** — `localhost:3500` then refuses inside the new app
+   container and every Dapr invoke/pub-sub path 500s (this is what made the whole dashboard show
+   "Couldn't load" / live panel offline on the first working deploy). The deploy now
+   `--force-recreate`s all 5 `*-dapr` sidecars after `up -d`. Setup is in
+   `docs/runbooks/nas-runner-setup.md`; concrete NAS host/user/paths in `~/.claude/CLAUDE.md`.
+   **Verified end-to-end 2026-09-03**: GeoIP DB installed (`refresh-geoip.sh`, monthly cron via
+   `/etc/cron.d/telumera-geoip` since per-user crontab is locked on this NAS), 4 NPM proxy hosts
+   live, real MSAL sign-in at `https://telumera.nl`, workspace + site (`anthony-air.nl`) created
+   through `api.telumera.nl`, `page_view` events `POST`ed to `collect.telumera.nl` → 202 → appear in
+   the dashboard (overview, pages, traffic chart) and the live panel. `deploy-nas.yml` sidecar fix
+   is committed on the `m01.8` branch, not yet merged/deployed — the running NAS stack has the
+   manual sidecar recreate applied.
 2. **Install the SDK on `anthony-air.nl`.** Register the portfolio as a site via
    `https://api.telumera.nl`, paste the Install-card snippet into the Vue portfolio
    (`projects/Portfolio/Vue-portfolio/`, `environment: 'staging'` first), deploy, click through, then

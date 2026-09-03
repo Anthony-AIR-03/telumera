@@ -116,6 +116,14 @@ jobs:
           fi
           docker compose $COMPOSE_FILES up -d --remove-orphans
 
+          # The Dapr sidecars share their app's network namespace (network_mode: "service:<app>").
+          # `up -d` recreates an app container when its image changes but leaves the sidecar bound to
+          # the now-dead namespace, so localhost:3500 (Dapr HTTP) stops answering inside the new app
+          # container — every Dapr service-invocation / pub-sub path silently breaks. Force-recreate
+          # the sidecars so each re-binds to the current app container. (analytics-module.md quirk.)
+          docker compose $COMPOSE_FILES up -d --force-recreate --no-deps \
+            identity-workspace-dapr site-registry-dapr gateway-dapr event-collector-dapr analytics-dapr
+
       - name: Diagnostics on failure
         if: failure()
         working-directory: ${{ env.COMPOSE_DIR }}
