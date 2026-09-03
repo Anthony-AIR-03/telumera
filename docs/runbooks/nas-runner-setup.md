@@ -92,7 +92,7 @@ exists with them baked in. The `api.` / `hubs.` / `collect.telumera.nl` URLs are
 
 ```bash
 sudo mkdir -p "$NAS_DEPLOY_DIR/infrastructure/compose/geoip"
-sudo chown -R "$RUNNER_USER" "$NAS_DEPLOY_DIR"
+sudo chown -R "$RUNNER_USER" "$NAS_DEPLOY_DIR"   # the deploy runs as $RUNNER_USER and chmods the tree
 
 cd "$NAS_DEPLOY_DIR/infrastructure/compose"
 # put .env.nas here from the template, filled with PROD values:
@@ -138,5 +138,10 @@ From here every push to `main` redeploys automatically.
   `.env.nas` value wrong (DB password, Entra IDs), ClickHouse/Postgres still initialising on first
   boot (re-run the deploy), or a Dapr sidecar orphaned — `analytics-module.md` → "Common failures".
 - **`!reset` rejected by `docker compose`** — NAS Compose older than 2.24; update the Docker package.
+- **`postgres … Permission denied` on `/docker-entrypoint-initdb.d/` (or a Dapr sidecar can't read
+  `/components`)** — the NAS's umask produced modes the container (running as another UID) can't
+  read. The deploy's "Sync" step chmods the tree world-readable after rsync; if it still happens,
+  the deploy dir has files owned by `root` (from a `sudo mkdir`) that `$RUNNER_USER` couldn't chmod
+  — `sudo chown -R "$RUNNER_USER" "$NAS_DEPLOY_DIR"` and re-run.
 - **Deploy overwrote something on the NAS** — `rsync --delete` mirrors the repo into
   `$NAS_DEPLOY_DIR`. Only `.env.nas` and `geoip/` are excluded; keep no other hand-edited state there.

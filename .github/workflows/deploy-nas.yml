@@ -55,27 +55,24 @@ jobs:
             exit 1
           fi
 
-      - name: Resolve the commit to deploy
-        id: commit
+      - name: Resolve the commit and image tag
+        id: plan
+        env:
+          # Full 40-char SHA from GitHub — the NAS has no git binary, so slice it here.
+          FULL_SHA: ${{ github.event_name == 'workflow_dispatch' && github.sha || github.event.workflow_run.head_sha }}
+          DISPATCH_TAG: ${{ inputs.image_tag }}
         run: |
+          echo "sha=$FULL_SHA" >> "$GITHUB_OUTPUT"
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "sha=${{ github.sha }}" >> "$GITHUB_OUTPUT"
+            echo "tag=$DISPATCH_TAG" >> "$GITHUB_OUTPUT"
           else
-            echo "sha=${{ github.event.workflow_run.head_sha }}" >> "$GITHUB_OUTPUT"
+            # matches docker/metadata-action's type=sha,format=short (7 chars) in container-build.yml
+            echo "tag=sha-${FULL_SHA:0:7}" >> "$GITHUB_OUTPUT"
           fi
 
       - uses: actions/checkout@v4
         with:
-          ref: ${{ steps.commit.outputs.sha }}
-
-      - name: Resolve image tag
-        id: tag
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "value=${{ inputs.image_tag }}" >> "$GITHUB_OUTPUT"
-          else
-            echo "value=sha-$(git rev-parse --short=7 HEAD)" >> "$GITHUB_OUTPUT"
-          fi
+          ref: ${{ steps.plan.outputs.sha }}
 
       - name: Sync the repo to the NAS deploy directory
         run: |
@@ -92,13 +89,20 @@ jobs:
             --exclude 'infrastructure/compose/.env.nas' \
             ./ "$DEPLOY_DIR/"
 
+          # This NAS's umask yields modes that containers bind-mounting config (postgres initdb.d,
+          # Dapr components, the otel config) can't read — they run as other UIDs. Force world
+          # read + directory-traverse across the tree, then re-lock the one secret file.
+          find "$DEPLOY_DIR" -name .env.nas -prune -o -type d -exec chmod a+rx {} + 2>/dev/null || true
+          find "$DEPLOY_DIR" -name .env.nas -prune -o -type f -exec chmod a+r {} + 2>/dev/null || true
+          chmod 600 "$COMPOSE_DIR/.env.nas"
+
       - name: Log in to GHCR
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
 
       - name: Pull images and start the stack
         working-directory: ${{ env.COMPOSE_DIR }}
         env:
-          TELUMERA_IMAGE_TAG: ${{ steps.tag.outputs.value }}
+          TELUMERA_IMAGE_TAG: ${{ steps.plan.outputs.tag }}
         run: |
           echo "Deploying image tag: $TELUMERA_IMAGE_TAG"
           if ! docker compose $COMPOSE_FILES pull; then
@@ -109,6 +113,17 @@ jobs:
             docker compose $COMPOSE_FILES pull
           fi
           docker compose $COMPOSE_FILES up -d --remove-orphans
+
+      - name: Diagnostics on failure
+        if: failure()
+        working-directory: ${{ env.COMPOSE_DIR }}
+        run: |
+          docker compose $COMPOSE_FILES ps || true
+          for svc in postgres clickhouse rabbitmq redis; do
+            echo "::group::$svc logs"
+            docker compose $COMPOSE_FILES logs --tail 40 "$svc" || true
+            echo "::endgroup::"
+          done
 
       - name: Log out of GHCR
         if: always()
