@@ -674,19 +674,53 @@ URIs):
    "Couldn't load" / live panel offline on the first working deploy). The deploy now
    `--force-recreate`s all 5 `*-dapr` sidecars after `up -d`. Setup is in
    `docs/runbooks/nas-runner-setup.md`; concrete NAS host/user/paths in `~/.claude/CLAUDE.md`.
-   **Verified end-to-end 2026-09-03**: GeoIP DB installed (`refresh-geoip.sh`, monthly cron via
-   `/etc/cron.d/telumera-geoip` since per-user crontab is locked on this NAS), 4 NPM proxy hosts
-   live, real MSAL sign-in at `https://telumera.nl`, workspace + site (`anthony-air.nl`) created
-   through `api.telumera.nl`, `page_view` events `POST`ed to `collect.telumera.nl` → 202 → appear in
-   the dashboard (overview, pages, traffic chart) and the live panel. `deploy-nas.yml` sidecar fix
-   is committed on the `m01.8` branch, not yet merged/deployed — the running NAS stack has the
-   manual sidecar recreate applied.
-2. **Install the SDK on `anthony-air.nl`.** Register the portfolio as a site via
-   `https://api.telumera.nl`, paste the Install-card snippet into the Vue portfolio
-   (`projects/Portfolio/Vue-portfolio/`, `environment: 'staging'` first), deploy, click through, then
-   `tools/synthetic-traffic --token <site token> --collector https://collect.telumera.nl` and
-   reconcile with `tools/reconciliation-report` + the dashboard's data-quality screen. Promote to
-   `production`.
+   **Verified end-to-end 2026-09-03**: 4 NPM proxy hosts live, real MSAL sign-in at
+   `https://telumera.nl`, workspace + site (`anthony-air.nl`, `environment: staging`) created
+   through `api.telumera.nl`, the Install-card snippet added to the Vue portfolio and deployed,
+   `page_view` events flowing to `collect.telumera.nl` → 202 → visible in the dashboard (overview,
+   pages, traffic chart, live panel, geography, acquisition). `deploy-nas.yml` sidecar fix is merged
+   to `main` and deployed (commit `44c25af`).
+
+   **Post-launch fixes, same day, after the first real browser traffic (all merged to `main`,
+   auto-deployed):**
+   - **`3574e4f` + `f5309d1` — `event-collector` had no CORS handling at all.** Every prior test of
+     the collector was server-to-server, so this only surfaced when the SDK ran in a browser on
+     `anthony-air.nl`: `POST /v1/events` is cross-origin with `Content-Type: application/json` → a
+     preflight the collector never answered → "CORS error", nothing collected. Fix: `AddCors` + a
+     **dynamic per-request policy** — `SiteProjection.IsOriginAllowed` allows an `Origin` iff it's in
+     some registered site's `AllowedOrigins` (multi-tenant; deliberately *not* the fixed
+     `CORS_ALLOWED_ORIGINS` list gateway/analytics use). `f5309d1` fixed `3574e4f` shipping
+     `app.UseCors(...)` without `builder.Services.AddCors()` — an `ICorsService` DI crash at startup
+     that `dotnet build` can't catch, only the deploy did.
+   - **GeoIP was never actually installed on the NAS** despite the earlier note claiming it —
+     `infrastructure/compose/geoip/` was empty and `analytics` logged "no MMDB database". Root cause:
+     `.env.nas`'s `MAXMIND_LICENSE_KEY` was mis-pasted (user corrected it). Installed with
+     `sudo -u <deploy-user> bash scripts/refresh-geoip.sh maxmind` → `geoip/GeoLite2-Country.mmdb`
+     (8.2 MB), then `sudo docker compose -f docker-compose.yml -f docker-compose.nas.yml --env-file
+     .env.nas restart analytics analytics-dapr` (the `sudo` + both `-f` + `--env-file` all matter —
+     without them: `docker.sock` permission-denied and every env var blanks to empty). `analytics`
+     now logs `GeoIP: reading MMDB country database` and the Geography tab populates. Monthly cron
+     `/etc/cron.d/telumera-geoip` confirmed running (it runs the script with no provider arg → will
+     pull MaxMind, which is fine now the key works). No historical backfill — source IP is never
+     stored.
+   - **`555370d` — acquisition breakdown was UTM-only**, so non-campaign traffic (LinkedIn, Google,
+     direct) showed its `channel` with an empty source column. Added a `referrer_host` dimension to
+     `daily_acquisition_rollup` + `GET /analytics/acquisition` + the dashboard "Source" column,
+     derived from `coalesce(domainWithoutWWW(sessions.referrer), '')`. It sits in the
+     ReplacingMergeTree `ORDER BY` key, so `ClickHouseWriter.EnsureSchemaAsync` does a guarded
+     one-time `DROP TABLE` + rebuild of that rollup from `sessions` on the first startup of the new
+     image (two `warn:` log lines; verified on the NAS — "2 rollup rows written"). Rolling `analytics`
+     back past `555370d` needs a manual `DROP TABLE daily_acquisition_rollup` — noted in
+     `services/analytics/README.md`.
+2. **Install the SDK on `anthony-air.nl`.** ✅ *Mostly done 2026-09-03*: portfolio registered as a
+   site via `api.telumera.nl`, Install-card snippet added to the Vue portfolio
+   (`projects/Portfolio/Vue-portfolio/`, `environment: 'staging'`), deployed, real traffic confirmed
+   in the dashboard — overview / pages / traffic chart / live panel / geography (after the GeoIP
+   fix) / acquisition Source column (after `555370d`). **Still to do:** run
+   `tools/synthetic-traffic --token <site token> --collector https://collect.telumera.nl`, reconcile
+   with `tools/reconciliation-report` + the dashboard data-quality screen (this is Asana subtask
+   "Run synthetic acceptance traffic"), then flip the snippet to `environment: 'production'` and
+   redeploy the portfolio.
 3. **Backup/restore.** Run `infrastructure/compose/scripts/backup.sh` on the NAS, then
    `restore-test.sh <dir>`; wire `backup.sh` into cron; fill in retention/destination in the runbook.
 4. **Portfolio case study.** `docs/case-studies/product-analytics.md` (new) + a portfolio page — real
@@ -699,6 +733,13 @@ URIs):
    real-world item above completes — `completed: true` + rewrite the `Status:` line to
    `Status: Complete`. GeoIP provider / SDK hosting / `docker-compose.nas.yml` / client-IP fix have
    no subtask → comment on the epic.
+   *2026-09-03:* 7/10 subtasks marked Complete (Implement live visitor projection, Add SignalR live
+   updates, Create data-quality dashboard, Create site installation snippet, Install SDK on portfolio
+   staging, Deploy analytics module to self-hosted environment, Write module runbook). Epic comment
+   added covering SDK hosting / GeoIP / client-IP fix / `docker-compose.nas.yml` / the CORS +
+   acquisition post-launch fixes. **Still open: "Run synthetic acceptance traffic" (item 2 tail),
+   "Create backup and restore test" (item 3), "Publish portfolio case study" (item 4).** Item 5
+   (design mockup) has no Asana subtask.
 
 ## Planning artifacts (`planning/`)
 
