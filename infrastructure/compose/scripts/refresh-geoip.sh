@@ -16,8 +16,15 @@
 set -uo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
-ENV_FILE=".env"
-[[ -f "$ENV_FILE" ]] || ENV_FILE=".env.example"
+# Prefer the override arg, else the first env file that exists: local dev has .env, the NAS
+# deployment has only .env.nas, a fresh clone has neither (fall back to the placeholder).
+ENV_FILE="${ENV_FILE:-}"
+if [[ -z "$ENV_FILE" ]]; then
+  for f in .env .env.nas .env.example; do
+    [[ -f "$f" ]] && { ENV_FILE="$f"; break; }
+  done
+fi
+echo "Using env file: $ENV_FILE" >&2
 set -a
 # shellcheck disable=SC1090
 source "$ENV_FILE"
