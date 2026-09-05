@@ -758,10 +758,23 @@ URIs):
    the portfolio side — `Vue-portfolio` has no "case study" convention, only a template-driven
    `ProjectDetailsPage.vue`/`ProjectDetailsItem.vue` pattern, so slotting this in is a separate
    design/content task, not a doc-writing one.
-5. **Design mockup.** Update the "Telumera Dashboard Concept" Artifact
-   (`https://claude.ai/code/artifact/77de8a9c-0318-4088-8a85-854e8b7cc442`) with the live-visitors
-   panel, the data-quality screen, and the geography map — `housestyle.md`'s "Live & data-quality
-   components (M01.8)" section is the spec; do it as a visual pass, not blind.
+5. **Design mockup.** ✅ *Done 2026-09-05*: the "Telumera Dashboard Concept" Artifact
+   (`https://claude.ai/code/artifact/77de8a9c-0318-4088-8a85-854e8b7cc442`) now has all three
+   M01.8 pieces `housestyle.md`'s "Live & data-quality components" section specs — built directly
+   against real screenshots taken from the live `telumera.nl` dashboard first (not blind): a
+   `LiveVisitorsPanel`-equivalent card (pulsing dot, big count, current-pages list) replacing the
+   old inline "142 visitors right now" text; a real `GeographyMap` replacing the old "isn't
+   available yet" placeholder — a bubble map (lon/lat-projected circles, sqrt-scale brand fill)
+   rather than a literal Natural Earth choropleth, a deliberate concept-mockup simplification since
+   hand-authoring accurate country polygon paths isn't a good use of a design pass; and a full new
+   `/quality` screen (6 metric cards, a stacked daily-outcomes bar chart with legend/tooltip, a
+   collapsible "What these mean" glossary), reached via a new "Data quality" link next to "Metric
+   definitions". Verified live in-browser: Live panel, Geography bubbles, and the Quality screen
+   all render and interact correctly; Technology tab's existing donuts confirmed unaffected (no
+   regression). One unverified minor item: the "What these mean" `<details>` disclosure didn't
+   visibly toggle under synthetic clicks during this pass (no console error, valid syntax) — worth
+   a manual click-check, low confidence it's a real bug vs. a testing-harness click-precision
+   artifact.
 6. **Asana** (board `1217238110202107`): mark the 10 M01.8 subtasks (CSV rows 125–134) done as each
    real-world item above completes — `completed: true` + rewrite the `Status:` line to
    `Status: Complete`. GeoIP provider / SDK hosting / `docker-compose.nas.yml` / client-IP fix have
