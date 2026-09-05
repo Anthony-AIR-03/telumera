@@ -135,21 +135,34 @@ benchmarked numbers.
 
 ## 7. Backups
 
-Nothing here is automated yet — this is the inventory of what needs a backup story before the NAS
-deployment is real, matching the Definition of Done's "documentation and runbooks are updated" bar
-(`planning/Telumera_Modular_Project_Plan.md` §14):
+`infrastructure/compose/scripts/backup.sh` implements this — verified end-to-end on a real NAS
+deployment (2026-09-05), including a full restore test:
 
 | Data | Mechanism | Notes |
 |---|---|---|
-| PostgreSQL (all `telumera_*` databases) | `pg_dump`/`pg_dumpall`, scheduled | Per-context databases (`docs/adr/0005`) back up independently — a context can be restored without touching another's data |
-| ClickHouse (all `telumera_*` databases) | `clickhouse-backup` or `BACKUP` statement to the MinIO bucket below | Same per-context independence as Postgres |
-| RabbitMQ | Definitions export (exchanges/queues/users), not message bodies | Messages are transient by design (ADR 0002) — a lost in-flight message during a backup window is not a data-loss event the way a lost Postgres row would be |
-| MinIO | Object storage itself needs its own backup target (a second disk, or off-NAS) — it can't back itself up | Bucket-per-context convention (ADR 0005) applies here too |
-| `infrastructure/`, `docs/`, `.env` (NAS-specific) | Git (everything except `.env`) + a password manager for `.env` | The compose/Dapr config is already versioned; only the NAS's actual secret values need a separate backup story |
+| PostgreSQL (all `telumera_*` databases) | `pg_dump --format=custom`, one dump per context database | Per-context databases (`docs/adr/0005`) back up independently — a context can be restored without touching another's data |
+| ClickHouse (`telumera_analytics` tables) | `SELECT * FROM <table> FORMAT Native`, gzipped | Portable and engine-agnostic — no `clickhouse-backup` dependency. A manifest of exact per-table row counts is written alongside |
+| RabbitMQ | `rabbitmqctl export_definitions` (exchanges/queues/bindings), not message bodies | Messages are transient by design (ADR 0002) — a lost in-flight message during a backup window is not a data-loss event the way a lost Postgres row would be |
+| MinIO | Not automated — still needs its own off-box target | Bucket-per-context convention (ADR 0005) applies here too; open gap |
+| `infrastructure/`, `docs/` | Git | Already versioned |
+| `.env.nas` (NAS-specific secrets) | Not covered by this script | Already excluded from the rsync deploy tree (`deploy-nas.yml`); back it up like any other credential (password manager), separately |
 
-Retention policy, backup destination (a second NAS volume vs. off-site), and restore testing are
-deliberately left open — revisit once there's real user data at stake, i.e. once M01 actually ships
-events into this stack.
+`infrastructure/compose/scripts/restore-test.sh <backup-dir>` spins up throwaway Postgres +
+ClickHouse containers, loads the dumps/exports into them, and checks row counts against the
+manifest — proves a backup is actually restorable, not just written. Both scripts resolve their
+env file as `.env` (local dev) → `.env.nas` (NAS) → `.env.example` (fallback), in that order.
+
+**Retention**: the `BACKUP_RETAIN` env var (default 7) — the script keeps that many most-recent
+timestamped backup directories and prunes the rest.
+
+**Destination**: must be a path *outside* the rsynced deploy tree. `deploy-nas.yml`'s
+`rsync --delete` only excludes `.env.nas` and `geoip/`, so anything else written inside the deploy
+tree is wiped on the next push-to-main deploy. Pass an out-of-tree directory as `backup.sh`'s one
+positional argument (defaults to `./backups`, which is *inside* the tree and NOT safe on the NAS).
+
+**Still open**: off-site/second-volume replication, MinIO backup, `.env.nas` secret backup, and
+wiring `backup.sh` into a recurring schedule are host-specific and not tracked in this repo — see
+the NAS's own operational notes for the actual cron setup.
 
 ## 8. The override file (added M01.8)
 
