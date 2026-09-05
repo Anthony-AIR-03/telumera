@@ -712,19 +712,52 @@ URIs):
      image (two `warn:` log lines; verified on the NAS — "2 rollup rows written"). Rolling `analytics`
      back past `555370d` needs a manual `DROP TABLE daily_acquisition_rollup` — noted in
      `services/analytics/README.md`.
-2. **Install the SDK on `anthony-air.nl`.** ✅ *Mostly done 2026-09-03*: portfolio registered as a
-   site via `api.telumera.nl`, Install-card snippet added to the Vue portfolio
-   (`projects/Portfolio/Vue-portfolio/`, `environment: 'staging'`), deployed, real traffic confirmed
-   in the dashboard — overview / pages / traffic chart / live panel / geography (after the GeoIP
-   fix) / acquisition Source column (after `555370d`). **Still to do:** run
-   `tools/synthetic-traffic --token <site token> --collector https://collect.telumera.nl`, reconcile
-   with `tools/reconciliation-report` + the dashboard data-quality screen (this is Asana subtask
-   "Run synthetic acceptance traffic"), then flip the snippet to `environment: 'production'` and
-   redeploy the portfolio.
-3. **Backup/restore.** Run `infrastructure/compose/scripts/backup.sh` on the NAS, then
-   `restore-test.sh <dir>`; wire `backup.sh` into cron; fill in retention/destination in the runbook.
-4. **Portfolio case study.** `docs/case-studies/product-analytics.md` (new) + a portfolio page — real
-   screenshots from the live `telumera.nl` dashboard, real reconciliation numbers.
+2. **Install the SDK on `anthony-air.nl`.** ✅ *Done 2026-09-05*: portfolio registered as a site via
+   `api.telumera.nl`, Install-card snippet added to the Vue portfolio
+   (`projects/Portfolio/Vue-portfolio/`), deployed, real traffic confirmed in the dashboard —
+   overview / pages / traffic chart / live panel / geography (after the GeoIP fix) / acquisition
+   Source column (after `555370d`). `tools/synthetic-traffic` run against the live
+   `collect.telumera.nl` (six journeys: engaged session, bounce, bot UA, duplicate id, malformed
+   event, unknown token) — every response matched expectations exactly.
+   `tools/reconciliation-report --date 2026-09-05` showed **Accepted = Processed = Stored = 8**, a
+   clean reconciliation. One finding from the run: all 8 synthetic events came back
+   `is_bot = 1`, not just the intentional bot journey — `BotDetector.IsBot`
+   (`services/analytics/BotDetector.cs`) treats a missing User-Agent as a bot signal, and the tool
+   only sets a UA on its bot journey, so every other journey looked bot-like too. This is an
+   artifact of the test tool, not the pipeline (the real browser SDK always sends a genuine UA) —
+   no code change needed. Closes Asana subtask "Run synthetic acceptance traffic". Snippet flipped
+   from `environment: 'staging'` to `'production'` and redeployed.
+3. **Backup/restore.** ✅ *Done 2026-09-05*: `backup.sh` and `restore-test.sh` both ran clean against
+   the live NAS — every Postgres table count and ClickHouse row count matched the manifest exactly
+   (89 events, 24 sessions, all 5 rollups, `event_quality_daily`). Two real gaps surfaced only by
+   running this for real: neither script knew about `.env.nas` (only checked `.env`/`.env.example`),
+   so `backup.sh` would have silently used the wrong password against the NAS's real containers —
+   fixed (`14a5f9a`) by trying `.env.nas` before falling back to `.env.example`; and the default
+   destination (`./backups`, inside `infrastructure/compose/`) sits inside the tree
+   `deploy-nas.yml`'s `rsync --delete` mirrors on every deploy, so a backup written there would be
+   wiped by the next push to `main` — the NAS now passes an explicit out-of-tree destination
+   (see `~/.claude/CLAUDE.md` for the actual path). `backup.sh` now runs nightly via a
+   `/etc/cron.d/telumera-backup` entry (same pattern as `telumera-geoip`), `BACKUP_RETAIN` at its
+   default of 7. `docs/architecture/nas-deployment-profile.md` §7 rewritten (`12f6af4`) to describe
+   the real implementation instead of the pre-M01.8 speculative table. Closes Asana subtask "Create
+   backup and restore test".
+
+   One incidental NAS lesson from this session, worth remembering for future one-off container runs
+   bind-mounting the deploy tree: a plain `docker run` defaults to root, so `dotnet run` inside a
+   throwaway container (used to run `reconciliation-report`/`backup.sh` ad hoc against the NAS's
+   internal-only Postgres/ClickHouse) wrote `obj/`/`bin/` build artifacts into the deploy tree as
+   root — `<deploy-user>` then couldn't delete them, breaking the next deploy's
+   `rsync --delete` with a wall of "Permission denied". Fixed with `sudo rm -rf` once; future
+   one-off containers bind-mounting into `$NAS_DEPLOY_DIR` should pass
+   `--user "$(id -u <deploy-user>):$(id -g <deploy-user>)"` to avoid repeating this.
+4. **Portfolio case study.** ✅ *Draft done 2026-09-04*: `docs/case-studies/product-analytics.md`
+   written (Accuracy Principle as spine, real architecture decisions, a "what broke and how it was
+   caught" section from the real M01.1–M01.8 bugs, now updated with the real items-2/3 verification
+   numbers above). Still needs: 4 real screenshots from the live `telumera.nl` dashboard (overview,
+   live panel, geography, data-quality — currently `[SCREENSHOT: ...]` placeholders), and a home on
+   the portfolio side — `Vue-portfolio` has no "case study" convention, only a template-driven
+   `ProjectDetailsPage.vue`/`ProjectDetailsItem.vue` pattern, so slotting this in is a separate
+   design/content task, not a doc-writing one.
 5. **Design mockup.** Update the "Telumera Dashboard Concept" Artifact
    (`https://claude.ai/code/artifact/77de8a9c-0318-4088-8a85-854e8b7cc442`) with the live-visitors
    panel, the data-quality screen, and the geography map — `housestyle.md`'s "Live & data-quality
@@ -737,9 +770,11 @@ URIs):
    updates, Create data-quality dashboard, Create site installation snippet, Install SDK on portfolio
    staging, Deploy analytics module to self-hosted environment, Write module runbook). Epic comment
    added covering SDK hosting / GeoIP / client-IP fix / `docker-compose.nas.yml` / the CORS +
-   acquisition post-launch fixes. **Still open: "Run synthetic acceptance traffic" (item 2 tail),
-   "Create backup and restore test" (item 3), "Publish portfolio case study" (item 4).** Item 5
-   (design mockup) has no Asana subtask.
+   acquisition post-launch fixes.
+   *2026-09-05:* "Run synthetic acceptance traffic" and "Create backup and restore test" marked
+   Complete — 9/10 subtasks done. **Still open: "Publish portfolio case study" (item 4 — draft
+   written, screenshots + portfolio-side placement remain).** Item 5 (design mockup) has no Asana
+   subtask.
 
 ## Planning artifacts (`planning/`)
 
