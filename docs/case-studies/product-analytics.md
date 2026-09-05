@@ -172,10 +172,11 @@ Two verification steps that remained open are now closed out, both run for real 
   mirrors on every deploy, so a backup written there would be deleted by the very next push to
   `main`. Both fixed; `backup.sh` now runs nightly via cron to a destination outside the deploy tree.
 
-[SCREENSHOT: dashboard overview tab, live traffic from anthony-air.nl]
-[SCREENSHOT: live-visitors panel with a real active session]
-[SCREENSHOT: geography tab, populated after the GeoIP fix]
-[SCREENSHOT: data-quality screen showing accept/reject/duplicate breakdown]
+![Overview tab with the live-visitors panel showing 2 real active sessions](assets/overview-live-visitors.jpg)
+
+![Geography tab, real GeoIP-derived country breakdown for anthony-air.nl](assets/geography.jpg)
+
+![Data-quality screen: 98.2% acceptance rate, 0 dead-letter queue depth](assets/data-quality.jpg)
 
 ## What this demonstrates
 
