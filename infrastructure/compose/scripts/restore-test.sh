@@ -11,6 +11,7 @@ SRC="${1:?usage: ./restore-test.sh <backup-dir>}"
 [[ -d "$SRC" && -f "${SRC}/manifest.txt" ]] || { echo "Not a backup dir (no manifest.txt): ${SRC}" >&2; exit 1; }
 
 ENV_FILE=".env"
+[[ -f "$ENV_FILE" ]] || ENV_FILE=".env.nas"
 [[ -f "$ENV_FILE" ]] || ENV_FILE=".env.example"
 set -a
 # shellcheck disable=SC1090

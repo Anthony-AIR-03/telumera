@@ -14,6 +14,7 @@ set -uo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
 ENV_FILE=".env"
+[[ -f "$ENV_FILE" ]] || ENV_FILE=".env.nas"
 [[ -f "$ENV_FILE" ]] || ENV_FILE=".env.example"
 set -a
 # shellcheck disable=SC1090
