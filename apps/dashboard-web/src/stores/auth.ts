@@ -29,9 +29,17 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  /**
+   * `prompt: 'select_account'` forces Azure's account picker every time this runs, instead of
+   * MSAL silently reusing whichever Microsoft account the browser is already signed into. Without
+   * it, a user whose signed-in account isn't in the Telumera tenant gets rejected on every retry
+   * with no way to choose a different one (the picker is the only in-app escape from a "wrong
+   * account" loop — see `forgetAccount`). This popup only appears on a genuine fresh sign-in; a
+   * normal app re-open goes through `restore()` with no popup at all.
+   */
   async function login() {
     await ensureMsalInitialized()
-    const result = await msalInstance.loginPopup({ scopes: [apiScope] })
+    const result = await msalInstance.loginPopup({ scopes: [apiScope], prompt: 'select_account' })
     account.value = result.account
     msalInstance.setActiveAccount(result.account)
   }
@@ -49,6 +57,23 @@ export const useAuthStore = defineStore('auth', () => {
   async function logout() {
     await ensureMsalInitialized()
     await msalInstance.clearCache({ account: account.value })
+    account.value = null
+  }
+
+  /**
+   * Full front-channel sign-out at Azure AD's end_session_endpoint — the deliberate opposite of
+   * `logout()` above. This is the recovery path for the login screen: a user who signed in with a
+   * Microsoft account that has no access to Telumera and wants to actually drop it, not just clear
+   * our local cache. The Microsoft confirmation popup that `logout()`'s comment calls out as
+   * unwanted for a routine "Log out" click is exactly what's wanted here.
+   */
+  async function forgetAccount() {
+    await ensureMsalInitialized()
+    await msalInstance.logoutPopup({
+      account: account.value ?? undefined,
+      postLogoutRedirectUri: `${window.location.origin}/auth-popup.html`,
+      mainWindowRedirectUri: `${window.location.origin}/login`,
+    })
     account.value = null
   }
 
@@ -74,5 +99,5 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  return { account, isAuthenticated, restore, login, logout, getAccessToken }
+  return { account, isAuthenticated, restore, login, logout, forgetAccount, getAccessToken }
 })

@@ -12,7 +12,10 @@
     "description": "Sign in with your Telumera account to continue.",
     "action": "Sign in",
     "signingIn": "Signing in…",
-    "error": "Sign-in failed. Please try again."
+    "error": "Sign-in failed. Please try again.",
+    "wrongAccountHint": "Signed in with the wrong Microsoft account? Sign out of it here, then sign in again.",
+    "signOutAction": "Sign out of Microsoft",
+    "signOutError": "Couldn't sign out. Try again, or sign out from your Microsoft account settings."
   },
   "common": {
     "loading": "Loading…",

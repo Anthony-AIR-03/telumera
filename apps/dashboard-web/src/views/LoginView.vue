@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
+import { BrowserAuthError } from '@azure/msal-browser'
 import { useAuthStore } from '@/stores/auth'
 import AppButton from '@/components/AppButton.vue'
 import StateMessage from '@/components/StateMessage.vue'
@@ -13,6 +14,12 @@ const auth = useAuthStore()
 
 const error = ref<string | null>(null)
 const signingIn = ref(false)
+const signingOut = ref(false)
+
+/** Closing the account picker without choosing isn't a failure worth an alarming message. */
+function isUserCancelled(e: unknown): boolean {
+  return e instanceof BrowserAuthError && e.errorCode === 'user_cancelled'
+}
 
 async function signIn() {
   error.value = null
@@ -21,10 +28,26 @@ async function signIn() {
     await auth.login()
     const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/'
     await router.push(redirect)
-  } catch {
-    error.value = t('login.error')
+  } catch (e) {
+    if (!isUserCancelled(e)) {
+      error.value = t('login.error')
+    }
   } finally {
     signingIn.value = false
+  }
+}
+
+async function signOutOfMicrosoft() {
+  error.value = null
+  signingOut.value = true
+  try {
+    await auth.forgetAccount()
+  } catch (e) {
+    if (!isUserCancelled(e)) {
+      error.value = t('login.signOutError')
+    }
+  } finally {
+    signingOut.value = false
   }
 }
 </script>
@@ -60,6 +83,17 @@ async function signIn() {
       >
         {{ t('login.action') }}
       </AppButton>
+      <div v-if="error" class="mt-3">
+        <p class="text-xs text-neutral-500">{{ t('login.wrongAccountHint') }}</p>
+        <AppButton
+          variant="secondary"
+          class="mt-2 w-full"
+          :loading="signingOut"
+          @click="signOutOfMicrosoft"
+        >
+          {{ t('login.signOutAction') }}
+        </AppButton>
+      </div>
     </div>
   </main>
 </template>
