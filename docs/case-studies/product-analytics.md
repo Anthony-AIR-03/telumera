@@ -3,6 +3,11 @@
 > A case study covering Telumera's first shipped module, Product Analytics (backlog milestones M01.1
 > through M01.8). Written after the module went live end-to-end against a real domain
 > (`anthony-air.nl` → `telumera.nl`) on 2026-09-03.
+>
+> This file is the canonical source. A reader-facing copy (English + a full Dutch translation) is
+> published on the portfolio at `/projects/telumera/case-study/product-analytics` — see
+> `Vue-portfolio`'s `src/assets/case-studies/product-analytics.{en,nl}.md` and `CaseStudyPage.vue`.
+> Keep the portfolio copy in sync with edits here.
 
 ## The problem
 

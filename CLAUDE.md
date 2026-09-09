@@ -648,11 +648,12 @@ processed>stored gap from earlier same-day testing is older data, correctly flag
   metric deltas they should produce, for reconciling a run.
 - **Verification**: `tests/integration/M018Tests.cs` (`[SkippableFact]`) — all 4 pass live.
 
-**Still open in M01.8 — next session's checklist** (all need the live `telumera.nl` environment; the
-user's Cloudflare/NPM/Entra side is already done: `*.telumera.nl` tunnel route → NPM, four proxy
-hosts `telumera.nl`/`api.`/`hubs.`/`collect.` — `hubs.` has Websockets Support on — and the
-`Telumera Dashboard` SPA registration has `https://telumera.nl` + `.../auth-popup.html` redirect
-URIs):
+**M01.8 checklist — all 6 items now done** (2026-09-09 closed out item 4; the epic, its 10 Asana
+subtasks, and the M01 milestone are all marked Complete). Original context: all needed the live
+`telumera.nl` environment; the user's Cloudflare/NPM/Entra side was already done (`*.telumera.nl`
+tunnel route → NPM, four proxy hosts `telumera.nl`/`api.`/`hubs.`/`collect.` — `hubs.` has
+Websockets Support on — and the `Telumera Dashboard` SPA registration has `https://telumera.nl` +
+`.../auth-popup.html` redirect URIs):
 
 1. **Deploy to the NAS.** ✅ *Auto-deploy pipeline built and verified working* (this session):
    push to `main` → `container-build.yml` pushes all 6 images to GHCR (dashboard-web gets its
@@ -750,14 +751,21 @@ URIs):
    `rsync --delete` with a wall of "Permission denied". Fixed with `sudo rm -rf` once; future
    one-off containers bind-mounting into `$NAS_DEPLOY_DIR` should pass
    `--user "$(id -u <deploy-user>):$(id -g <deploy-user>)"` to avoid repeating this.
-4. **Portfolio case study.** ✅ *Draft done 2026-09-04*: `docs/case-studies/product-analytics.md`
-   written (Accuracy Principle as spine, real architecture decisions, a "what broke and how it was
-   caught" section from the real M01.1–M01.8 bugs, now updated with the real items-2/3 verification
-   numbers above). Still needs: 4 real screenshots from the live `telumera.nl` dashboard (overview,
-   live panel, geography, data-quality — currently `[SCREENSHOT: ...]` placeholders), and a home on
-   the portfolio side — `Vue-portfolio` has no "case study" convention, only a template-driven
-   `ProjectDetailsPage.vue`/`ProjectDetailsItem.vue` pattern, so slotting this in is a separate
-   design/content task, not a doc-writing one.
+4. **Portfolio case study.** ✅ *Done 2026-09-09*: `docs/case-studies/product-analytics.md` is the
+   canonical source (Accuracy Principle spine, real architecture decisions, a "what broke and how it
+   was caught" section from the real M01.1–M01.8 bugs, real items-2/3 verification numbers). Three
+   real dashboard screenshots added earlier (`1f44786`, in `docs/case-studies/assets/`). Published
+   on the portfolio at **`/projects/telumera/case-study/product-analytics`** — a new per-module
+   case-study convention in `Vue-portfolio`: `marked` dependency added, `src/pages/CaseStudyPage.vue`
+   at route `/projects/:slug/case-study/:module`, `src/components/pages/projects/custom/caseStudies.ts`
+   registry, and `src/assets/case-studies/product-analytics.{en,nl}.md` (English + a full Dutch
+   translation — the portfolio localises everything; `CaseStudyPage` picks by `i18n` locale with an
+   English fallback + a "only in English" note for any future en-only study). `TelumeraProject.vue`'s
+   module roadmap gets a "Read the case study →" pill on each `status: "shipped"` row (data-driven via
+   a `caseStudy` stem). Screenshots copied to the portfolio's `public/case-studies/`. Verified in a
+   real browser (EN + NL render, shipped-row link routes, unknown module → `/not-found`, no console
+   errors); portfolio `type-check` + `build` clean. Future modules: drop two `.md` files in and add a
+   `caseStudies.ts` row + the `caseStudy` stem on that module's row.
 5. **Design mockup.** ✅ *Done 2026-09-05*: the "Telumera Dashboard Concept" Artifact
    (`https://claude.ai/code/artifact/77de8a9c-0318-4088-8a85-854e8b7cc442`) now has all three
    M01.8 pieces `housestyle.md`'s "Live & data-quality components" section specs — built directly
@@ -785,9 +793,10 @@ URIs):
    added covering SDK hosting / GeoIP / client-IP fix / `docker-compose.nas.yml` / the CORS +
    acquisition post-launch fixes.
    *2026-09-05:* "Run synthetic acceptance traffic" and "Create backup and restore test" marked
-   Complete — 9/10 subtasks done. **Still open: "Publish portfolio case study" (item 4 — draft
-   written, screenshots + portfolio-side placement remain).** Item 5 (design mockup) has no Asana
-   subtask.
+   Complete — 9/10 subtasks done.
+   *2026-09-09:* "Publish portfolio case study" marked Complete — **10/10 subtasks done. Epic
+   M01.8 (`1217238560530300`) and the M01 milestone (`1217238769342932`) both marked Complete.**
+   Item 5 (design mockup) has no Asana subtask.
 
 ## Planning artifacts (`planning/`)
 
