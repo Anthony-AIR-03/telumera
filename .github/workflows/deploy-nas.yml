@@ -36,9 +36,15 @@ concurrency:
 jobs:
   deploy:
     # workflow_run fires on success AND failure — only deploy when Container Build actually succeeded.
+    # It also fires for pull_request builds, and its `branches` filter matches the head branch *name*,
+    # so a fork PR from a branch called "main" would pass it. Because this job checks out
+    # workflow_run.head_sha and runs its compose files on the self-hosted runner, only deploy builds
+    # that came from a push to this repository itself.
     if: >-
       github.event_name == 'workflow_dispatch' ||
-      github.event.workflow_run.conclusion == 'success'
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_repository.full_name == github.repository)
     runs-on: [self-hosted, telumera]
     timeout-minutes: 20
     env:
