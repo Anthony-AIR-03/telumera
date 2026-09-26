@@ -1,14 +1,28 @@
+<div align="center">
+
 # Telumera
 
-A self-hosted, privacy-first analytics and developer-intelligence platform, in the spirit of
-PostHog, Plausible and Sentry combined, built module by module.
+**A self-hosted, privacy-first analytics and developer-intelligence platform, built module by module.**
 
-**Live at [telumera.nl](https://telumera.nl)**, where it tracks the traffic of
-[anthony-air.nl](https://anthony-air.nl). The full write-up is on the portfolio:
-[project page](https://anthony-air.nl/projects/telumera) ·
-[Product Analytics case study](https://anthony-air.nl/projects/telumera/case-study/product-analytics).
+[🌐 Live at telumera.nl](https://telumera.nl) · [💼 Portfolio write-up](https://anthony-air.nl/projects/telumera) · [📖 Case study](https://anthony-air.nl/projects/telumera/case-study/product-analytics)
 
-![Telumera dashboard with live visitors](docs/case-studies/assets/overview-live-visitors.jpg)
+![Vue.js](https://img.shields.io/badge/Vue.js-4FC08D?style=flat-square&logo=vuedotjs&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)
+![ASP.NET Core](https://img.shields.io/badge/ASP.NET%20Core-512BD4?style=flat-square&logo=dotnet&logoColor=white)
+![Dapr](https://img.shields.io/badge/Dapr-0D2192?style=flat-square&logo=dapr&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=flat-square&logo=postgresql&logoColor=white)
+![ClickHouse](https://img.shields.io/badge/ClickHouse-FFCC01?style=flat-square&logo=clickhouse&logoColor=black)
+![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat-square&logo=docker&logoColor=white)
+![GitHub Actions](https://img.shields.io/badge/GitHub%20Actions-2088FF?style=flat-square&logo=githubactions&logoColor=white)
+
+<a href="https://telumera.nl"><img src="docs/case-studies/assets/overview-live-visitors.jpg" alt="Telumera dashboard with live visitors" width="720" /></a>
+
+</div>
+
+## About
+
+In the spirit of PostHog, Plausible and Sentry combined. Telumera is live and tracks the traffic of
+my portfolio, [anthony-air.nl](https://anthony-air.nl).
 
 ## What makes it different
 
@@ -110,3 +124,11 @@ The full quick-start, secrets model and debugging guide are in
 
 Working conventions are in [CONTRIBUTING.md](CONTRIBUTING.md); the full project context is in
 [CLAUDE.md](CLAUDE.md).
+
+---
+
+<div align="center">
+
+Made by **Anthony Inocencio Ramos** · [anthony-air.nl](https://anthony-air.nl) · [LinkedIn](https://www.linkedin.com/in/anthony-inoc%C3%AAncio-ramos-b89003277/)
+
+</div>
