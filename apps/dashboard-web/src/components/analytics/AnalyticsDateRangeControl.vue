@@ -64,7 +64,7 @@ async function copyShareableLink() {
         :key="days"
         type="button"
         :aria-pressed="activePresetDays === days"
-        class="rounded-[7px] px-3 py-1.5 text-sm font-semibold"
+        class="pointer-coarse:min-h-11 rounded-[7px] px-3 py-1.5 text-sm font-semibold"
         :class="
           activePresetDays === days
             ? 'bg-brand-50 font-bold text-brand-700'
@@ -81,7 +81,7 @@ async function copyShareableLink() {
       :value="from"
       :max="to"
       :aria-label="t('analytics.dateRange.from')"
-      class="rounded-[9px] border border-neutral-300 px-3 py-1.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+      class="pointer-coarse:min-h-11 rounded-[9px] border border-neutral-300 px-3 py-1.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
       @change="onFromInput"
     />
     <span class="text-sm text-neutral-400" aria-hidden="true">&rarr;</span>
@@ -90,13 +90,13 @@ async function copyShareableLink() {
       :value="to"
       :min="from"
       :aria-label="t('analytics.dateRange.to')"
-      class="rounded-[9px] border border-neutral-300 px-3 py-1.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+      class="pointer-coarse:min-h-11 rounded-[9px] border border-neutral-300 px-3 py-1.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
       @change="onToInput"
     />
 
     <button
       type="button"
-      class="inline-flex items-center gap-1.5 rounded-[9px] border border-neutral-200 bg-white px-2.5 py-1.5 text-xs font-semibold"
+      class="pointer-coarse:min-h-11 inline-flex items-center gap-1.5 rounded-[9px] border border-neutral-200 bg-white px-2.5 py-1.5 text-xs font-semibold"
       :class="linkCopied ? 'text-brand-700' : 'text-neutral-600 hover:bg-neutral-50'"
       @click="copyShareableLink"
     >

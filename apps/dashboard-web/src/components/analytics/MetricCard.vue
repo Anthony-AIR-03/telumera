@@ -23,7 +23,7 @@ const { t } = useI18n()
       <span class="text-xs font-semibold text-neutral-600">{{ label }}</span>
       <button
         type="button"
-        class="text-neutral-400 hover:text-neutral-600"
+        class="pointer-coarse:-m-[15px] pointer-coarse:p-[15px] text-neutral-400 hover:text-neutral-600"
         :aria-label="t('analytics.glossary.openFor', { label })"
         @click="$emit('open-glossary')"
       >

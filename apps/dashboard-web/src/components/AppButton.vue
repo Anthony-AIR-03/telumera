@@ -31,7 +31,7 @@ const variantClasses = {
   <button
     :disabled="disabled || loading"
     :class="[
-      'inline-flex items-center justify-center gap-2 rounded-[9px] px-[15px] py-[9px] text-sm font-bold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-60',
+      'inline-flex min-h-11 items-center justify-center gap-2 rounded-[9px] px-[15px] py-[9px] text-sm font-bold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-60',
       variantClasses[variant],
     ]"
   >

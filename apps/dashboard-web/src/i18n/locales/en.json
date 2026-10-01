@@ -5,7 +5,9 @@
   "nav": {
     "dashboard": "Dashboard",
     "analytics": "Analytics",
-    "logout": "Log out"
+    "logout": "Log out",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu"
   },
   "login": {
     "title": "Sign in",
