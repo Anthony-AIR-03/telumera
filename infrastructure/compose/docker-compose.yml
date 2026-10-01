@@ -1,5 +1,6 @@
 # Local self-hosted runtime for Telumera (M00.3+). Brings up shared platform
-# infrastructure — Postgres, ClickHouse, RabbitMQ, Redis, MinIO, an OTel
+# infrastructure — Postgres, ClickHouse, RabbitMQ, Redis, SeaweedFS (S3-compatible object
+# storage — see docs/adr/0007-object-storage-seaweedfs-over-minio.md for why this isn't MinIO), an OTel
 # Collector, a Dapr placement service + one headless "smoke-test" Dapr
 # sidecar — plus the real application services built so far:
 # identity-workspace, site-registry, gateway (a transparent reverse proxy in
@@ -24,7 +25,7 @@ volumes:
   clickhouse-data:
   rabbitmq-data:
   redis-data:
-  minio-data:
+  seaweedfs-data:
 
 services:
   postgres:
@@ -60,7 +61,7 @@ services:
         hard: 262144
     ports:
       - "8123:8123" # HTTP interface
-      - "9004:9000" # native protocol (remapped: 9000 is MinIO's API port)
+      - "9004:9000" # native protocol (remapped: 9000 is the object-storage S3 API port)
     volumes:
       - clickhouse-data:/var/lib/clickhouse
       - ./db-init/clickhouse:/docker-entrypoint-initdb.d:ro
@@ -108,22 +109,44 @@ services:
       timeout: 5s
       retries: 10
 
-  minio:
-    image: minio/minio:RELEASE.2024-10-13T13-34-11Z
+  # Swapped from MinIO to SeaweedFS — see docs/adr/0007-object-storage-seaweedfs-over-minio.md for
+  # why (short version: MinIO deleted its free images from Docker Hub *and* quay.io in Sept 2026;
+  # nothing here consumes this service yet, so it was the cheapest possible moment to switch engines
+  # instead of pinning a now-unpatched MinIO release). Runs SeaweedFS's unified single-binary mode
+  # (master + volume + filer + S3 gateway in one process) as a drop-in S3-compatible replacement.
+  #
+  # Service/volume keys renamed minio -> seaweedfs / minio-data -> seaweedfs-data (safe: no data to
+  # migrate, nothing depended on the old names). MINIO_ROOT_USER/PASSWORD env var names were kept
+  # as-is on purpose, even though they now configure SeaweedFS: the real NAS secret already set in
+  # its .env.nas (outside this repo, hand-maintained) keeps working with no manual edit there.
+  #
+  # Credentials: SeaweedFS has no env-var credential flags (unlike MinIO) — they're read from a
+  # mounted JSON identity file. The startup command stamps the two env var values into the mounted
+  # template below (sed; the image is Alpine-based and has no envsubst) before handing off to the
+  # real server. See infrastructure/compose/seaweedfs/s3.json.template.
+  seaweedfs:
+    image: chrislusf/seaweedfs:4.48
     restart: unless-stopped
-    command: ["server", "/data", "--console-address", ":9001"]
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        sed -e "s|__S3_ACCESS_KEY__|${MINIO_ROOT_USER}|g" -e "s|__S3_SECRET_KEY__|${MINIO_ROOT_PASSWORD}|g" \
+          /etc/seaweedfs/s3.json.template > /etc/seaweedfs/s3.json
+        exec weed server -dir=/data -s3 -s3.port=8333 -s3.config=/etc/seaweedfs/s3.json -ip.bind=0.0.0.0
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
     ports:
-      - "9000:9000" # S3 API
-      - "9001:9001" # web console
+      - "9000:8333" # S3 API (host port kept at 9000 for continuity with the old MinIO mapping)
     volumes:
-      - minio-data:/data
+      - seaweedfs-data:/data
+      - ./seaweedfs/s3.json.template:/etc/seaweedfs/s3.json.template:ro
     networks:
       - telumera-net
     healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
+      # Master's own cluster-status endpoint, not the S3 port: the S3 API now requires auth (a plain
+      # unauthenticated probe would always read as "unhealthy" via a 403, the opposite of true).
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:9333/cluster/status"]
       interval: 5s
       timeout: 5s
       retries: 10

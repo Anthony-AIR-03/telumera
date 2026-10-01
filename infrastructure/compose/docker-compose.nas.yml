@@ -45,7 +45,7 @@ services:
     ports: !reset []
     mem_limit: 128m
 
-  minio:
+  seaweedfs:
     ports: !reset []
     mem_limit: 256m
 

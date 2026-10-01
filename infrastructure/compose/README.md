@@ -16,10 +16,10 @@ docker compose up -d
 | Service | Image | Host port(s) | Purpose |
 |---|---|---|---|
 | `postgres` | `postgres:16-alpine` | `5432` | Transactional/config data, one database per bounded context (`db-init/postgres/`) |
-| `clickhouse` | `clickhouse/clickhouse-server:24.8-alpine` | `8123` (HTTP), `9004` (native, remapped — `9000` is MinIO's) | Event/time-series data, one database per bounded context (`db-init/clickhouse/`) |
+| `clickhouse` | `clickhouse/clickhouse-server:24.8-alpine` | `8123` (HTTP), `9004` (native, remapped — `9000` is the object store's) | Event/time-series data, one database per bounded context (`db-init/clickhouse/`) |
 | `rabbitmq` | `rabbitmq:3.13-management-alpine` | `5672` (AMQP), `15672` (management UI) | Backs the Dapr `pubsub` component |
 | `redis` | `redis:7.4-alpine` | `6379` | Ephemeral/derived state only — never a source of truth (ADR 0003) |
-| `minio` | `minio/minio:RELEASE.2024-10-13T13-34-11Z` | `9000` (S3 API), `9001` (console) | Object storage, one bucket per bounded context once a service needs one |
+| `seaweedfs` | `chrislusf/seaweedfs:4.48` | `9000` (S3 API) | Object storage, one bucket per bounded context once a service needs one. Was MinIO — see ADR 0007 |
 | `otel-collector` | `otel/opentelemetry-collector:0.112.0` | `4317` (OTLP gRPC), `4318` (OTLP HTTP) | Receives distributed traces from services + Dapr, logs them (`infrastructure/observability/`) |
 | `dapr-placement` | `daprio/dapr:1.14.4` | — (internal only) | Required by every Dapr sidecar in self-hosted mode |
 | `dapr-smoke-test-sidecar` | `daprio/daprd:1.14.4` | `3500` (HTTP), `50001` (gRPC) | Headless sidecar (no attached app) used to prove the `pubsub` component works before any real service exists |

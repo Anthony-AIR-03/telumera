@@ -23,7 +23,7 @@ Get-Content $envFile | ForEach-Object {
 }
 
 Section "Containers"
-$expectedServices = @("postgres", "clickhouse", "rabbitmq", "redis", "minio", "otel-collector", "dapr-placement", "dapr-smoke-test-sidecar")
+$expectedServices = @("postgres", "clickhouse", "rabbitmq", "redis", "seaweedfs", "otel-collector", "dapr-placement", "dapr-smoke-test-sidecar")
 foreach ($svc in $expectedServices) {
     $cid = (docker compose ps -q $svc 2>$null)
     if (-not $cid) {
@@ -72,12 +72,19 @@ if ($redisCheck -match "PONG") {
     Fail "PING failed"
 }
 
-Section "MinIO"
+Section "SeaweedFS (object storage)"
 try {
-    Invoke-WebRequest -Uri "http://localhost:9000/minio/health/live" -UseBasicParsing -TimeoutSec 5 | Out-Null
-    Pass "live endpoint reachable at http://localhost:9000"
+    Invoke-WebRequest -Uri "http://localhost:9000/" -UseBasicParsing -TimeoutSec 5 | Out-Null
+    Pass "S3 endpoint reachable at http://localhost:9000"
 } catch {
-    Fail "live endpoint not reachable"
+    # The S3 endpoint now requires auth (docs/adr/0007), so an unauthenticated probe 403s — that's
+    # still a real HTTP response (.Exception.Response is populated), proof the service is up. Only a
+    # true connection failure (refused/timeout — no Response at all) counts as unreachable.
+    if ($_.Exception.Response) {
+        Pass "S3 endpoint reachable at http://localhost:9000 ($([int]$_.Exception.Response.StatusCode) - auth required, as expected)"
+    } else {
+        Fail "S3 endpoint not reachable"
+    }
 }
 
 Section "Dapr sidecar (smoke-test) + pub/sub round trip"
