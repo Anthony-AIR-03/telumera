@@ -27,7 +27,7 @@ source "$ENV_FILE"
 set +a
 
 section "Containers"
-EXPECTED_SERVICES=(postgres clickhouse rabbitmq redis minio otel-collector dapr-placement dapr-smoke-test-sidecar)
+EXPECTED_SERVICES=(postgres clickhouse rabbitmq redis seaweedfs otel-collector dapr-placement dapr-smoke-test-sidecar)
 for svc in "${EXPECTED_SERVICES[@]}"; do
   cid=$(docker compose ps -q "$svc" 2>/dev/null)
   if [[ -z "$cid" ]]; then
@@ -70,11 +70,15 @@ else
   fail "PING failed"
 fi
 
-section "MinIO"
-if curl -sf http://localhost:9000/minio/health/live >/dev/null; then
-  pass "live endpoint reachable at http://localhost:9000"
+section "SeaweedFS (object storage)"
+# No -f: the S3 endpoint now requires auth (docs/adr/0007), so a plain unauthenticated probe gets a
+# 403 — expected, and still proof the service is up. Only curl's own connection failure (no -f, so
+# only a non-2xx *response* is swallowed; a refused/timed-out connection still exits non-zero) means
+# "not reachable".
+if curl -s -o /dev/null http://localhost:9000/; then
+  pass "S3 endpoint reachable at http://localhost:9000 (401/403 expected — auth required)"
 else
-  fail "live endpoint not reachable"
+  fail "S3 endpoint not reachable"
 fi
 
 section "Dapr sidecar (smoke-test) + pub/sub round trip"
