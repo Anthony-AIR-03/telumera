@@ -43,7 +43,7 @@ function switchTo(siteId: string) {
   <div ref="rootRef" class="relative">
     <button
       type="button"
-      class="inline-flex items-center gap-1.5 rounded-[9px] border border-neutral-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-neutral-600 hover:bg-neutral-50"
+      class="pointer-coarse:min-h-11 inline-flex items-center gap-1.5 rounded-[9px] border border-neutral-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-neutral-600 hover:bg-neutral-50"
       :aria-expanded="open"
       @click="open = !open"
     >
@@ -88,7 +88,7 @@ function switchTo(siteId: string) {
         v-for="site in siblingSites"
         :key="site.id"
         type="button"
-        class="block w-full px-3 py-2.5 text-left text-sm text-neutral-900 hover:bg-neutral-50"
+        class="pointer-coarse:min-h-11 block w-full px-3 py-2.5 text-left text-sm text-neutral-900 hover:bg-neutral-50"
         @click="switchTo(site.id)"
       >
         {{ site.canonicalDomain }}

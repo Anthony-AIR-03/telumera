@@ -54,7 +54,7 @@ const terms = [
       </h2>
       <button
         type="button"
-        class="flex h-7 w-7 items-center justify-center rounded-lg text-neutral-600 hover:bg-neutral-100"
+        class="pointer-coarse:h-11 pointer-coarse:w-11 flex h-7 w-7 items-center justify-center rounded-lg text-neutral-600 hover:bg-neutral-100"
         :aria-label="t('analytics.glossary.close')"
         @click="dialogRef?.close()"
       >
