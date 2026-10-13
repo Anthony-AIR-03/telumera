@@ -18,3 +18,16 @@ export function resolveDateRange(query: { from?: unknown; to?: unknown }): {
   const from = typeof query.from === 'string' ? query.from : addDays(to, -6)
   return { from, to }
 }
+
+/** The equal-length period directly before `range` — the same comparison window the overview
+ *  endpoint's `compare=true` uses (DateRangeParsing.GetPreviousPeriod), so chart and KPI deltas agree. */
+export function previousRange(range: { from: string; to: string }): { from: string; to: string } {
+  const spanDays =
+    Math.round(
+      (new Date(`${range.to}T00:00:00Z`).getTime() -
+        new Date(`${range.from}T00:00:00Z`).getTime()) /
+        86_400_000,
+    ) + 1
+  const to = addDays(range.from, -1)
+  return { from: addDays(to, -(spanDays - 1)), to }
+}

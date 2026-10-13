@@ -59,7 +59,9 @@ const displayRows = computed(() => {
   const source = rows.value ?? []
   const named = source.filter((r) => r.country !== null && !r.isBelowPrivacyFloor)
   const below = source.filter((r) => r.country !== null && r.isBelowPrivacyFloor)
-  const result = named.map((r) => ({ label: countryLabel(r.country), row: r, isOther: false }))
+  const result = named
+    .sort((a, b) => b.visitors - a.visitors)
+    .map((r) => ({ label: countryLabel(r.country), row: r, isOther: false }))
   if (below.length > 0) {
     result.push({
       label: t('analytics.geography.other'),
@@ -75,79 +77,72 @@ const displayRows = computed(() => {
   }
   return result
 })
+
+const totalVisitors = computed(() => displayRows.value.reduce((sum, e) => sum + e.row.visitors, 0))
+const maxVisitors = computed(() => Math.max(1, ...displayRows.value.map((e) => e.row.visitors)))
+function share(visitors: number): string {
+  return totalVisitors.value === 0 ? '' : `${Math.round((100 * visitors) / totalVisitors.value)}%`
+}
 </script>
 
 <template>
-  <div
-    class="rounded-[14px] border border-neutral-200 bg-white p-5 shadow-[0_1px_2px_rgba(15,21,18,0.04),0_1px_1px_rgba(15,21,18,0.03)]"
-  >
-    <StateMessage v-if="error" state="error" :message="error" />
-    <StateMessage v-else-if="loading" state="loading" :message="t('common.loading')" />
+  <section class="card">
+    <header class="flex items-baseline justify-between gap-3 px-5 pt-4">
+      <h2 class="font-display text-[17px] font-medium">
+        {{ t('analytics.geography.tableTitle') }}
+      </h2>
+      <span class="font-mono text-xs text-muted">{{ t('analytics.geography.tableMeta') }}</span>
+    </header>
+
+    <StateMessage v-if="error" state="error" :message="error" class="px-5 py-4" />
+    <StateMessage
+      v-else-if="loading"
+      state="loading"
+      :message="t('common.loading')"
+      class="px-5 py-4"
+    />
 
     <div
       v-else-if="rows && !hasRealData"
-      class="flex flex-col items-center gap-1.5 px-5 py-11 text-center text-neutral-400"
+      class="flex flex-col items-center gap-1.5 px-5 py-11 text-center"
     >
-      <svg
-        width="28"
-        height="28"
-        viewBox="0 0 20 20"
-        fill="none"
-        aria-hidden="true"
-        class="opacity-50"
-      >
-        <circle cx="10" cy="10" r="7.5" stroke="currentColor" stroke-width="1.4" />
-        <path
-          d="M2.5 10h15M10 2.5c2.2 2 3.4 5 3.4 7.5s-1.2 5.5-3.4 7.5c-2.2-2-3.4-5-3.4-7.5S7.8 4.5 10 2.5z"
-          stroke="currentColor"
-          stroke-width="1.3"
-        />
-      </svg>
-      <div class="text-sm font-bold text-neutral-600">
+      <div class="text-sm font-semibold text-fg-2">
         {{ t('analytics.geography.notAvailable') }}
       </div>
-      <p class="max-w-sm text-xs">{{ t('analytics.geography.notAvailableDetail') }}</p>
+      <p class="max-w-sm text-xs text-muted">{{ t('analytics.geography.notAvailableDetail') }}</p>
     </div>
 
-    <div v-else-if="rows" class="overflow-x-auto">
-      <table class="w-full border-collapse text-sm">
+    <div v-else-if="rows" class="mt-2.5 overflow-x-auto">
+      <table class="data-table">
         <thead>
-          <tr class="text-xs font-semibold text-neutral-500">
-            <th scope="col" class="px-2 pb-2.5 text-left">
-              {{ t('analytics.geography.country') }}
-            </th>
-            <th scope="col" class="px-2 pb-2.5 text-right">
-              {{ t('analytics.geography.sessions') }}
-            </th>
-            <th scope="col" class="px-2 pb-2.5 text-right">
-              {{ t('analytics.geography.visitors') }}
-            </th>
-            <th scope="col" class="px-2 pb-2.5 text-right">{{ t('analytics.geography.views') }}</th>
+          <tr>
+            <th scope="col" class="w-full pl-5">{{ t('analytics.geography.country') }}</th>
+            <th scope="col" class="num">{{ t('analytics.geography.visitors') }}</th>
+            <th scope="col" class="num">{{ t('analytics.geography.sessions') }}</th>
+            <th scope="col" class="num pr-5">{{ t('analytics.geography.views') }}</th>
           </tr>
         </thead>
         <tbody>
-          <tr
-            v-for="(entry, i) in displayRows"
-            :key="i"
-            class="border-t border-neutral-200"
-            :class="{ 'text-neutral-500': entry.isOther }"
-          >
-            <td class="px-2 py-2.5">{{ entry.label }}</td>
-            <td class="px-2 py-2.5 text-right tabular-nums">
-              {{ entry.row.sessions.toLocaleString('en-US') }}
+          <tr v-for="(entry, i) in displayRows" :key="i">
+            <td
+              class="key min-w-[200px] pl-5"
+              :class="{ 'text-muted': entry.isOther }"
+              :style="{ '--w': (entry.row.visitors / maxVisitors).toFixed(3) }"
+            >
+              <span class="inline-flex items-center gap-2">
+                {{ entry.label }}
+                <AppBadge v-if="entry.isOther">{{ t('analytics.privacyFloor') }}</AppBadge>
+              </span>
             </td>
-            <td class="px-2 py-2.5 text-right tabular-nums">
-              {{ entry.row.visitors.toLocaleString('en-US') }}
-              <AppBadge v-if="entry.isOther" tone="neutral" class="ml-1">{{
-                t('analytics.privacyFloor')
-              }}</AppBadge>
+            <td class="num whitespace-nowrap">
+              {{ entry.row.visitors.toLocaleString('en-US')
+              }}<small class="ml-2 font-normal text-muted">{{ share(entry.row.visitors) }}</small>
             </td>
-            <td class="px-2 py-2.5 text-right tabular-nums">
-              {{ entry.row.views.toLocaleString('en-US') }}
-            </td>
+            <td class="num">{{ entry.row.sessions.toLocaleString('en-US') }}</td>
+            <td class="num pr-5">{{ entry.row.views.toLocaleString('en-US') }}</td>
           </tr>
         </tbody>
       </table>
     </div>
-  </div>
+  </section>
 </template>

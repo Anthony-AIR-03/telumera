@@ -9,14 +9,18 @@ const { t } = useI18n()
 
 /**
  * Mutually-exclusive collector outcomes for events that arrived — so they stack honestly and sum to
- * "events that hit the collector". Palette validated with the dataviz skill (light + dark, all CVD
- * checks pass): #047857 / #dc2626 / #2563eb / #b45309.
+ * "events that hit the collector". Brand series colours (docs/brand/README.md §4), assigned so the
+ * bulk is quiet: accepted, nearly every bar, is the Graphite 600 neutral (a wall of Signal would break
+ * "Signal is a marker, not a fill"); the rarer outcomes take Iris, Cyan and Signal so they stand out.
+ * dataviz validate_palette.js: CVD separation, normal-vision floor and contrast all pass in light and
+ * dark; it flags the neutral on lightness/chroma only because it is deliberately a neutral. The
+ * legend and tooltip always name each segment.
  */
 const SERIES = [
-  { key: 'accepted', color: '#047857' },
-  { key: 'rejected', color: '#dc2626' },
-  { key: 'duplicate', color: '#2563eb' },
-  { key: 'dropped_overload', color: '#b45309' },
+  { key: 'accepted', color: 'var(--color-fg-2)' },
+  { key: 'rejected', color: 'var(--color-series-4)' },
+  { key: 'duplicate', color: 'var(--color-series-3)' },
+  { key: 'dropped_overload', color: 'var(--color-signal)' },
 ] as const
 
 const REJECTED_KEYS = [
@@ -103,7 +107,7 @@ function shortDate(iso: string): string {
           :x2="WIDTH - PAD.right"
           :y1="PAD.top + plotH"
           :y2="PAD.top + plotH"
-          stroke="var(--color-neutral-200)"
+          stroke="var(--color-line)"
           stroke-width="1"
         />
         <g v-for="(bar, i) in bars" :key="bar.date">
@@ -115,7 +119,6 @@ function shortDate(iso: string): string {
             :width="barW"
             :height="rect(bar, si).h"
             :fill="seg.color"
-            rx="1.5"
             :opacity="hover === null || hover === i ? 1 : 0.35"
           />
           <rect
@@ -131,30 +134,30 @@ function shortDate(iso: string): string {
 
       <div
         v-if="hover !== null && hoveredBar"
-        class="pointer-events-none absolute top-2 rounded-[9px] border border-neutral-200 bg-white px-3 py-2 text-xs shadow-md"
+        class="pointer-events-none absolute top-2 z-10 rounded-[3px] bg-fg px-3 py-2 font-mono text-xs whitespace-nowrap text-page"
         :style="{ left: `${(100 * (x(hover) + barW / 2)) / WIDTH}%` }"
       >
-        <div class="mb-1 font-semibold text-neutral-900">{{ shortDate(hoveredBar.date) }}</div>
+        <div class="mb-1 font-sans font-semibold">{{ shortDate(hoveredBar.date) }}</div>
         <div
           v-for="seg in hoveredBar.segments"
           :key="seg.key"
           class="flex items-center gap-2 tabular-nums"
         >
-          <span class="inline-block h-2 w-2 rounded-full" :style="{ background: seg.color }" />
-          <span class="text-neutral-600">{{ t(`analytics.quality.dim.${seg.key}`) }}</span>
-          <span class="ml-auto font-medium text-neutral-900">{{ fmt(seg.value) }}</span>
+          <span class="inline-block h-2 w-2" :style="{ background: seg.color }" />
+          <span class="opacity-80">{{ t(`analytics.quality.dim.${seg.key}`) }}</span>
+          <span class="ml-auto pl-3 font-medium">{{ fmt(seg.value) }}</span>
         </div>
       </div>
     </div>
 
-    <div class="mt-2 flex flex-wrap justify-between gap-1 text-[10px] text-neutral-400">
+    <div class="mt-2 flex flex-wrap justify-between gap-1 font-mono text-[11px] text-muted">
       <span v-for="bar in bars" :key="bar.date">{{ shortDate(bar.date) }}</span>
     </div>
 
-    <ul class="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs">
+    <ul class="mt-3 flex flex-wrap gap-x-4 gap-y-1 font-mono text-xs text-muted">
       <li v-for="s in SERIES" :key="s.key" class="flex items-center gap-1.5">
-        <span class="inline-block h-2.5 w-2.5 rounded-sm" :style="{ background: s.color }" />
-        <span class="text-neutral-600">{{ t(`analytics.quality.dim.${s.key}`) }}</span>
+        <span class="inline-block h-2 w-2" :style="{ background: s.color }" />
+        <span>{{ t(`analytics.quality.dim.${s.key}`) }}</span>
       </li>
     </ul>
   </div>

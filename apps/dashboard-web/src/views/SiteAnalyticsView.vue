@@ -1,10 +1,15 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { apiClient } from '@/lib/api-client'
-import { resolveDateRange } from '@/lib/date-range'
+import { previousRange, resolveDateRange } from '@/lib/date-range'
+import { useLiveSnapshot } from '@/lib/use-live-snapshot'
+import PageHeader from '@/components/PageHeader.vue'
 import StateMessage from '@/components/StateMessage.vue'
+import AuditStrip from '@/components/analytics/AuditStrip.vue'
+import ComingModulesCard from '@/components/analytics/ComingModulesCard.vue'
+import LivePill from '@/components/analytics/LivePill.vue'
 import AnalyticsDateRangeControl from '@/components/analytics/AnalyticsDateRangeControl.vue'
 import SiteSwitcher from '@/components/analytics/SiteSwitcher.vue'
 import MetricCard from '@/components/analytics/MetricCard.vue'
@@ -29,6 +34,7 @@ interface SiteSummary {
 }
 
 const route = useRoute()
+const router = useRouter()
 const { t } = useI18n()
 const siteId = computed(() => route.params.id as string)
 const range = computed(() => resolveDateRange(route.query))
@@ -43,6 +49,7 @@ const overviewLoading = ref(true)
 const overviewError = ref<string | null>(null)
 
 const timeSeries = ref<TimeSeriesResponse | null>(null)
+const previousSeries = ref<TimeSeriesResponse | null>(null)
 const chartLoading = ref(true)
 const chartError = ref<string | null>(null)
 
@@ -53,7 +60,23 @@ const activeTab = computed<Tab>(() => {
   return TABS.includes(requested as Tab) ? (requested as Tab) : 'pages'
 })
 
+/** The KPI the chart plots, kept in the route query like the tab so a shared link reopens on it.
+ *  Only the counts have a daily series; the two rates are shown but not chartable. */
+const CHART_METRICS = ['visitors', 'sessions', 'views'] as const
+type ChartMetric = (typeof CHART_METRICS)[number]
+const chartMetric = computed<ChartMetric>(() => {
+  const requested = route.query.metric
+  return CHART_METRICS.includes(requested as ChartMetric) ? (requested as ChartMetric) : 'visitors'
+})
+function selectMetric(metric: ChartMetric) {
+  router.replace({ query: { ...route.query, metric } })
+}
+const chartMetricLabel = computed(() => t(`analytics.overview.${chartMetric.value}`))
+
 const glossaryOpen = ref(false)
+
+/** One live connection for the page, shared by the header pill and the "Live now" card. */
+const live = useLiveSnapshot(siteId)
 
 async function loadSite() {
   siteLoading.value = true
@@ -86,15 +109,21 @@ async function loadOverview() {
 async function loadTimeSeries() {
   chartLoading.value = true
   chartError.value = null
-  try {
-    timeSeries.value = await apiClient.get<TimeSeriesResponse>(
-      `/sites/${siteId.value}/analytics/timeseries?from=${range.value.from}&to=${range.value.to}&interval=day`,
-    )
-  } catch {
+  const prev = previousRange(range.value)
+  const url = (from: string, to: string) =>
+    `/sites/${siteId.value}/analytics/timeseries?from=${from}&to=${to}&interval=day`
+  // The comparison line is optional: if only the previous period fails, still draw this one.
+  const [current, previous] = await Promise.allSettled([
+    apiClient.get<TimeSeriesResponse>(url(range.value.from, range.value.to)),
+    apiClient.get<TimeSeriesResponse>(url(prev.from, prev.to)),
+  ])
+  if (current.status === 'fulfilled') {
+    timeSeries.value = current.value
+    previousSeries.value = previous.status === 'fulfilled' ? previous.value : null
+  } else {
     chartError.value = t('analytics.chartError')
-  } finally {
-    chartLoading.value = false
   }
+  chartLoading.value = false
 }
 
 watch(siteId, loadSite, { immediate: true })
@@ -127,13 +156,14 @@ function deltaFor(
   previous: number,
   favorableWhenUp: boolean,
   hasPriorData: boolean,
-): { text: string; favorable: boolean } | null {
+): { percent: string; favorable: boolean; up: boolean } | null {
   if (!hasPriorData) return null
   const change = previous === 0 ? (current === 0 ? 0 : 1) : (current - previous) / previous
   const up = change >= 0
   return {
-    text: t('analytics.overview.deltaLabel', { percent: Math.abs(change * 100).toFixed(1) }),
+    percent: `${Math.abs(change * 100).toFixed(1)}%`,
     favorable: up === favorableWhenUp,
+    up,
   }
 }
 
@@ -144,26 +174,31 @@ const cards = computed(() => {
   const hasPriorData = (prev?.sessions ?? 0) > 0
   return [
     {
+      metric: 'visitors' as ChartMetric | null,
       label: t('analytics.overview.visitors'),
       value: formatNumber(cur.visitors),
       delta: prev && deltaFor(cur.visitors, prev.visitors, true, hasPriorData),
     },
     {
+      metric: 'sessions' as ChartMetric | null,
       label: t('analytics.overview.sessions'),
       value: formatNumber(cur.sessions),
       delta: prev && deltaFor(cur.sessions, prev.sessions, true, hasPriorData),
     },
     {
+      metric: 'views' as ChartMetric | null,
       label: t('analytics.overview.views'),
       value: formatNumber(cur.views),
       delta: prev && deltaFor(cur.views, prev.views, true, hasPriorData),
     },
     {
+      metric: null,
       label: t('analytics.overview.engagedRate'),
       value: formatPercent(cur.engagedSessionRate),
       delta: prev && deltaFor(cur.engagedSessionRate, prev.engagedSessionRate, true, hasPriorData),
     },
     {
+      metric: null,
       label: t('analytics.overview.bounceRate'),
       value: formatPercent(cur.bounceRate),
       delta: prev && deltaFor(cur.bounceRate, prev.bounceRate, false, hasPriorData),
@@ -173,27 +208,31 @@ const cards = computed(() => {
 </script>
 
 <template>
-  <main>
-    <div class="flex flex-wrap items-center gap-2.5">
-      <div>
-        <RouterLink
-          v-if="site"
-          :to="`/workspaces/${site.workspaceId}`"
-          class="text-xs font-semibold text-neutral-400 hover:text-neutral-700"
-        >
-          {{ t('common.backToWorkspace') }}
-        </RouterLink>
-        <h1 class="font-display mt-2 text-xl font-bold text-neutral-900">
-          {{ site?.name ?? siteId }}
-        </h1>
-      </div>
-      <SiteSwitcher
-        v-if="site"
-        :current-site-id="siteId"
-        :current-domain="site.canonicalDomain"
-        :sibling-sites="siblingSites"
-      />
-    </div>
+  <div>
+    <PageHeader
+      :title="site?.name ?? siteId"
+      :crumbs="
+        site
+          ? [
+              { label: t('common.workspace'), to: `/workspaces/${site.workspaceId}` },
+              { label: site.canonicalDomain, to: `/sites/${site.id}` },
+              { label: t('nav.analytics') },
+            ]
+          : []
+      "
+    >
+      <template v-if="site" #title-after>
+        <SiteSwitcher
+          :current-site-id="siteId"
+          :current-domain="site.canonicalDomain"
+          :sibling-sites="siblingSites"
+        />
+      </template>
+      <template v-if="site" #tools>
+        <LivePill :count="live.snapshot.value.activeVisitors" :state="live.state.value" />
+        <AnalyticsDateRangeControl />
+      </template>
+    </PageHeader>
 
     <StateMessage v-if="siteError" state="error" :message="siteError" class="mt-6" />
     <StateMessage
@@ -204,24 +243,13 @@ const cards = computed(() => {
     />
 
     <template v-else>
-      <LiveVisitorsPanel :site-id="siteId" class="mt-5" />
-
-      <div class="mt-4 flex flex-wrap items-center gap-2.5">
-        <AnalyticsDateRangeControl />
-        <RouterLink
-          :to="{ name: 'site-analytics-quality', params: { id: siteId }, query: route.query }"
-          class="ml-auto text-sm font-semibold text-brand-700 hover:text-brand-800"
-        >
-          {{ t('analytics.quality.link') }}
-        </RouterLink>
-        <button
-          type="button"
-          class="border-none bg-transparent text-sm font-semibold text-brand-700 hover:text-brand-800"
-          @click="glossaryOpen = true"
-        >
-          {{ t('analytics.glossary.link') }}
-        </button>
-      </div>
+      <AuditStrip
+        :site-id="siteId"
+        :from="range.from"
+        :to="range.to"
+        class="mt-[22px]"
+        @open-glossary="glossaryOpen = true"
+      />
 
       <StateMessage v-if="overviewError" state="error" :message="overviewError" class="mt-6" />
       <StateMessage
@@ -231,37 +259,72 @@ const cards = computed(() => {
         class="mt-6"
       />
       <template v-else-if="overview">
-        <div class="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        <div
+          class="card mt-5 grid grid-cols-2 gap-px overflow-hidden bg-line-2 sm:grid-cols-3 lg:grid-cols-5 [&>:last-child]:col-span-2 lg:[&>:last-child]:col-span-1"
+          role="group"
+          :aria-label="t('analytics.overview.label')"
+        >
           <MetricCard
             v-for="card in cards"
             :key="card.label"
             :label="card.label"
             :value="card.value"
             :delta="card.delta"
+            :selectable="card.metric !== null"
+            :selected="card.metric === chartMetric"
+            @select="card.metric && selectMetric(card.metric)"
             @open-glossary="glossaryOpen = true"
           />
         </div>
-        <p class="mt-2 text-xs text-neutral-400">{{ overview.visitorCountCaveat }}</p>
+        <p class="mt-2 text-xs text-muted">{{ overview.visitorCountCaveat }}</p>
       </template>
 
-      <div
-        class="mt-4 rounded-[14px] border border-neutral-200 bg-white p-5 shadow-[0_1px_2px_rgba(15,21,18,0.04),0_1px_1px_rgba(15,21,18,0.03)]"
-      >
-        <h2 class="font-display text-sm font-bold text-neutral-900">
-          {{ t('analytics.chart.title') }}
-        </h2>
-        <StateMessage v-if="chartError" state="error" :message="chartError" class="mt-3" />
+      <section class="card mt-4 pb-2">
+        <header class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 px-5 pt-4">
+          <h2 class="font-display text-[17px] font-medium">
+            {{ t('analytics.chart.title', { metric: chartMetricLabel }) }}
+          </h2>
+          <div class="flex gap-4 font-mono text-xs text-muted">
+            <span class="inline-flex items-center gap-1.5">
+              <i class="block h-0.5 w-3.5 bg-signal" aria-hidden="true" />
+              {{ t('analytics.chart.current') }}
+            </span>
+            <span class="inline-flex items-center gap-1.5">
+              <i class="legend-dash block h-0.5 w-3.5" aria-hidden="true" />
+              {{ t('analytics.chart.previous') }}
+            </span>
+          </div>
+        </header>
+        <StateMessage v-if="chartError" state="error" :message="chartError" class="px-5 py-3" />
         <StateMessage
           v-else-if="chartLoading"
           state="loading"
           :message="t('common.loading')"
+          class="px-5 py-3"
+        />
+        <StateMessage
+          v-else-if="timeSeries && timeSeries.points.length === 0"
+          state="empty"
+          :message="t('analytics.chart.empty')"
+          class="px-5 py-3"
+        />
+        <TrafficChart
+          v-else-if="timeSeries"
+          :points="timeSeries.points"
+          :previous="previousSeries?.points ?? null"
+          :metric="chartMetric"
+          :metric-label="chartMetricLabel"
           class="mt-3"
         />
-        <TrafficChart v-else-if="timeSeries" :points="timeSeries.points" class="mt-2" />
+      </section>
+
+      <div class="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+        <LiveVisitorsPanel :snapshot="live.snapshot.value" :state="live.state.value" />
+        <ComingModulesCard />
       </div>
 
       <nav
-        class="mt-5 flex gap-1 border-b border-neutral-200"
+        class="mt-8 flex gap-1 overflow-x-auto overflow-y-hidden border-b border-line"
         role="tablist"
         :aria-label="t('analytics.tabs.label')"
       >
@@ -271,11 +334,11 @@ const cards = computed(() => {
           :to="{ query: { ...$route.query, tab } }"
           role="tab"
           :aria-selected="activeTab === tab"
-          class="rounded-t-[9px] px-3.5 py-2 text-sm font-semibold no-underline"
+          class="-mb-px border-b-2 px-3 py-2.5 text-sm font-medium whitespace-nowrap"
           :class="
             activeTab === tab
-              ? 'bg-brand-50 font-bold text-brand-700'
-              : 'text-neutral-600 hover:bg-neutral-50'
+              ? 'border-signal text-fg'
+              : 'border-transparent text-muted hover:text-fg'
           "
         >
           {{ t(`analytics.tabs.${tab}`) }}
@@ -315,5 +378,11 @@ const cards = computed(() => {
     </template>
 
     <GlossaryDrawer :open="glossaryOpen" @close="glossaryOpen = false" />
-  </main>
+  </div>
 </template>
+
+<style scoped>
+.legend-dash {
+  background: repeating-linear-gradient(90deg, var(--color-comp) 0 4px, transparent 4px 7px);
+}
+</style>

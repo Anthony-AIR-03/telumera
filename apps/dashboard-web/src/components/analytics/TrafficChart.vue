@@ -1,51 +1,44 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { TimeSeriesPoint } from '@/lib/analytics-types'
 
+/**
+ * The brand chart (docs/brand/README.md §8): one series, the KPI selected in the strip above, as a
+ * 2px Signal line over a 12% Signal area; the previous period of equal length as a dashed
+ * comparison line; mono axis labels; square point markers. One shared linear y-axis from 0, never
+ * truncated. Straight segments, not smoothed: a smoothed line implies values between days that
+ * were never measured.
+ *
+ * Drawn in real pixels (the SVG's viewBox follows the container's measured width) rather than a
+ * fixed viewBox scaled to fit, so axis labels stay 11px on a phone instead of shrinking.
+ */
 const props = defineProps<{
   points: TimeSeriesPoint[]
+  previous: TimeSeriesPoint[] | null
+  metric: 'visitors' | 'sessions' | 'views'
+  metricLabel: string
 }>()
 
 const { t } = useI18n()
 
-/**
- * Palette validated with dataviz's scripts/validate_palette.js against this app's own tokens
- * (main.css's @theme) — brand-700/brand-500 pass the lightness band; brand-500 vs. neutral-500
- * lands in the CVD 6-8 "floor" band, legal only with secondary encoding, which the dashed Sessions
- * stroke plus the always-visible legend/tooltip text labels both provide. brand-500 alone also
- * WARNs on contrast-vs-surface (2.38:1) — resolved the same way (visible labels, never color-alone).
- */
-const SERIES = [
-  {
-    key: 'views' as const,
-    label: () => t('analytics.chart.views'),
-    color: '#008055',
-    dashed: false,
-  },
-  {
-    key: 'visitors' as const,
-    label: () => t('analytics.chart.visitors'),
-    color: '#00BD7E',
-    dashed: false,
-  },
-  {
-    key: 'sessions' as const,
-    label: () => t('analytics.chart.sessions'),
-    color: '#838F88',
-    dashed: true,
-  },
-]
+const hostRef = ref<HTMLElement | null>(null)
+const width = ref(800)
+let observer: ResizeObserver | null = null
+onMounted(() => {
+  if (!hostRef.value) return
+  observer = new ResizeObserver(([entry]) => {
+    if (entry) width.value = Math.max(280, Math.round(entry.contentRect.width))
+  })
+  observer.observe(hostRef.value)
+})
+onBeforeUnmount(() => observer?.disconnect())
 
-const WIDTH = 1000
-const HEIGHT = 240
-const PAD_LEFT = 46
-const PAD_RIGHT = 12
-const PAD_TOP = 16
-const PAD_BOTTOM = 28
-const INNER_WIDTH = WIDTH - PAD_LEFT - PAD_RIGHT
+const narrow = computed(() => width.value < 500)
+const height = computed(() => (narrow.value ? 200 : 260))
+const pad = computed(() => ({ l: narrow.value ? 36 : 48, r: 20, t: 20, b: 30 }))
 
-/** Rounds up to a "nice" 1/2/5 x 10^n step so axis ticks land on clean numbers, not arbitrary values. */
+/** Rounds up to a "nice" 1/2/5 x 10^n step so axis ticks land on clean numbers. */
 function niceStep(roughStep: number): number {
   if (roughStep <= 0) return 1
   const magnitude = 10 ** Math.floor(Math.log10(roughStep))
@@ -54,212 +47,181 @@ function niceStep(roughStep: number): number {
   return step * magnitude
 }
 
-/** Catmull-Rom through every point, converted to cubic Beziers — smooth without overshooting local extrema. */
-function smoothPath(points: { x: number; y: number }[]): string {
-  if (points.length < 2) return ''
-  let d = `M ${points[0]!.x} ${points[0]!.y}`
-  for (let i = 0; i < points.length - 1; i++) {
-    const p0 = points[i - 1] ?? points[i]!
-    const p1 = points[i]!
-    const p2 = points[i + 1]!
-    const p3 = points[i + 2] ?? p2
-    const c1x = p1.x + (p2.x - p0.x) / 6
-    const c1y = p1.y + (p2.y - p0.y) / 6
-    const c2x = p2.x - (p3.x - p1.x) / 6
-    const c2y = p2.y - (p3.y - p1.y) / 6
-    d += ` C ${c1x} ${c1y}, ${c2x} ${c2y}, ${p2.x} ${p2.y}`
-  }
-  return d
-}
-
-const chart = computed(() => {
-  if (props.points.length === 0) return null
-
-  const rawMax = Math.max(...props.points.flatMap((p) => [p.views, p.visitors, p.sessions]), 1)
-  const step = niceStep(rawMax / 4)
-  const niceMax = Math.ceil((rawMax * 1.08) / step) * step
-  const gridSteps = niceMax / step
-
-  const usableHeight = HEIGHT - PAD_TOP - PAD_BOTTOM
-  const toY = (value: number) => PAD_TOP + usableHeight - (value / niceMax) * usableHeight
-  const toX = (index: number) =>
-    PAD_LEFT + (props.points.length === 1 ? 0 : (index / (props.points.length - 1)) * INNER_WIDTH)
-
-  const series = SERIES.map((s) => {
-    const pts = props.points.map((p, i) => ({ x: toX(i), y: toY(p[s.key]) }))
-    return { ...s, pts, path: smoothPath(pts) }
-  })
-
-  const gridlines: { y: number; label: string }[] = []
-  for (let i = 0; i <= gridSteps; i++) {
-    gridlines.push({
-      y: PAD_TOP + (usableHeight / gridSteps) * i,
-      label: String(Math.round(niceMax - step * i)),
-    })
-  }
-
-  const dateStep = Math.max(1, Math.round(props.points.length / 6))
-  const xLabels = props.points
-    .map((p, i) => ({ x: toX(i), label: formatShortDate(p.bucket) }))
-    .filter((_, i) => i % dateStep === 0 || i === props.points.length - 1)
-
-  return { series, gridlines, xLabels, baselineY: PAD_TOP + usableHeight }
-})
-
 function formatShortDate(bucket: string): string {
   const date = new Date(bucket)
   return Number.isNaN(date.getTime())
     ? bucket
-    : date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    : date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' })
 }
+
+const chart = computed(() => {
+  const cur = props.points.map((p) => p[props.metric])
+  if (cur.length === 0) return null
+  const prev = (props.previous ?? []).slice(0, cur.length).map((p) => p[props.metric])
+
+  const rawMax = Math.max(1, ...cur, ...prev)
+  const step = niceStep(rawMax / 4)
+  const max = Math.ceil(rawMax / step) * step
+  const { l, r, t: top, b } = pad.value
+  const w = width.value
+  const h = height.value
+  const plotW = w - l - r
+  const x = (i: number) => l + (cur.length === 1 ? plotW / 2 : (i * plotW) / (cur.length - 1))
+  const y = (v: number) => top + (1 - v / max) * (h - top - b)
+  const line = (values: number[]) =>
+    values.map((v, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)} ${y(v).toFixed(1)}`).join('')
+
+  const ticks: { y: number; label: string }[] = []
+  for (let v = 0; v <= max; v += step) ticks.push({ y: y(v), label: v.toLocaleString('en-US') })
+
+  // Every Nth day plus the last one, skipping a regular label that would crowd the last.
+  const last = cur.length - 1
+  const labelEvery = Math.max(1, Math.ceil(cur.length / (narrow.value ? 4 : 8)))
+  const xLabels = props.points
+    .map((p, i) => ({ x: x(i), label: formatShortDate(p.bucket), i }))
+    .filter(({ i }) => i === last || (i % labelEvery === 0 && last - i >= labelEvery / 2))
+
+  const curLine = line(cur)
+  return {
+    cur,
+    prev,
+    x,
+    y,
+    ticks,
+    xLabels,
+    baseline: y(0),
+    plotLeft: l,
+    plotRight: w - r,
+    top,
+    curLine,
+    area: `${curLine}L${x(cur.length - 1).toFixed(1)} ${y(0)}L${x(0).toFixed(1)} ${y(0)}Z`,
+    prevLine: prev.length > 1 ? line(prev) : null,
+  }
+})
 
 const hoverIndex = ref<number | null>(null)
-const svgRef = ref<SVGSVGElement | null>(null)
-
 function onHover(event: PointerEvent) {
-  if (!svgRef.value || !chart.value || props.points.length === 0) return
-  const rect = svgRef.value.getBoundingClientRect()
-  const scaleX = WIDTH / rect.width
-  const mouseX = (event.clientX - rect.left) * scaleX
-  const ratio = (mouseX - PAD_LEFT) / INNER_WIDTH
-  const idx = Math.round(ratio * (props.points.length - 1))
-  hoverIndex.value = Math.max(0, Math.min(props.points.length - 1, idx))
+  const c = chart.value
+  if (!c || !hostRef.value) return
+  const rect = hostRef.value.getBoundingClientRect()
+  const ratio = (event.clientX - rect.left - c.plotLeft) / (c.plotRight - c.plotLeft)
+  const idx = Math.round(ratio * (c.cur.length - 1))
+  hoverIndex.value = Math.max(0, Math.min(c.cur.length - 1, idx))
 }
 
-const hoverPoint = computed(() =>
-  hoverIndex.value !== null ? props.points[hoverIndex.value] : null,
-)
-const hoverX = computed(() =>
-  hoverIndex.value !== null && chart.value ? chart.value.series[0]!.pts[hoverIndex.value]!.x : 0,
-)
+const hover = computed(() => {
+  const c = chart.value
+  const i = hoverIndex.value
+  if (!c || i === null) return null
+  return {
+    x: c.x(i),
+    y: c.y(c.cur[i]!),
+    date: formatShortDate(props.points[i]!.bucket),
+    value: c.cur[i]!,
+    prevDate: props.previous?.[i] ? formatShortDate(props.previous[i]!.bucket) : null,
+    prevValue: c.prev[i] ?? null,
+    flip: c.x(i) > width.value * 0.65,
+  }
+})
 </script>
 
 <template>
-  <div>
-    <div class="flex items-center gap-4 text-xs font-semibold text-neutral-600">
-      <span v-for="s in SERIES" :key="s.key" class="inline-flex items-center gap-1.5">
-        <span
-          class="inline-block h-2.5 w-2.5 rounded-sm"
-          :style="{
-            background: s.color,
-            ...(s.dashed
-              ? {
-                  backgroundImage:
-                    'repeating-linear-gradient(90deg, transparent, transparent 1px, white 1px, white 2px)',
-                }
-              : {}),
-          }"
-        />
-        {{ s.label() }}
-      </span>
-    </div>
-
-    <div class="relative mt-2">
-      <svg
-        ref="svgRef"
-        :viewBox="`0 0 ${WIDTH} ${HEIGHT}`"
-        class="block w-full"
-        style="height: 240px"
-        @pointermove="onHover"
-        @pointerleave="hoverIndex = null"
-      >
-        <template v-if="chart">
-          <g>
-            <line
-              v-for="g in chart.gridlines"
-              :key="g.y"
-              :x1="PAD_LEFT"
-              :y1="g.y"
-              :x2="WIDTH - PAD_RIGHT"
-              :y2="g.y"
-              stroke="#E7E9E7"
-              stroke-width="1"
-            />
-          </g>
+  <div ref="hostRef" class="relative">
+    <svg
+      v-if="chart"
+      :viewBox="`0 0 ${width} ${height}`"
+      :width="width"
+      :height="height"
+      class="block w-full"
+      role="img"
+      :aria-label="t('analytics.chart.aria', { metric: metricLabel, points: points.length })"
+      @pointermove="onHover"
+      @pointerleave="hoverIndex = null"
+    >
+      <g font-family="Red Hat Mono, monospace" font-size="11" fill="var(--color-muted)">
+        <template v-for="tick in chart.ticks" :key="tick.y">
           <line
-            :x1="PAD_LEFT"
-            :y1="chart.baselineY"
-            :x2="WIDTH - PAD_RIGHT"
-            :y2="chart.baselineY"
-            stroke="#c3c2b7"
-            stroke-width="1"
+            :x1="chart.plotLeft"
+            :x2="chart.plotRight"
+            :y1="tick.y"
+            :y2="tick.y"
+            stroke="var(--color-line-2)"
           />
-
-          <path
-            v-for="s in chart.series"
-            :key="s.key"
-            :d="s.path"
-            fill="none"
-            :stroke="s.color"
-            stroke-width="2.2"
-            :stroke-dasharray="s.dashed ? '5 4' : undefined"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          />
-          <circle
-            v-for="s in chart.series"
-            :key="`${s.key}-end`"
-            :cx="s.pts.at(-1)!.x"
-            :cy="s.pts.at(-1)!.y"
-            r="3.2"
-            :fill="s.color"
-          />
-
-          <g v-for="g in chart.gridlines" :key="`label-${g.y}`">
-            <text
-              :x="PAD_LEFT - 8"
-              :y="g.y + 4"
-              text-anchor="end"
-              font-size="10.5"
-              fill="#838F88"
-              font-family="JetBrains Mono, monospace"
-            >
-              {{ g.label }}
-            </text>
-          </g>
-          <g v-for="xl in chart.xLabels" :key="xl.x">
-            <text
-              :x="xl.x"
-              :y="HEIGHT - 6"
-              text-anchor="middle"
-              font-size="10.5"
-              fill="#838F88"
-              font-family="JetBrains Mono, monospace"
-            >
-              {{ xl.label }}
-            </text>
-          </g>
-
-          <line
-            v-if="hoverIndex !== null"
-            :x1="hoverX"
-            :y1="PAD_TOP"
-            :x2="hoverX"
-            :y2="chart.baselineY"
-            stroke="#838F88"
-            stroke-width="1"
-            stroke-dasharray="3,3"
-          />
-          <rect
-            :x="PAD_LEFT"
-            :y="PAD_TOP"
-            :width="INNER_WIDTH"
-            :height="HEIGHT - PAD_TOP - PAD_BOTTOM"
-            fill="transparent"
-          />
+          <text :x="chart.plotLeft - 8" :y="tick.y + 4" text-anchor="end">{{ tick.label }}</text>
         </template>
-      </svg>
+        <text
+          v-for="xl in chart.xLabels"
+          :key="xl.i"
+          :x="xl.x"
+          :y="height - 8"
+          :text-anchor="xl.i === chart.cur.length - 1 && chart.cur.length > 1 ? 'end' : 'middle'"
+        >
+          {{ xl.label }}
+        </text>
+      </g>
 
-      <div
-        v-if="hoverPoint"
-        class="pointer-events-none absolute z-10 rounded-lg bg-neutral-900 px-2.5 py-2 text-xs text-white shadow-lg"
-        :style="{ left: `${(hoverX / WIDTH) * 100}%`, top: '8px', transform: 'translateX(12px)' }"
-      >
-        <div class="font-semibold">{{ formatShortDate(hoverPoint.bucket) }}</div>
-        <div v-for="s in SERIES" :key="s.key" class="mt-0.5 flex items-center gap-1.5">
-          <span class="inline-block h-1.5 w-1.5 rounded-full" :style="{ background: s.color }" />
-          {{ s.label() }}: {{ hoverPoint[s.key].toLocaleString('en-US') }}
-        </div>
+      <path :d="chart.area" fill="var(--color-signal-soft)" />
+      <path
+        v-if="chart.prevLine"
+        :d="chart.prevLine"
+        fill="none"
+        stroke="var(--color-comp)"
+        stroke-width="1.5"
+        stroke-dasharray="4 3"
+      />
+      <path
+        :d="chart.curLine"
+        fill="none"
+        stroke="var(--color-signal)"
+        stroke-width="2"
+        stroke-linejoin="round"
+      />
+      <rect
+        :x="chart.x(chart.cur.length - 1) - 4"
+        :y="chart.y(chart.cur.at(-1)!) - 4"
+        width="8"
+        height="8"
+        fill="var(--color-signal)"
+      />
+
+      <g v-if="hover">
+        <line
+          :x1="hover.x"
+          :x2="hover.x"
+          :y1="chart.top"
+          :y2="chart.baseline"
+          stroke="var(--color-fg-2)"
+          stroke-dasharray="2 3"
+        />
+        <rect
+          :x="hover.x - 4"
+          :y="hover.y - 4"
+          width="8"
+          height="8"
+          fill="var(--color-raised)"
+          stroke="var(--color-signal)"
+          stroke-width="2"
+        />
+      </g>
+    </svg>
+
+    <div
+      v-if="hover"
+      class="pointer-events-none absolute top-2 z-10 rounded-[3px] bg-fg px-2.5 py-2 font-mono text-xs whitespace-nowrap text-page"
+      :style="{
+        left: `${hover.x}px`,
+        transform: hover.flip ? 'translateX(calc(-100% - 12px))' : 'translateX(12px)',
+      }"
+    >
+      <div>
+        <span class="mr-1.5 inline-block h-2 w-2 bg-signal" aria-hidden="true" />{{ hover.date }} ·
+        <b class="font-medium">{{ hover.value.toLocaleString('en-US') }}</b>
+      </div>
+      <div v-if="hover.prevValue !== null && hover.prevDate" class="mt-0.5 opacity-70">
+        <span class="mr-1.5 inline-block h-2 w-2 border border-current" aria-hidden="true" />{{
+          hover.prevDate
+        }}
+        · {{ hover.prevValue.toLocaleString('en-US') }}
       </div>
     </div>
   </div>

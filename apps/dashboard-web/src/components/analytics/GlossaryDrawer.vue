@@ -44,40 +44,43 @@ const terms = [
   -->
   <dialog
     ref="dialogRef"
-    class="fixed top-0 left-auto right-0 m-0 h-screen max-h-none w-full max-w-[392px] border-0 bg-white p-0 shadow-[-8px_0_32px_rgba(15,21,18,0.16)] backdrop:bg-neutral-900/30"
+    class="fixed top-0 right-0 left-auto m-0 h-screen max-h-none w-full max-w-[392px] border-0 border-l border-line bg-raised p-0 text-fg backdrop:bg-graphite/50"
     @close="emit('close')"
     @cancel="emit('close')"
   >
-    <div class="flex items-center justify-between border-b border-neutral-200 px-5 py-4">
-      <h2 class="font-display text-base font-bold text-neutral-900">
+    <div class="flex items-center justify-between border-b border-line px-5 py-4">
+      <h2 class="font-display text-xl font-medium">
         {{ t('analytics.glossary.title') }}
       </h2>
       <button
         type="button"
-        class="pointer-coarse:h-11 pointer-coarse:w-11 flex h-7 w-7 items-center justify-center rounded-lg text-neutral-600 hover:bg-neutral-100"
+        class="grid h-8 w-8 place-items-center rounded-[3px] text-muted hover:bg-surface hover:text-fg pointer-coarse:h-11 pointer-coarse:w-11"
         :aria-label="t('analytics.glossary.close')"
         @click="dialogRef?.close()"
       >
-        <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-          <path
-            d="M5 5l10 10M15 5L5 15"
-            stroke="currentColor"
-            stroke-width="1.8"
-            stroke-linecap="round"
-          />
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          aria-hidden="true"
+        >
+          <path d="M5 5L19 19M19 5L5 19" />
         </svg>
       </button>
     </div>
 
-    <div class="flex flex-col gap-5 overflow-y-auto px-5 py-5">
+    <dl class="flex flex-col gap-5 overflow-y-auto px-5 py-5">
       <div v-for="entry in terms" :key="entry.term">
-        <div class="text-sm font-bold text-neutral-900">
+        <dt class="label-mono text-fg">
           {{ t(`analytics.glossary.terms.${entry.term}`) }}
-        </div>
-        <p class="mt-1 text-sm leading-relaxed text-neutral-600">
+        </dt>
+        <dd class="mt-1.5 text-sm leading-relaxed text-fg-2">
           {{ t(`analytics.glossary.terms.${entry.body}`) }}
-        </p>
+        </dd>
       </div>
-    </div>
+    </dl>
   </dialog>
 </template>

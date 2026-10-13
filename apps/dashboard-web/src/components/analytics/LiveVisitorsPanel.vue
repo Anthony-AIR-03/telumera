@@ -1,121 +1,65 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { HubConnectionState, type HubConnection } from '@microsoft/signalr'
-import { createLiveConnection } from '@/lib/live-connection'
 import type { LiveSnapshot } from '@/lib/analytics-types'
+import type { LiveState } from '@/lib/use-live-snapshot'
 
-const props = defineProps<{ siteId: string }>()
+/**
+ * "Live now": the pages people are on right now, from the rolling 5-minute live projection
+ * (non-authoritative, definitions doc §9). Presentational — SiteAnalyticsView owns the connection
+ * (useLiveSnapshot) and shares it with the header pill. A path that newly appears flashes
+ * Signal-soft once, so changes are visible without animating the whole list.
+ */
+defineProps<{ snapshot: LiveSnapshot; state: LiveState }>()
 
 const { t } = useI18n()
-
-type ConnState = 'connecting' | 'live' | 'reconnecting' | 'offline'
-const state = ref<ConnState>('connecting')
-const snapshot = ref<LiveSnapshot>({ activeVisitors: 0, pages: [] })
-
-let connection: HubConnection | null = null
-let subscribedSiteId: string | null = null
-
-async function subscribe(siteId: string) {
-  if (!connection || connection.state !== HubConnectionState.Connected) return
-  try {
-    if (subscribedSiteId && subscribedSiteId !== siteId) {
-      await connection.invoke('Unsubscribe', subscribedSiteId)
-    }
-    await connection.invoke('Subscribe', siteId)
-    subscribedSiteId = siteId
-    snapshot.value = { activeVisitors: 0, pages: [] }
-  } catch {
-    state.value = 'offline'
-  }
-}
-
-onMounted(async () => {
-  connection = createLiveConnection()
-  connection.on('live', (payload: LiveSnapshot) => {
-    snapshot.value = payload
-    state.value = 'live'
-  })
-  connection.onreconnecting(() => (state.value = 'reconnecting'))
-  connection.onreconnected(async () => {
-    state.value = 'live'
-    subscribedSiteId = null
-    await subscribe(props.siteId)
-  })
-  connection.onclose(() => (state.value = 'offline'))
-
-  try {
-    await connection.start()
-    await subscribe(props.siteId)
-  } catch {
-    state.value = 'offline'
-  }
-})
-
-watch(
-  () => props.siteId,
-  (id) => subscribe(id),
-)
-
-onBeforeUnmount(async () => {
-  const conn = connection
-  connection = null
-  if (!conn) return
-  try {
-    if (subscribedSiteId) await conn.invoke('Unsubscribe', subscribedSiteId)
-  } catch {
-    /* connection already gone — nothing to release */
-  }
-  await conn.stop()
-})
 </script>
 
 <template>
-  <div
-    class="rounded-[14px] border border-neutral-200 bg-white p-5 shadow-[0_1px_2px_rgba(15,21,18,0.04),0_1px_1px_rgba(15,21,18,0.03)]"
-  >
-    <div class="flex items-center gap-2.5">
-      <span class="relative flex h-2.5 w-2.5">
-        <span
-          v-if="state === 'live'"
-          class="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand-500 opacity-75"
-        />
-        <span
-          class="relative inline-flex h-2.5 w-2.5 rounded-full"
-          :class="state === 'live' ? 'bg-brand-500' : 'bg-neutral-400'"
-        />
+  <section class="card">
+    <header class="flex items-baseline justify-between gap-3 px-5 pt-4">
+      <h2 class="font-display text-[17px] font-medium">{{ t('analytics.live.title') }}</h2>
+      <span class="font-mono text-xs text-muted">
+        {{
+          state === 'reconnecting' || state === 'offline'
+            ? t(`analytics.live.${state}`)
+            : t('analytics.live.window')
+        }}
       </span>
-      <span class="text-xs font-semibold tracking-wide text-neutral-500 uppercase">
-        {{ t('analytics.live.title') }}
-      </span>
-      <span v-if="state === 'reconnecting' || state === 'offline'" class="text-xs text-neutral-400">
-        {{ t(`analytics.live.${state}`) }}
-      </span>
-    </div>
+    </header>
 
-    <div class="mt-3 flex flex-wrap items-end gap-x-8 gap-y-3">
-      <div>
-        <div class="font-display text-2xl font-bold tabular-nums text-neutral-900">
-          {{ snapshot.activeVisitors.toLocaleString('en-US') }}
-        </div>
-        <div class="text-xs text-neutral-500">
-          {{ t('analytics.live.activeVisitors', snapshot.activeVisitors) }}
-        </div>
-      </div>
-
-      <ul v-if="snapshot.pages.length" class="min-w-0 flex-1 space-y-1 text-sm">
-        <li
-          v-for="page in snapshot.pages"
-          :key="page.path"
-          class="flex items-center justify-between gap-4"
-        >
-          <span class="truncate font-mono text-xs text-neutral-600">{{ page.path }}</span>
-          <span class="tabular-nums text-neutral-500">{{ page.visitors }}</span>
-        </li>
-      </ul>
-      <p v-else class="flex-1 text-sm text-neutral-400">
-        {{ t('analytics.live.noneOnPage') }}
-      </p>
-    </div>
-  </div>
+    <ul v-if="snapshot.pages.length" class="mt-2 px-5 pb-3.5">
+      <li
+        v-for="page in snapshot.pages"
+        :key="page.path"
+        class="live-row grid grid-cols-[1fr_auto] gap-3 border-b border-line-2 py-2.5 font-mono text-[12.5px] last:border-b-0"
+      >
+        <span class="truncate">{{ page.path }}</span>
+        <span class="text-muted tabular-nums">{{
+          t('analytics.live.pageVisitors', page.visitors)
+        }}</span>
+      </li>
+    </ul>
+    <p v-else class="px-5 pt-2 pb-5 text-sm text-muted">
+      {{ t('analytics.live.noneOnPage') }}
+    </p>
+  </section>
 </template>
+
+<style scoped>
+.live-row {
+  animation: flash 0.6s ease-out;
+}
+@keyframes flash {
+  from {
+    background: var(--color-signal-soft);
+  }
+  to {
+    background: transparent;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .live-row {
+    animation: none;
+  }
+}
+</style>

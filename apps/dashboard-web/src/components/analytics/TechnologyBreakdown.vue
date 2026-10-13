@@ -33,8 +33,18 @@ async function load() {
 
 watch(() => [props.siteId, props.from, props.to], load, { immediate: true })
 
-/** Validated with dataviz's scripts/validate_palette.js — the same categorical set the approved dashboard-concept mockup already used for this exact purpose. */
-const PALETTE = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#4a3aa7']
+/**
+ * Brand data-series order (docs/brand/README.md §4): Signal, Graphite 600, Cyan, Iris. Anything past
+ * four categories folds into one "Other" segment in the comparison grey, so the bar never needs a
+ * fifth hue. Every segment is paired with a text legend and its share, never colour alone.
+ */
+const SERIES = [
+  'var(--color-signal)',
+  'var(--color-fg-2)',
+  'var(--color-series-3)',
+  'var(--color-series-4)',
+]
+const OTHER = 'var(--color-comp)'
 
 type Segment = { label: string; value: number; percent: number; color: string }
 
@@ -44,15 +54,19 @@ function aggregate(dimension: 'deviceCategory' | 'browserCategory' | 'osCategory
   for (const row of rows.value) {
     totals.set(row[dimension], (totals.get(row[dimension]) ?? 0) + row.sessions)
   }
-  const sum = [...totals.values()].reduce((a, b) => a + b, 0) || 1
-  return [...totals.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .map(([label, value], i) => ({
-      label,
-      value,
-      percent: Math.round((value / sum) * 100),
-      color: PALETTE[i % PALETTE.length]!,
-    }))
+  const sorted = [...totals.entries()].sort((a, b) => b[1] - a[1])
+  const sum = sorted.reduce((a, [, v]) => a + v, 0) || 1
+  const head = sorted.length > SERIES.length ? sorted.slice(0, SERIES.length - 1) : sorted
+  const tail = sorted.slice(head.length)
+  const segments = head.map(([label, value], i) => ({ label, value, color: SERIES[i]! }))
+  if (tail.length) {
+    segments.push({
+      label: t('analytics.technology.other'),
+      value: tail.reduce((a, [, v]) => a + v, 0),
+      color: OTHER,
+    })
+  }
+  return segments.map((s) => ({ ...s, percent: Math.round((s.value / sum) * 100) }))
 }
 
 const breakdowns = computed(() => [
@@ -64,27 +78,6 @@ const breakdowns = computed(() => [
   },
   { key: 'os', title: t('analytics.technology.os'), segments: aggregate('osCategory') },
 ])
-
-const R = 40
-const CX = 55
-const CY = 55
-const STROKE_WIDTH = 16
-const CIRCUMFERENCE = 2 * Math.PI * R
-
-function donutArcs(segments: Segment[]) {
-  const total = segments.reduce((sum, s) => sum + s.value, 0) || 1
-  let offset = 0
-  return segments.map((s) => {
-    const len = (s.value / total) * CIRCUMFERENCE
-    const arc = {
-      color: s.color,
-      dasharray: `${Math.max(len - 2, 0)} ${CIRCUMFERENCE - len + 2}`,
-      dashoffset: -offset,
-    }
-    offset += len
-    return arc
-  })
-}
 </script>
 
 <template>
@@ -97,45 +90,40 @@ function donutArcs(segments: Segment[]) {
       :message="t('analytics.technology.empty')"
     />
 
-    <div v-else class="grid grid-cols-1 gap-3 sm:grid-cols-3">
-      <div
-        v-for="b in breakdowns"
-        :key="b.key"
-        class="rounded-[14px] border border-neutral-200 bg-white p-4 shadow-[0_1px_2px_rgba(15,21,18,0.04),0_1px_1px_rgba(15,21,18,0.03)]"
-      >
-        <div class="text-sm font-bold text-neutral-900">{{ b.title }}</div>
-        <div class="mt-2 flex items-center gap-3.5">
-          <svg width="110" height="110" viewBox="0 0 110 110" aria-hidden="true">
-            <circle
-              v-for="(arc, i) in donutArcs(b.segments)"
-              :key="i"
-              :cx="CX"
-              :cy="CY"
-              :r="R"
-              fill="none"
-              :stroke="arc.color"
-              :stroke-width="STROKE_WIDTH"
-              :stroke-dasharray="arc.dasharray"
-              :stroke-dashoffset="arc.dashoffset"
-              stroke-linecap="round"
-              :transform="`rotate(-90 ${CX} ${CY})`"
-            />
-          </svg>
-          <div class="flex flex-col items-start gap-1.5">
-            <div
+    <div v-else class="grid grid-cols-1 gap-4 md:grid-cols-3">
+      <section v-for="b in breakdowns" :key="b.key" class="card">
+        <header class="flex items-baseline justify-between gap-3 px-5 pt-4">
+          <h2 class="font-display text-[17px] font-medium">{{ b.title }}</h2>
+          <span class="font-mono text-xs text-muted">{{ t('analytics.technology.meta') }}</span>
+        </header>
+        <div class="grid gap-3.5 px-5 pt-3.5 pb-[18px]">
+          <div class="flex h-2.5 gap-0.5 overflow-hidden rounded-[2px]" aria-hidden="true">
+            <i
               v-for="s in b.segments"
               :key="s.label"
-              class="flex items-center gap-1.5 text-xs text-neutral-600"
-            >
-              <span
-                class="inline-block h-2 w-2 flex-shrink-0 rounded-sm"
-                :style="{ background: s.color }"
-              />
-              {{ s.label }} &middot; <span class="tabular-nums">{{ s.percent }}%</span>
-            </div>
+              class="block"
+              :style="{ flex: s.value, background: s.color }"
+            />
           </div>
+          <ul class="grid gap-2 text-[13px]">
+            <li
+              v-for="s in b.segments"
+              :key="s.label"
+              class="flex items-center justify-between gap-3"
+            >
+              <span class="flex min-w-0 items-center gap-2">
+                <i
+                  class="block h-2 w-2 flex-none"
+                  :style="{ background: s.color }"
+                  aria-hidden="true"
+                />
+                <span class="truncate">{{ s.label }}</span>
+              </span>
+              <b class="font-mono font-medium tabular-nums">{{ s.percent }}%</b>
+            </li>
+          </ul>
         </div>
-      </div>
+      </section>
     </div>
   </div>
 </template>
