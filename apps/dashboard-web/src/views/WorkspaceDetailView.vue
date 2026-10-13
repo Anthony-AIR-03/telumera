@@ -6,6 +6,7 @@ import { apiClient } from '@/lib/api-client'
 import { roleAtLeast } from '@/lib/roles'
 import AppButton from '@/components/AppButton.vue'
 import AppBadge from '@/components/AppBadge.vue'
+import PageHeader from '@/components/PageHeader.vue'
 import StateMessage from '@/components/StateMessage.vue'
 
 interface Workspace {
@@ -119,20 +120,22 @@ onMounted(loadAll)
 </script>
 
 <template>
-  <main>
-    <RouterLink to="/" class="text-xs font-semibold text-neutral-400 hover:text-neutral-700">
-      {{ t('common.backToWorkspaces') }}
-    </RouterLink>
-    <h1 class="font-display mt-2 text-xl font-bold text-neutral-900">
-      {{ workspace?.name ?? workspaceId }}
-    </h1>
+  <div>
+    <PageHeader
+      :title="workspace?.name ?? workspaceId"
+      :crumbs="[{ label: t('common.workspaces'), to: '/' }, { label: workspace?.name ?? '…' }]"
+    >
+      <template v-if="workspace" #title-after>
+        <AppBadge>{{ workspace.role }}</AppBadge>
+      </template>
+    </PageHeader>
 
     <StateMessage v-if="error" state="error" :message="error" class="mt-6" />
     <StateMessage v-else-if="loading" state="loading" :message="t('common.loading')" class="mt-6" />
 
     <template v-else>
       <section class="mt-8">
-        <h2 class="font-display text-sm font-bold text-neutral-900">{{ t('sites.title') }}</h2>
+        <h2 class="font-display text-lg font-medium">{{ t('sites.title') }}</h2>
         <form
           v-if="roleAtLeast(workspace?.role ?? null, 'Developer')"
           class="mt-3 flex flex-wrap gap-2"
@@ -141,14 +144,16 @@ onMounted(loadAll)
           <input
             v-model="newSiteName"
             :placeholder="t('sites.namePlaceholder')"
+            :aria-label="t('sites.namePlaceholder')"
             required
-            class="flex-1 rounded-[9px] border border-neutral-300 px-3 py-2 text-sm placeholder-neutral-400 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+            class="field min-w-0 flex-1"
           />
           <input
             v-model="newSiteDomain"
             :placeholder="t('sites.domainPlaceholder')"
+            :aria-label="t('sites.domainPlaceholder')"
             required
-            class="flex-1 rounded-[9px] border border-neutral-300 px-3 py-2 text-sm placeholder-neutral-400 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+            class="field min-w-0 flex-1"
           />
           <AppButton type="submit" :loading="creatingSite">{{ t('sites.create') }}</AppButton>
         </form>
@@ -159,18 +164,15 @@ onMounted(loadAll)
           :message="t('sites.empty')"
           class="mt-4"
         />
-        <ul
-          v-else
-          class="mt-4 divide-y divide-neutral-200 rounded-[14px] border border-neutral-200 bg-white shadow-[0_1px_2px_rgba(15,21,18,0.04),0_1px_1px_rgba(15,21,18,0.03)]"
-        >
+        <ul v-else class="card mt-4 divide-y divide-line-2">
           <li
             v-for="site in sites"
             :key="site.id"
-            class="flex items-center justify-between px-5 py-3.5"
+            class="flex items-center justify-between gap-3 px-5 py-3.5"
           >
             <RouterLink
               :to="`/sites/${site.id}`"
-              class="text-sm font-semibold text-brand-700 hover:text-brand-800"
+              class="text-sm font-medium text-fg hover:text-signal-text hover:underline"
             >
               {{ site.name }}
             </RouterLink>
@@ -180,9 +182,7 @@ onMounted(loadAll)
       </section>
 
       <section class="mt-8">
-        <h2 class="font-display text-sm font-bold text-neutral-900">
-          {{ t('members.title') }}
-        </h2>
+        <h2 class="font-display text-lg font-medium">{{ t('members.title') }}</h2>
         <form
           v-if="roleAtLeast(workspace?.role ?? null, 'Admin')"
           class="mt-3 flex flex-wrap gap-2"
@@ -191,27 +191,23 @@ onMounted(loadAll)
           <input
             v-model="newMemberObjectId"
             :placeholder="t('members.objectIdPlaceholder')"
+            :aria-label="t('members.objectIdPlaceholder')"
             required
-            class="flex-1 rounded-[9px] border border-neutral-300 px-3 py-2 text-sm placeholder-neutral-400 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+            class="field min-w-0 flex-1 font-mono"
           />
-          <select
-            v-model="newMemberRole"
-            class="rounded-[9px] border border-neutral-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
-          >
+          <select v-model="newMemberRole" :aria-label="t('members.role')" class="field">
             <option v-for="role in ROLES" :key="role" :value="role">{{ role }}</option>
           </select>
           <AppButton type="submit" :loading="addingMember">{{ t('members.add') }}</AppButton>
         </form>
 
-        <ul
-          class="mt-4 divide-y divide-neutral-200 rounded-[14px] border border-neutral-200 bg-white shadow-[0_1px_2px_rgba(15,21,18,0.04),0_1px_1px_rgba(15,21,18,0.03)]"
-        >
+        <ul class="card mt-4 divide-y divide-line-2">
           <li
             v-for="member in members"
             :key="member.entraObjectId"
-            class="flex items-center justify-between px-5 py-3.5"
+            class="flex items-center justify-between gap-3 px-5 py-3.5"
           >
-            <span class="text-sm text-neutral-900">{{
+            <span class="min-w-0 truncate text-sm">{{
               member.displayName ?? member.entraObjectId
             }}</span>
             <AppBadge>{{ member.role }}</AppBadge>
@@ -219,5 +215,5 @@ onMounted(loadAll)
         </ul>
       </section>
     </template>
-  </main>
+  </div>
 </template>

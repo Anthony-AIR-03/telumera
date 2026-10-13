@@ -3,6 +3,7 @@ import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { apiClient } from '@/lib/api-client'
 import AppBadge from '@/components/AppBadge.vue'
+import PageHeader from '@/components/PageHeader.vue'
 import StateMessage from '@/components/StateMessage.vue'
 
 interface WorkspaceSummary {
@@ -60,8 +61,11 @@ onMounted(loadAll)
 </script>
 
 <template>
-  <main>
-    <h1 class="font-display text-xl font-bold text-neutral-900">{{ t('analyticsSites.title') }}</h1>
+  <div>
+    <PageHeader
+      :title="t('analyticsSites.title')"
+      :crumbs="[{ label: t('analyticsSites.crumb') }]"
+    />
 
     <StateMessage v-if="error" state="error" :message="error" class="mt-6" />
     <StateMessage v-else-if="loading" state="loading" :message="t('common.loading')" class="mt-6" />
@@ -73,19 +77,17 @@ onMounted(loadAll)
     />
 
     <template v-else>
-      <section v-for="group in groups" :key="group.workspace.id" class="mt-8 first:mt-6">
-        <h2 class="font-display text-sm font-bold text-neutral-900">{{ group.workspace.name }}</h2>
-        <ul
-          class="mt-3 divide-y divide-neutral-200 rounded-[14px] border border-neutral-200 bg-white shadow-[0_1px_2px_rgba(15,21,18,0.04),0_1px_1px_rgba(15,21,18,0.03)]"
-        >
+      <section v-for="group in groups" :key="group.workspace.id" class="mt-8 first:mt-7">
+        <h2 class="font-display text-lg font-medium">{{ group.workspace.name }}</h2>
+        <ul class="card mt-3 divide-y divide-line-2">
           <li
             v-for="site in group.sites"
             :key="site.id"
-            class="flex items-center justify-between px-5 py-3.5"
+            class="flex items-center justify-between gap-3 px-5 py-3.5"
           >
             <RouterLink
               :to="`/sites/${site.id}/analytics`"
-              class="text-sm font-semibold text-brand-700 hover:text-brand-800"
+              class="text-sm font-medium text-fg hover:text-signal-text hover:underline"
             >
               {{ site.name }}
             </RouterLink>
@@ -94,5 +96,5 @@ onMounted(loadAll)
         </ul>
       </section>
     </template>
-  </main>
+  </div>
 </template>

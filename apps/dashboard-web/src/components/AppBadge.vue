@@ -7,15 +7,15 @@ withDefaults(
 )
 
 const toneClasses = {
-  neutral: 'bg-neutral-100 text-neutral-600',
-  danger: 'bg-red-50 text-red-700',
+  neutral: 'border-line text-fg-2',
+  danger: 'border-bad/40 text-bad',
 }
 </script>
 
 <template>
   <span
     :class="[
-      'inline-flex items-center rounded-full px-[9px] py-[3px] text-xs font-bold',
+      'inline-flex items-center rounded-[3px] border px-1.5 py-px font-mono text-[11px] font-medium whitespace-nowrap',
       toneClasses[tone],
     ]"
   >

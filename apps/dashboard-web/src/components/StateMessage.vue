@@ -6,9 +6,9 @@ defineProps<{
 }>()
 
 const stateClasses = {
-  loading: 'text-neutral-500',
-  error: 'text-red-700',
-  empty: 'text-neutral-500',
+  loading: 'text-muted',
+  error: 'text-bad',
+  empty: 'text-muted',
 }
 </script>
 

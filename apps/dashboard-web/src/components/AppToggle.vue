@@ -23,10 +23,10 @@ defineEmits<{
         @change="$emit('update:modelValue', ($event.target as HTMLInputElement).checked)"
       />
       <span
-        class="pointer-events-none absolute inset-0 rounded-full bg-neutral-300 transition-colors peer-checked:bg-brand-700 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-brand-700 peer-disabled:opacity-40"
+        class="pointer-events-none absolute inset-0 rounded-[3px] border border-line bg-surface transition-colors peer-checked:border-fg peer-checked:bg-fg peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-signal peer-disabled:opacity-40"
       />
       <span
-        class="pointer-events-none absolute left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform peer-checked:translate-x-3.5"
+        class="pointer-events-none absolute left-[3px] h-3.5 w-3.5 rounded-[2px] bg-muted transition-transform peer-checked:translate-x-3.5 peer-checked:bg-page"
       />
     </span>
     <slot />
