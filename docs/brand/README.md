@@ -13,10 +13,8 @@ brand is written down here, so a later session can rebuild it without the conver
 | `tools/outline-text.cjs` | Converts text to outlined SVG paths (used once to make the wordmark). Needs `opentype.js`. |
 | `tools/wordmark-outline.svg` | The outlined "TELUMERA" source that `build-kit.cjs` reads, so rebuilding doesn't need the font. |
 
-**Status:** the brand is approved. It is **not yet applied to `apps/dashboard-web`**: the shipped
-dashboard still uses the earlier teal palette described in `docs/design/housestyle.md`. When the
-dashboard is moved to this brand, update `housestyle.md` to match this document (see
-[Rolling it out](#rolling-it-out)).
+**Status:** the brand is approved and **applied to `apps/dashboard-web`** (2026-10-13, all six
+rollout steps below). `docs/design/housestyle.md` describes how the app implements it.
 
 ---
 
@@ -249,7 +247,8 @@ Suggested order for applying the brand to `apps/dashboard-web`, one focused comm
 ## 10. Open items
 
 - No trademark search has been done. Get a professional search before registering or wider launch.
-- PNG exports (favicon `.ico`, PNG icon set, web manifest icons) are not produced yet. Render them from
-  `favicon.svg` / `app-icon.svg` when the dashboard adopts the brand.
+- `favicon.ico` (32 + 48 px) and a 180 px `apple-touch-icon.png` exist in `apps/dashboard-web/public/`
+  (rendered from `mark-small.svg` / `app-icon.svg` with headless Chrome). Web manifest icons are
+  not produced yet.
 - The Pantone and CMYK values are approximations; confirm them against a physical swatch before anything
   is printed.

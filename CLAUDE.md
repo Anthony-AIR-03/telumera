@@ -806,9 +806,10 @@ the Chakra Petch wordmark, the Graphite/Bone/Signal palette, the type system, th
 voice, and the approved dashboard direction. `brand-guide.html` is the visual guide,
 `dashboard-proposal.html` is a static mockup (not the live app), `kit/` holds the final SVGs plus
 `icons.js`, and `tools/build-kit.cjs` regenerates the kit byte for byte. The mark deliberately does
-**not** encode the name's origin, so don't add initials or monograms. The brand is **not yet applied to
-`apps/dashboard-web`**: `docs/design/housestyle.md` still describes the shipped teal UI. The rollout
-order is in the brand README §8.
+**not** encode the name's origin, so don't add initials or monograms. The brand is **applied to
+`apps/dashboard-web`** (Graphite rail with module navigation, audit strip, KPI strip driving a
+single-series Signal chart with a previous-period line, brand tables, light + dark themes);
+`docs/design/housestyle.md` is the reference for how the app implements it.
 
 ## Planning artifacts (`planning/`)
 

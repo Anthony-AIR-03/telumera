@@ -37,10 +37,11 @@ CLAUDE.md `apps/`).
   and module toggles). First usable pass; no response-composition endpoints exist on the gateway
   yet, so each view calls the relevant service's own endpoints directly through it.
 - **Styling:** [Tailwind CSS v4](https://tailwindcss.com/) via `@tailwindcss/vite` — CSS-first
-  config, no `tailwind.config.js`; design tokens (brand color, the 3 self-hosted typefaces) live in
-  `src/assets/main.css`'s `@theme` block. A fixed left sidebar (`App.vue`) is the app shell for every
-  route except `login`, which renders full-bleed via `meta.layout: 'bare'`. Shared components
-  (`AppButton`, `AppBadge`, `StateMessage`, `AppToggle`) live in `src/components/`; role-gating
+  config, no `tailwind.config.js`; brand v1 tokens (light + dark), the 3 self-hosted typefaces and a few
+  shared classes live in `src/assets/main.css`. A Graphite left rail (`App.vue`) is the app shell for
+  every route except `login`, which renders full-bleed via `meta.layout: 'bare'`. Shared components
+  (`PageHeader`, `AppButton`, `AppBadge`, `StateMessage`, `AppToggle`, `ModuleIcon`,
+  `BrandLockup`, `ThemeToggle`) live in `src/components/`; role-gating
   (`src/lib/roles.ts`) mirrors the backend's real `Viewer < Developer < Admin < Owner` ordering.
   See `docs/design/housestyle.md` for the full color/typography/component/role-gating reference
   before adding a new screen — it's the source of truth for what to reuse vs. add.
