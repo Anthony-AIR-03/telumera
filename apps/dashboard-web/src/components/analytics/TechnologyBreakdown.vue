@@ -54,10 +54,13 @@ function aggregate(dimension: 'deviceCategory' | 'browserCategory' | 'osCategory
   for (const row of rows.value) {
     totals.set(row[dimension], (totals.get(row[dimension]) ?? 0) + row.sessions)
   }
-  const sorted = [...totals.entries()].sort((a, b) => b[1] - a[1])
-  const sum = sorted.reduce((a, [, v]) => a + v, 0) || 1
+  // The classifier's own "Other" bucket (UserAgentClassifier.cs) joins the folded tail, so "Other"
+  // is always the grey slice and never takes a series hue.
+  const entries = [...totals.entries()]
+  const sum = entries.reduce((a, [, v]) => a + v, 0) || 1
+  const sorted = entries.filter(([label]) => label !== 'Other').sort((a, b) => b[1] - a[1])
   const head = sorted.length > SERIES.length ? sorted.slice(0, SERIES.length - 1) : sorted
-  const tail = sorted.slice(head.length)
+  const tail = [...sorted.slice(head.length), ...entries.filter(([label]) => label === 'Other')]
   const segments = head.map(([label, value], i) => ({ label, value, color: SERIES[i]! }))
   if (tail.length) {
     segments.push({

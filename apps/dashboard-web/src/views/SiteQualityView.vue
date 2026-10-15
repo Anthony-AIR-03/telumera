@@ -3,7 +3,7 @@ import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { apiClient } from '@/lib/api-client'
-import { resolveDateRange } from '@/lib/date-range'
+import { addDays, resolveDateRange } from '@/lib/date-range'
 import PageHeader from '@/components/PageHeader.vue'
 import StateMessage from '@/components/StateMessage.vue'
 import AnalyticsDateRangeControl from '@/components/analytics/AnalyticsDateRangeControl.vue'
@@ -25,6 +25,19 @@ const range = computed(() => resolveDateRange(route.query))
 const site = ref<SiteSummary | null>(null)
 const quality = ref<QualityResponse | null>(null)
 const loading = ref(true)
+
+/** One bar per day of the range, in date order: the endpoint returns only days with outcomes, in no
+ *  guaranteed order, which would hide quiet days and space the bars as if they were consecutive. */
+const chartSeries = computed(() => {
+  const q = quality.value
+  if (!q) return []
+  const byDate = new Map(q.series.map((p) => [p.date, p]))
+  const days = []
+  for (let day = q.from; day <= q.to; day = addDays(day, 1)) {
+    days.push(byDate.get(day) ?? { date: day, dimensions: {} })
+  }
+  return days
+})
 const error = ref<string | null>(null)
 const definitionsOpen = ref(false)
 
@@ -86,7 +99,7 @@ const definitionEntries = computed(() => Object.entries(quality.value?.definitio
         <p v-if="!quality.series.length" class="px-5 pt-3 pb-5 text-sm text-muted">
           {{ t('analytics.quality.empty') }}
         </p>
-        <QualityChart v-else :series="quality.series" class="px-5 pt-3 pb-5" />
+        <QualityChart v-else :series="chartSeries" class="px-5 pt-3 pb-5" />
       </section>
 
       <details class="card group mt-4" :open="definitionsOpen">

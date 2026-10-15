@@ -3,7 +3,7 @@ import { computed, defineAsyncComponent, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { apiClient } from '@/lib/api-client'
-import { previousRange, resolveDateRange } from '@/lib/date-range'
+import { fillDailyGaps, previousRange, resolveDateRange } from '@/lib/date-range'
 import { useLiveSnapshot } from '@/lib/use-live-snapshot'
 import PageHeader from '@/components/PageHeader.vue'
 import StateMessage from '@/components/StateMessage.vue'
@@ -118,8 +118,15 @@ async function loadTimeSeries() {
     apiClient.get<TimeSeriesResponse>(url(prev.from, prev.to)),
   ])
   if (current.status === 'fulfilled') {
-    timeSeries.value = current.value
-    previousSeries.value = previous.status === 'fulfilled' ? previous.value : null
+    // Zero-fill quiet days, but keep a range with no traffic at all empty so the empty state shows.
+    const hasData = current.value.points.length > 0
+    timeSeries.value = hasData
+      ? { ...current.value, points: fillDailyGaps(current.value.points, range.value) }
+      : current.value
+    previousSeries.value =
+      previous.status === 'fulfilled'
+        ? { ...previous.value, points: fillDailyGaps(previous.value.points, prev) }
+        : null
   } else {
     chartError.value = t('analytics.chartError')
   }

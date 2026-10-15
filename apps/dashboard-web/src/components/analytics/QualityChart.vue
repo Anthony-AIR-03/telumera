@@ -76,6 +76,15 @@ function rect(bar: Bar, index: number): { y: number; h: number } {
   return { y, h: Math.max(0, h - (h > 2 ? 2 : 0)) }
 }
 
+/** Date labels centred under their bars, thinned to about eight so a 30- or 90-day range stays legible. */
+const labels = computed(() => {
+  const n = bars.value.length
+  const step = Math.max(1, Math.ceil(n / 8))
+  return bars.value
+    .map((bar, i) => ({ date: bar.date, left: ((x(i) + barW.value / 2) / WIDTH) * 100 }))
+    .filter((_, i) => i % step === 0 || (i === n - 1 && (n - 1) % step >= step / 2))
+})
+
 const hover = ref<number | null>(null)
 const hoveredBar = computed(() => (hover.value === null ? null : (bars.value[hover.value] ?? null)))
 
@@ -150,8 +159,14 @@ function shortDate(iso: string): string {
       </div>
     </div>
 
-    <div class="mt-2 flex flex-wrap justify-between gap-1 font-mono text-[11px] text-muted">
-      <span v-for="bar in bars" :key="bar.date">{{ shortDate(bar.date) }}</span>
+    <div class="relative mt-2 h-4 font-mono text-[11px] text-muted">
+      <span
+        v-for="label in labels"
+        :key="label.date"
+        class="absolute -translate-x-1/2 whitespace-nowrap"
+        :style="{ left: `${label.left}%` }"
+        >{{ shortDate(label.date) }}</span
+      >
     </div>
 
     <ul class="mt-3 flex flex-wrap gap-x-4 gap-y-1 font-mono text-xs text-muted">
