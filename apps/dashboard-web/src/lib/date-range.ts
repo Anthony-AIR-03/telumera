@@ -1,3 +1,5 @@
+import type { TimeSeriesPoint } from '@/lib/analytics-types'
+
 /** Shared by AnalyticsDateRangeControl.vue and SiteAnalyticsView.vue so both derive `from`/`to` from the route query the same way — defaults mirror DateRangeParsing.cs's own default (last 7 days). */
 
 export function todayIso(): string {
@@ -30,4 +32,21 @@ export function previousRange(range: { from: string; to: string }): { from: stri
     ) + 1
   const to = addDays(range.from, -1)
   return { from: addDays(to, -(spanDays - 1)), to }
+}
+
+/** One point per day of `range`, zero-filling the days the time-series endpoint omits (it only
+ *  returns days that had traffic). Without this the chart spaces points evenly, so a quiet day
+ *  vanishes from the x-axis and the previous-period line pairs up the wrong days. */
+export function fillDailyGaps(
+  points: TimeSeriesPoint[],
+  range: { from: string; to: string },
+): TimeSeriesPoint[] {
+  const byDay = new Map(points.map((p) => [p.bucket.slice(0, 10), p]))
+  const filled: TimeSeriesPoint[] = []
+  for (let day = range.from; day <= range.to; day = addDays(day, 1)) {
+    filled.push(
+      byDay.get(day) ?? { bucket: `${day}T00:00:00Z`, sessions: 0, visitors: 0, views: 0 },
+    )
+  }
+  return filled
 }
