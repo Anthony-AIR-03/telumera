@@ -58,66 +58,70 @@ function toggle(name: string) {
 </script>
 
 <template>
-  <div
-    class="rounded-[14px] border border-neutral-200 bg-white p-5 shadow-[0_1px_2px_rgba(15,21,18,0.04),0_1px_1px_rgba(15,21,18,0.03)]"
-  >
-    <input
-      v-model="eventNameFilter"
-      :placeholder="t('analytics.events.filterPlaceholder')"
-      class="w-64 rounded-[9px] border border-neutral-300 px-3 py-2 text-sm placeholder-neutral-400 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
-    />
+  <section class="card">
+    <div class="flex flex-wrap items-center justify-between gap-3 px-5 pt-4">
+      <h2 class="font-display text-[17px] font-medium">{{ t('analytics.events.title') }}</h2>
+      <input
+        v-model="eventNameFilter"
+        type="search"
+        :placeholder="t('analytics.events.filterPlaceholder')"
+        :aria-label="t('analytics.events.filterPlaceholder')"
+        class="field w-full font-mono text-xs sm:w-64"
+      />
+    </div>
 
-    <StateMessage v-if="error" state="error" :message="error" class="mt-4" />
-    <StateMessage v-else-if="loading" state="loading" :message="t('common.loading')" class="mt-4" />
+    <StateMessage v-if="error" state="error" :message="error" class="px-5 py-4" />
+    <StateMessage
+      v-else-if="loading"
+      state="loading"
+      :message="t('common.loading')"
+      class="px-5 py-4"
+    />
     <StateMessage
       v-else-if="events && events.length === 0"
       state="empty"
       :message="t('analytics.events.empty')"
-      class="mt-4"
+      class="px-5 py-4"
     />
 
-    <ul v-else-if="events" class="mt-4 divide-y divide-neutral-200">
-      <li v-for="e in events" :key="e.eventName">
+    <ul v-else-if="events" class="mt-2.5 border-t border-line-2">
+      <li v-for="e in events" :key="e.eventName" class="border-b border-line-2 last:border-b-0">
         <button
           type="button"
-          class="flex w-full items-center justify-between gap-3 py-3 text-left"
+          class="flex w-full items-center justify-between gap-3 px-5 py-3 text-left hover:bg-surface"
           :aria-expanded="expanded.has(e.eventName)"
           @click="toggle(e.eventName)"
         >
-          <span class="flex items-center gap-2">
+          <span class="flex min-w-0 items-center gap-2">
             <svg
-              width="13"
-              height="13"
-              viewBox="0 0 20 20"
+              width="12"
+              height="12"
+              viewBox="0 0 12 12"
               fill="none"
-              class="flex-shrink-0 text-neutral-400 transition-transform"
+              stroke="currentColor"
+              stroke-width="1.5"
+              class="flex-none text-muted transition-transform"
               :style="{ transform: expanded.has(e.eventName) ? 'rotate(180deg)' : 'rotate(0deg)' }"
               aria-hidden="true"
             >
-              <path
-                d="M5 7.5L10 12.5L15 7.5"
-                stroke="currentColor"
-                stroke-width="1.6"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
+              <path d="M3 4.5L6 7.5L9 4.5" />
             </svg>
-            <code class="font-mono text-xs font-semibold text-neutral-900">{{ e.eventName }}</code>
+            <code class="truncate font-mono text-[13px] font-medium">{{ e.eventName }}</code>
           </span>
-          <span class="flex gap-4 text-xs text-neutral-600">
+          <span class="flex gap-4 font-mono text-xs text-muted">
             <span class="tabular-nums">{{ t('analytics.events.count', { count: e.count }) }}</span>
             <span class="tabular-nums">{{
               t('analytics.events.uniqueSessions', { count: e.uniqueSessions })
             }}</span>
           </span>
         </button>
-        <div v-if="expanded.has(e.eventName)" class="flex flex-wrap gap-1.5 pb-3.5 pl-5">
+        <div v-if="expanded.has(e.eventName)" class="flex flex-wrap gap-1.5 px-5 pb-3.5 pl-10">
           <AppBadge v-for="prop in e.allowedProperties" :key="prop">{{ prop }}</AppBadge>
-          <span v-if="e.allowedProperties.length === 0" class="text-xs text-neutral-400">{{
+          <span v-if="e.allowedProperties.length === 0" class="text-xs text-muted">{{
             t('analytics.events.noProperties')
           }}</span>
         </div>
       </li>
     </ul>
-  </div>
+  </section>
 </template>

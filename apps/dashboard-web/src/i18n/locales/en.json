@@ -3,11 +3,17 @@
     "name": "Telumera"
   },
   "nav": {
-    "dashboard": "Dashboard",
     "analytics": "Analytics",
     "logout": "Log out",
     "openMenu": "Open menu",
-    "closeMenu": "Close menu"
+    "closeMenu": "Close menu",
+    "modules": "Modules",
+    "workspace": "Workspace",
+    "workspaces": "Workspaces",
+    "planned": "Planned",
+    "themeDark": "Switch to dark theme",
+    "themeLight": "Switch to light theme",
+    "breadcrumb": "Breadcrumb"
   },
   "login": {
     "title": "Sign in",
@@ -17,12 +23,13 @@
     "error": "Sign-in failed. Please try again.",
     "wrongAccountHint": "Signed in with the wrong Microsoft account? Sign out of it here, then sign in again.",
     "signOutAction": "Sign out of Microsoft",
-    "signOutError": "Couldn't sign out. Try again, or sign out from your Microsoft account settings."
+    "signOutError": "Couldn't sign out. Try again, or sign out from your Microsoft account settings.",
+    "tagline": "Auditable analytics. Every number traces back to what was collected."
   },
   "common": {
     "loading": "Loading…",
-    "backToWorkspaces": "← All workspaces",
-    "backToWorkspace": "← Back to workspace"
+    "workspaces": "Workspaces",
+    "workspace": "Workspace"
   },
   "workspaces": {
     "title": "Workspaces",
@@ -46,7 +53,8 @@
     "title": "Members",
     "objectIdPlaceholder": "Entra Object ID",
     "add": "Add member",
-    "addError": "Couldn't add that member."
+    "addError": "Couldn't add that member.",
+    "role": "Role"
   },
   "tokens": {
     "title": "Browser tokens",
@@ -66,17 +74,19 @@
     "title": "Install",
     "blurb": "Paste this into the site to start collecting. It uses the site's active token and sends to the collector directly.",
     "copy": "Copy",
-    "copied": "Copied!",
+    "copied": "Copied",
     "noToken": "This site has no active token yet — rotate one above and the snippet will fill in.",
     "flavor": {
       "script": "Script tag",
       "esm": "ESM / bundler"
-    }
+    },
+    "flavorLabel": "Snippet type"
   },
   "analyticsSites": {
     "title": "Analytics",
     "loadError": "Couldn't load your sites.",
-    "empty": "No sites yet — add one from a workspace to see analytics here."
+    "empty": "No sites yet — add one from a workspace to see analytics here.",
+    "crumb": "Product Analytics"
   },
   "analytics": {
     "loadError": "Couldn't load this site.",
@@ -85,15 +95,16 @@
     "privacyFloor": "too few to show",
     "siteSwitcher": {
       "trigger": "Switch site",
-      "empty": "No other sites in this workspace."
+      "empty": "No other sites in this workspace.",
+      "heading": "Sites in this workspace"
     },
     "dateRange": {
       "presetGroup": "Date range preset",
-      "preset": "{days}d",
+      "preset": "{days} days",
       "from": "From date",
       "to": "To date",
       "shareableLink": "Shareable link",
-      "linkCopied": "Copied!"
+      "linkCopied": "Copied"
     },
     "overview": {
       "visitors": "Visitors",
@@ -101,19 +112,21 @@
       "views": "Views",
       "engagedRate": "Engaged rate",
       "bounceRate": "Bounce rate",
-      "deltaLabel": "{percent}% vs prior period"
+      "label": "Key metrics",
+      "vsPrior": "vs prior period",
+      "showInChart": "Show {label} in the chart"
     },
     "live": {
-      "title": "Live",
-      "activeVisitors": "no visitors in the last 5 min | 1 visitor in the last 5 min | {n} visitors in the last 5 min",
-      "noneOnPage": "No one on the site right now.",
+      "title": "Live now",
+      "noneOnPage": "No one on the site right now. Visits show up here within a few seconds.",
       "reconnecting": "reconnecting…",
-      "offline": "offline"
+      "offline": "offline",
+      "onlineNow": "online now",
+      "window": "last 5 min",
+      "pageVisitors": "no visitors | 1 visitor | {n} visitors"
     },
     "quality": {
       "link": "Data quality",
-      "backToAnalytics": "Back to analytics",
-      "heading": "Data quality — {site}",
       "blurb": "What happened to events on their way into storage: how many were accepted, rejected and why, deduplicated, dropped under load, flagged as bots, or delayed.",
       "loadError": "Couldn't load data-quality metrics.",
       "chartTitle": "Collector outcomes by day",
@@ -132,13 +145,15 @@
         "botShare": "Bot share (of stored)",
         "delayed": "Delayed events",
         "deadLetter": "Dead-letter queue"
-      }
+      },
+      "title": "Data quality"
     },
     "chart": {
-      "title": "Traffic over time",
-      "views": "Views",
-      "visitors": "Visitors",
-      "sessions": "Sessions"
+      "title": "{metric} per day",
+      "current": "This period",
+      "previous": "Previous period",
+      "empty": "No events in this range yet.",
+      "aria": "{metric} per day over {points} days, compared with the previous period"
     },
     "tabs": {
       "label": "Breakdown",
@@ -160,7 +175,8 @@
       "engaged": "Engaged",
       "pageOf": "Page {page} of {total}",
       "prev": "Previous",
-      "next": "Next"
+      "next": "Next",
+      "title": "Pages"
     },
     "acquisition": {
       "loadError": "Couldn't load acquisition data.",
@@ -170,14 +186,19 @@
       "campaign": "UTM source / medium / campaign",
       "sessions": "Sessions",
       "visitors": "Visitors",
-      "engagedSessions": "Engaged sessions"
+      "engagedSessions": "Engaged sessions",
+      "title": "Sources",
+      "meta": "by sessions",
+      "direct": "No referrer"
     },
     "technology": {
       "loadError": "Couldn't load technology data.",
       "empty": "No technology data for this range.",
       "device": "Device",
       "browser": "Browser",
-      "os": "OS"
+      "os": "OS",
+      "other": "Other",
+      "meta": "share of sessions"
     },
     "geography": {
       "loadError": "Couldn't load geography data.",
@@ -191,7 +212,9 @@
       "other": "Other (below privacy floor)",
       "mapTitle": "Visitors by country",
       "mapLegend": "Shading by visitor count",
-      "belowFloorHint": "Below the 5-visitor privacy floor"
+      "belowFloorHint": "Below the 5-visitor privacy floor",
+      "tableTitle": "Countries",
+      "tableMeta": "by visitors"
     },
     "events": {
       "loadError": "Couldn't load custom events.",
@@ -199,7 +222,8 @@
       "filterPlaceholder": "Filter by event name…",
       "count": "{count} events",
       "uniqueSessions": "{count} sessions",
-      "noProperties": "No properties observed."
+      "noProperties": "No properties observed.",
+      "title": "Custom events"
     },
     "glossary": {
       "link": "Metric definitions",
@@ -220,6 +244,22 @@
         "privacyFloor": "\"Too few to show\"",
         "privacyFloorBody": "A breakdown row covering fewer than 5 distinct visitors is flagged rather than hidden — the underlying number is real, but small enough that showing it standalone could identify an individual visit."
       }
+    },
+    "audit": {
+      "label": "How the numbers on this page were counted",
+      "accepted": "events accepted",
+      "duplicates": "duplicates removed",
+      "bots": "bots marked, kept for audit",
+      "rejected": "rejected",
+      "unavailable": "Audit counts unavailable for this range",
+      "noSampling": "No sampling",
+      "cookieFree": "Cookie-free visitor IDs",
+      "howCounted": "How these are counted"
+    },
+    "coming": {
+      "title": "Coming to this site",
+      "meta": "roadmap",
+      "blurb": "Turn on modules per site as they ship. Each one reports with the same audit trail as Analytics."
     }
   }
 }

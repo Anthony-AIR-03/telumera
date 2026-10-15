@@ -3,89 +3,237 @@
 /*
  * Self-hosted, not a Google Fonts CDN link — this is a privacy-first analytics platform's own
  * dashboard; it shouldn't leak dashboard usage/IP to a third party just to render its own UI.
- * Latin-subset static weights only (no variable font) to keep the request count and payload small.
+ * Latin subset only. Chakra Petch ships as static weights; Red Hat Text/Mono are single variable
+ * files covering every weight the brand uses (docs/brand/README.md §5).
  */
 @font-face {
-  font-family: 'Sora';
-  font-style: normal;
-  font-weight: 600;
-  font-display: swap;
-  src: url('/fonts/sora-600.woff2') format('woff2');
-}
-@font-face {
-  font-family: 'Sora';
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: url('/fonts/sora-700.woff2') format('woff2');
-}
-@font-face {
-  font-family: 'Public Sans';
+  font-family: 'Chakra Petch';
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url('/fonts/public-sans-400.woff2') format('woff2');
+  src: url('/fonts/chakra-petch-400.woff2') format('woff2');
 }
 @font-face {
-  font-family: 'Public Sans';
+  font-family: 'Chakra Petch';
   font-style: normal;
   font-weight: 500;
   font-display: swap;
-  src: url('/fonts/public-sans-500.woff2') format('woff2');
+  src: url('/fonts/chakra-petch-500.woff2') format('woff2');
 }
 @font-face {
-  font-family: 'Public Sans';
+  font-family: 'Red Hat Text';
   font-style: normal;
-  font-weight: 600;
+  font-weight: 300 700;
   font-display: swap;
-  src: url('/fonts/public-sans-600.woff2') format('woff2');
+  src: url('/fonts/red-hat-text-var.woff2') format('woff2');
 }
 @font-face {
-  font-family: 'JetBrains Mono';
+  font-family: 'Red Hat Mono';
   font-style: normal;
-  font-weight: 400;
+  font-weight: 300 700;
   font-display: swap;
-  src: url('/fonts/jetbrains-mono-400.woff2') format('woff2');
+  src: url('/fonts/red-hat-mono-var.woff2') format('woff2');
 }
 
 /*
- * Brand color, plus the 3-typeface system from docs/design/housestyle.md. --font-sans/--font-mono
- * are special Tailwind v4 theme keys — Preflight reads them app-wide automatically (no `body {}`
- * rule needed, and it re-skins the existing `font-mono` token-code usage in SiteDetailView.vue for
- * free). --font-display has no auto-apply; use the `font-display` utility class on headings.
- * brand-500 is the exact existing teal (hsla(160, 100%, 37%, 1)) that already rendered the
- * "Telumera" wordmark; brand-700/800 are darker steps for solid button fills, since brand-500
- * fails WCAG AA contrast against white text.
+ * Brand v1 surface tokens (docs/brand/README.md §4 and §8). Raw values live here as plain custom
+ * properties so they can switch per theme; @theme inline below maps them onto Tailwind colour
+ * names (bg-page, text-fg, border-line, …). The theme follows the OS unless the user picked one
+ * with the toggle, which sets data-theme on <html> (src/lib/theme.ts).
  */
-@theme {
-  --color-brand-50: #e6fbf3;
-  --color-brand-300: #6bddb4;
-  --color-brand-500: #00bd7e;
-  --color-brand-700: #008055;
-  --color-brand-800: #006642;
+:root {
+  --signal-text: #b53a0a;
+  --signal-soft: rgb(255 90 31 / 0.12);
+  --page: #eeece5;
+  --surface: #f7f6f2;
+  --raised: #ffffff;
+  --line: #d9dad6;
+  --line-2: #e6e5e0;
+  --fg: #0e1316;
+  --fg-2: #3a454b;
+  --muted: #5c676d;
+  --comp: #b9bfc1;
+  --bar: #e3e1d9;
+  --rail: #0e1316;
+  --rail-line: #242d32;
+  --rail-hover: #171e22;
+  --ok: #2e9e6a;
+  --warn: #b07a0e;
+  --bad: #d43b40;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --signal-text: #ff7a45;
+    --signal-soft: rgb(255 90 31 / 0.16);
+    --page: #0b0f11;
+    --surface: #12181b;
+    --raised: #171e22;
+    --line: #242d32;
+    --line-2: #1d2529;
+    --fg: #eeece5;
+    --fg-2: #d9dad6;
+    --muted: #8a9398;
+    --comp: #3a454b;
+    --bar: #1f282d;
+    --rail: #070a0b;
+    --rail-line: #1a2125;
+    --rail-hover: #12181b;
+    --ok: #3dba82;
+    --warn: #e0a526;
+    --bad: #f06368;
+  }
+}
+:root[data-theme='dark'] {
+  --signal-text: #ff7a45;
+  --signal-soft: rgb(255 90 31 / 0.16);
+  --page: #0b0f11;
+  --surface: #12181b;
+  --raised: #171e22;
+  --line: #242d32;
+  --line-2: #1d2529;
+  --fg: #eeece5;
+  --fg-2: #d9dad6;
+  --muted: #8a9398;
+  --comp: #3a454b;
+  --bar: #1f282d;
+  --rail: #070a0b;
+  --rail-line: #1a2125;
+  --rail-hover: #12181b;
+  --ok: #3dba82;
+  --warn: #e0a526;
+  --bad: #f06368;
+}
+:root {
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+  }
+}
+:root[data-theme='dark'] {
+  color-scheme: dark;
+}
 
-  /*
-   * Overrides Tailwind's stock neutral-* scale rather than introducing parallel token names —
-   * every existing neutral-* class across the app picks this up with no template changes. A pure
-   * gray reads as unconsidered; this is the same slight green-gray bias as brand-500, "chosen, not
-   * inherited." Matches the approved design mockup exactly (its --page-bg/--surface-sunken/--ink-*
-   * tokens), ported here after the first pass shipped with Tailwind's defaults instead by mistake.
-   */
-  --color-neutral-50: #f6f8f7;
-  --color-neutral-100: #eef1f0;
-  --color-neutral-200: #e7e9e7;
-  --color-neutral-400: #838f88;
-  --color-neutral-500: #838f88;
-  --color-neutral-600: #4b5750;
-  --color-neutral-900: #0f1512;
+/*
+ * Tailwind's own colour scale is wiped (--color-*: initial) so only brand tokens exist: a stray
+ * `text-neutral-500` or `bg-white` from before the rebrand generates nothing instead of silently
+ * rendering an off-brand colour. --font-sans/--font-mono are Tailwind's auto-applying keys.
+ */
+@theme inline {
+  --color-*: initial;
+  --color-white: #ffffff;
+  --color-transparent: transparent;
+  --color-current: currentColor;
 
-  --font-sans: 'Public Sans', -apple-system, 'Segoe UI', sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
-  --font-display: 'Sora', -apple-system, 'Segoe UI', sans-serif;
+  --color-signal: #ff5a1f;
+  --color-signal-text: var(--signal-text);
+  --color-signal-soft: var(--signal-soft);
+  --color-graphite: #0e1316;
+  --color-bone: #eeece5;
+
+  --color-page: var(--page);
+  --color-surface: var(--surface);
+  --color-raised: var(--raised);
+  --color-line: var(--line);
+  --color-line-2: var(--line-2);
+  --color-fg: var(--fg);
+  --color-fg-2: var(--fg-2);
+  --color-muted: var(--muted);
+  --color-comp: var(--comp);
+  --color-bar: var(--bar);
+
+  /* The rail stays Graphite in both themes; its text colours are fixed, not theme-switched. */
+  --color-rail: var(--rail);
+  --color-rail-fg: #eeece5;
+  --color-rail-muted: #8a9398;
+  --color-rail-dim: #5c676d;
+  --color-rail-line: var(--rail-line);
+  --color-rail-hover: var(--rail-hover);
+
+  --color-ok: var(--ok);
+  --color-warn: var(--warn);
+  --color-bad: var(--bad);
+
+  /* Data series, in brand order (README §4): Signal, Graphite 600, Cyan, Iris, then comparison. */
+  --color-series-3: #2b9eb3;
+  --color-series-4: #8f7cf2;
+
+  --font-sans: 'Red Hat Text', -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'Red Hat Mono', ui-monospace, monospace;
+  --font-display: 'Chakra Petch', -apple-system, 'Segoe UI', sans-serif;
 }
 
 @layer base {
   body {
-    @apply bg-neutral-50 text-neutral-900;
+    @apply bg-page text-fg antialiased;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-signal);
+    outline-offset: 2px;
+  }
+}
+
+/*
+ * The few patterns every screen repeats — see docs/design/housestyle.md. Utilities still win over
+ * these (components layer), so a one-off tweak is a utility class next to them.
+ */
+@layer components {
+  /* Panel: hairline border, 4px radius, no shadow. */
+  .card {
+    @apply rounded-[4px] border border-line bg-raised;
+  }
+  /* Mono uppercase micro-label: KPI labels, table headers, rail group headings. */
+  .label-mono {
+    @apply font-mono text-[11px] font-medium tracking-[0.12em] text-muted uppercase;
+  }
+  .field {
+    @apply rounded-[3px] border border-line bg-raised px-3 py-2 text-sm text-fg placeholder:text-muted;
+  }
+  .field:focus {
+    @apply border-fg-2;
+  }
+  /* Segmented control: the selected option is inverted fg/bg. Put aria-pressed on each button. */
+  .seg {
+    @apply inline-flex rounded-[3px] border border-line bg-surface p-0.5;
+  }
+  .seg > button {
+    @apply rounded-[2px] px-3 py-1.5 text-sm font-medium text-muted hover:text-fg;
+  }
+  .seg > button[aria-pressed='true'] {
+    @apply bg-fg text-page hover:text-page;
+  }
+  /* Data table: mono headers, hairline rows, right-aligned tabular numbers (td.num / th.num). */
+  .data-table {
+    @apply w-full border-collapse text-sm;
+  }
+  .data-table th {
+    @apply border-b border-line-2 px-3 py-2 text-left font-mono text-[11px] font-medium tracking-[0.1em] text-muted uppercase;
+  }
+  .data-table td {
+    @apply h-[38px] border-b border-line-2 px-3;
+  }
+  .data-table tr:last-child td {
+    @apply border-b-0;
+  }
+  .data-table .num {
+    @apply text-right font-mono font-medium tabular-nums;
+  }
+  /* Key cell with a share bar behind it: set --w (0–1) on the td. The first row's bar is Signal. */
+  .data-table td.key {
+    @apply relative font-mono text-[13px];
+  }
+  .data-table td.key::before {
+    content: '';
+    @apply absolute top-1.5 bottom-1.5 left-1.5 rounded-[2px] bg-bar;
+    width: calc(var(--w, 0) * (100% - 12px));
+  }
+  .data-table tbody tr:first-child td.key::before {
+    @apply bg-signal-soft;
+  }
+  .data-table td.key > * {
+    @apply relative;
   }
 }

@@ -43,52 +43,46 @@ function switchTo(siteId: string) {
   <div ref="rootRef" class="relative">
     <button
       type="button"
-      class="pointer-coarse:min-h-11 inline-flex items-center gap-1.5 rounded-[9px] border border-neutral-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-neutral-600 hover:bg-neutral-50"
+      class="inline-flex min-h-[34px] items-center gap-2 rounded-[3px] border border-line bg-surface px-2.5 font-mono text-xs font-medium text-fg-2 hover:border-fg-2 pointer-coarse:min-h-11"
       :aria-expanded="open"
+      aria-haspopup="true"
+      :aria-label="t('analytics.siteSwitcher.trigger')"
       @click="open = !open"
     >
-      {{ t('analytics.siteSwitcher.trigger') }}
+      {{ currentDomain }}
       <svg
-        width="14"
-        height="14"
-        viewBox="0 0 20 20"
+        width="12"
+        height="12"
+        viewBox="0 0 12 12"
         fill="none"
+        stroke="currentColor"
+        stroke-width="1.5"
         aria-hidden="true"
         :style="{ transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }"
       >
-        <path
-          d="M5 7.5L10 12.5L15 7.5"
-          stroke="currentColor"
-          stroke-width="1.6"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        />
+        <path d="M3 4.5L6 7.5L9 4.5" />
       </svg>
     </button>
 
     <div
       v-if="open"
-      class="absolute top-[calc(100%+6px)] left-0 z-10 w-56 overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-[0_8px_24px_rgba(15,21,18,0.12),0_2px_6px_rgba(15,21,18,0.06)]"
+      class="absolute top-[calc(100%+6px)] left-0 z-20 w-60 overflow-hidden rounded-[4px] border border-line bg-raised"
     >
+      <div class="label-mono border-b border-line-2 px-3 pt-2.5 pb-2">
+        {{ t('analytics.siteSwitcher.heading') }}
+      </div>
       <div
-        class="flex items-center justify-between px-3 py-2.5 text-sm font-semibold text-brand-700 bg-brand-50"
+        class="relative flex items-center justify-between bg-surface px-3 py-2.5 font-mono text-[13px]"
+        aria-current="true"
       >
+        <span class="absolute top-2 bottom-2 left-0 w-0.5 bg-signal" aria-hidden="true" />
         {{ currentDomain }}
-        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-          <path
-            d="M4 10.5L8 14.5L16 6"
-            stroke="currentColor"
-            stroke-width="1.8"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          />
-        </svg>
       </div>
       <button
         v-for="site in siblingSites"
         :key="site.id"
         type="button"
-        class="pointer-coarse:min-h-11 block w-full px-3 py-2.5 text-left text-sm text-neutral-900 hover:bg-neutral-50"
+        class="block w-full px-3 py-2.5 text-left font-mono text-[13px] hover:bg-surface pointer-coarse:min-h-11"
         @click="switchTo(site.id)"
       >
         {{ site.canonicalDomain }}
@@ -97,7 +91,7 @@ function switchTo(siteId: string) {
         v-if="siblingSites.length === 0"
         state="empty"
         :message="t('analytics.siteSwitcher.empty')"
-        class="px-3 py-2.5"
+        class="border-t border-line-2 px-3 py-2.5 text-xs"
       />
     </div>
   </div>

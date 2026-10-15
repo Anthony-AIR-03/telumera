@@ -19,11 +19,11 @@ withDefaults(
   },
 )
 
+/** Primary is inverted fg/bg (Graphite on light, Bone on dark): Signal is a marker, never a fill. */
 const variantClasses = {
-  primary: 'bg-brand-700 text-white hover:bg-brand-800 focus-visible:outline-brand-700',
-  secondary:
-    'border border-neutral-200 text-neutral-900 hover:bg-neutral-100 focus-visible:outline-neutral-400',
-  danger: 'bg-red-50 text-red-700 hover:bg-red-700 hover:text-white focus-visible:outline-red-700',
+  primary: 'border border-fg bg-fg text-page hover:border-fg-2 hover:bg-fg-2',
+  secondary: 'border border-line bg-surface text-fg hover:border-fg-2',
+  danger: 'border border-bad/40 text-bad hover:border-bad hover:bg-bad hover:text-white',
 }
 </script>
 
@@ -31,13 +31,13 @@ const variantClasses = {
   <button
     :disabled="disabled || loading"
     :class="[
-      'inline-flex min-h-11 items-center justify-center gap-2 rounded-[9px] px-[15px] py-[9px] text-sm font-bold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-60',
+      'inline-flex min-h-10 items-center justify-center gap-2 rounded-[3px] px-3.5 py-2 text-sm font-semibold transition-colors pointer-coarse:min-h-11 disabled:cursor-not-allowed disabled:opacity-50',
       variantClasses[variant],
     ]"
   >
     <span
       v-if="loading"
-      class="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent"
+      class="h-3 w-3 animate-spin border-[1.5px] border-current border-t-transparent"
       aria-hidden="true"
     />
     <template v-if="loading && loadingLabel">{{ loadingLabel }}</template>

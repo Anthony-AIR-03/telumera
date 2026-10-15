@@ -798,6 +798,19 @@ Websockets Support on — and the `Telumera Dashboard` SPA registration has `htt
    M01.8 (`1217238560530300`) and the M01 milestone (`1217238769342932`) both marked Complete.**
    Item 5 (design mockup) has no Asana subtask.
 
+## Brand (`docs/brand/`)
+
+Brand identity v1 was approved 2026-10-13. `docs/brand/README.md` is the source of truth: the
+"Probe" mark (a T drawn in parallel lines whose centre line, the probe, is the only coloured line),
+the Chakra Petch wordmark, the Graphite/Bone/Signal palette, the type system, the module icons, the
+voice, and the approved dashboard direction. `brand-guide.html` is the visual guide,
+`dashboard-proposal.html` is a static mockup (not the live app), `kit/` holds the final SVGs plus
+`icons.js`, and `tools/build-kit.cjs` regenerates the kit byte for byte. The mark deliberately does
+**not** encode the name's origin, so don't add initials or monograms. The brand is **applied to
+`apps/dashboard-web`** (Graphite rail with module navigation, audit strip, KPI strip driving a
+single-series Signal chart with a previous-period line, brand tables, light + dark themes);
+`docs/design/housestyle.md` is the reference for how the app implements it.
+
 ## Planning artifacts (`planning/`)
 
 - `Telumera_Modular_Project_Plan.md` — the full architecture/roadmap doc summarized above; treat as the

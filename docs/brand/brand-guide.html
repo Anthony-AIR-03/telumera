@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Telumera Brand Guide</title>
+<link rel="icon" href="kit/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600&family=Red+Hat+Mono:wght@400;500&family=Red+Hat+Text:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #0E1316; --ink-2: #171E22; --ink-3: #242D32;
+    --paper: #EEECE5; --paper-2: #F7F6F2; --line: #D9DAD6;
+    --muted: #5C676D; --signal: #FF5A1F; --signal-deep: #B53A0A;
+    --bg: var(--paper); --fg: var(--ink); --card: var(--paper-2);
+    --display: 'Chakra Petch', system-ui, sans-serif;
+    --text: 'Red Hat Text', system-ui, sans-serif;
+    --mono: 'Red Hat Mono', ui-monospace, monospace;
+  }
+  * { box-sizing: border-box }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 400 16px/1.55 var(--text); -webkit-font-smoothing: antialiased }
+  a { color: inherit }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 0 32px }
+  @media (max-width: 640px) { .wrap { padding: 0 16px } }
+
+  /* top bar */
+  .bar { position: sticky; top: 0; z-index: 5; background: color-mix(in srgb, var(--paper) 92%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line) }
+  .bar .wrap { display: flex; align-items: center; gap: 24px; height: 60px }
+  .bar img { height: 22px; display: block }
+  .bar nav { display: flex; gap: 20px; margin-left: auto; font: 500 13px var(--text); overflow-x: auto; white-space: nowrap }
+  .bar nav a { text-decoration: none; color: var(--muted) } .bar nav a:hover { color: var(--fg) }
+  @media (max-width: 760px) { .bar nav { display: none } }
+
+  /* hero */
+  .hero { background: var(--ink); color: var(--paper); padding: 96px 0 88px; position: relative; overflow: hidden }
+  .hero .wrap { display: grid; grid-template-columns: 1.2fr 1fr; gap: 48px; align-items: center }
+  .hero h1 { font: 500 clamp(40px, 6vw, 72px)/1.02 var(--display); letter-spacing: -.01em; margin: 0 0 20px }
+  .hero h1 em { font-style: normal; color: var(--signal) }
+  .hero p { font-size: 18px; max-width: 34ch; color: #B9BFC1; margin: 0 }
+  .hero .mark { justify-self: center; width: min(360px, 70vw) }
+  .eyebrow { font: 500 12px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--signal); margin-bottom: 18px; display: block }
+  @media (max-width: 760px) { .hero { padding: 56px 0 } .hero .wrap { grid-template-columns: 1fr } .hero .mark { width: 200px; justify-self: start } }
+
+  section.s { padding: 88px 0; border-bottom: 1px solid var(--line) }
+  section.s.dark { background: var(--ink); color: var(--paper); border-color: var(--ink-3) }
+  .head { display: grid; grid-template-columns: 240px 1fr; gap: 32px; margin-bottom: 44px }
+  .head .num { font: 500 12px var(--mono); letter-spacing: .14em; color: var(--muted); text-transform: uppercase; padding-top: 10px }
+  .dark .head .num { color: #8A9398 }
+  .head h2 { font: 500 clamp(28px, 3.4vw, 40px)/1.1 var(--display); margin: 0 0 12px }
+  .head p { margin: 0; max-width: 62ch; color: var(--muted) } .dark .head p { color: #B9BFC1 }
+  @media (max-width: 760px) { section.s { padding: 56px 0 } .head { grid-template-columns: 1fr; gap: 6px; margin-bottom: 28px } }
+
+  .panel { background: var(--card); border: 1px solid var(--line); border-radius: 4px }
+  .dark .panel { background: var(--ink-2); border-color: var(--ink-3) }
+  .cap { font: 500 12px/1.4 var(--mono); color: var(--muted); letter-spacing: .04em }
+  .dark .cap { color: #8A9398 }
+
+  /* construction */
+  .construct { display: grid; grid-template-columns: minmax(0, 1.1fr) 1fr; gap: 24px }
+  .construct .panel { padding: 28px; position: relative }
+  .construct svg.grid { width: 100%; height: auto; display: block }
+  .facts { display: grid; gap: 0 }
+  .facts div { display: grid; grid-template-columns: 120px 1fr; gap: 16px; padding: 16px 0; border-top: 1px solid var(--line) }
+  .facts div:first-child { border-top: 0; padding-top: 0 }
+  .facts b { font: 500 13px var(--mono); color: var(--signal-deep) }
+  @media (max-width: 860px) { .construct { grid-template-columns: 1fr } }
+
+  /* small sizes */
+  .sizes { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px }
+  .sizes .panel { padding: 24px; display: grid; gap: 18px; align-content: space-between; min-height: 200px }
+  .sizes .row { display: flex; gap: 14px; align-items: flex-end; flex-wrap: wrap }
+  .px { image-rendering: pixelated }
+  .tab { display: flex; align-items: center; gap: 8px; background: #fff; border: 1px solid var(--line); border-radius: 8px 8px 0 0; padding: 8px 12px; font: 13px var(--text); width: fit-content }
+  @media (max-width: 860px) { .sizes { grid-template-columns: 1fr 1fr } }
+
+  /* lockups */
+  .lockups { display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px }
+  .lockups .panel { padding: 48px 32px; display: grid; place-items: center; min-height: 220px; position: relative }
+  .lockups .panel .cap { position: absolute; left: 16px; bottom: 12px }
+  .lk-dark { background: var(--ink) !important; border-color: var(--ink) !important }
+  .clear { outline: 1px dashed var(--signal); outline-offset: 27px }
+  .rules { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 16px }
+  .rules .panel { padding: 20px }
+  .rules h3 { font: 500 16px var(--display); margin: 0 0 6px }
+  .rules p { margin: 0; font-size: 14px; color: var(--muted) }
+  @media (max-width: 860px) { .lockups, .rules { grid-template-columns: 1fr } }
+
+  /* colour */
+  .core { display: grid; grid-template-columns: 2fr 2fr 1fr; gap: 16px }
+  .sw { border-radius: 4px; padding: 20px; min-height: 220px; display: flex; flex-direction: column; justify-content: space-between; border: 1px solid var(--line) }
+  .sw h3 { font: 500 22px var(--display); margin: 0 }
+  .sw code { font: 13px/1.6 var(--mono); display: block }
+  .ramp { display: grid; grid-template-columns: repeat(10, 1fr); margin-top: 16px; border-radius: 4px; overflow: hidden; border: 1px solid var(--line) }
+  .ramp div { height: 72px; padding: 8px; font: 11px var(--mono); display: flex; align-items: flex-end }
+  .sets { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px }
+  .sets .panel { padding: 20px }
+  .chips { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px }
+  .chip { display: flex; align-items: center; gap: 10px; font: 13px var(--mono) }
+  .chip i { width: 28px; height: 28px; border-radius: 3px; display: block }
+  .note { margin-top: 16px; padding: 14px 16px; border-left: 3px solid var(--signal); background: var(--card); font-size: 14px }
+  @media (max-width: 860px) { .core, .sets { grid-template-columns: 1fr } .ramp { grid-template-columns: repeat(5, 1fr) } }
+
+  /* type */
+  .type { display: grid; gap: 16px }
+  .type .panel { padding: 28px; display: grid; grid-template-columns: 220px 1fr; gap: 24px; align-items: center }
+  .type .spec { overflow-wrap: anywhere }
+  @media (max-width: 760px) { .type .panel { grid-template-columns: 1fr } }
+  .scale { margin-top: 16px }
+  @media (max-width: 760px) { .scale div { grid-template-columns: 1fr !important; gap: 4px !important } }
+  .scale div { display: grid; grid-template-columns: 120px minmax(0, 1fr); align-items: baseline; gap: 16px; padding: 10px 0; border-top: 1px solid var(--line) }
+
+  /* icons */
+  .icons { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 1px; background: var(--ink-3); border: 1px solid var(--ink-3); border-radius: 4px; overflow: hidden }
+  .icons div { background: var(--ink-2); padding: 22px 18px; display: grid; gap: 14px; color: var(--paper) }
+  .icons span { font: 500 14px var(--text) } .icons small { font: 12px var(--mono); color: #8A9398 }
+  .icons .live small { color: var(--signal) }
+  .iconrules { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 16px }
+  .iconrules p { margin: 0; font-size: 14px; color: #B9BFC1 }
+  @media (max-width: 760px) { .iconrules { grid-template-columns: 1fr } }
+
+  /* misuse */
+  .misuse { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px }
+  .misuse .panel { padding: 24px; display: grid; gap: 16px; justify-items: center }
+  .misuse .x { font: 500 13px var(--text); color: var(--muted); text-align: center }
+  .misuse img { width: 96px; height: 96px }
+  @media (max-width: 860px) { .misuse { grid-template-columns: 1fr 1fr } }
+
+  /* voice */
+  .voice { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px }
+  .voice .panel { padding: 24px }
+  .voice h3 { font: 500 20px var(--display); margin: 0 0 8px }
+  .voice p { margin: 0 0 14px; font-size: 15px; color: var(--muted) }
+  .say { font: 14px/1.5 var(--mono); display: grid; gap: 6px }
+  .say .y::before { content: '+ '; color: #2E9E6A } .say .n::before { content: '− '; color: #E5484D } .say .n { color: var(--muted); text-decoration: line-through; text-decoration-color: #c9cbc7 }
+  @media (max-width: 860px) { .voice { grid-template-columns: 1fr } }
+
+  .files { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 8px }
+  .files a { display: flex; justify-content: space-between; padding: 12px 14px; border: 1px solid var(--line); border-radius: 4px; text-decoration: none; font: 13px var(--mono); background: var(--card) }
+  .files a:hover { border-color: var(--ink) }
+  .cta { display: inline-flex; gap: 10px; align-items: center; margin-top: 28px; background: var(--signal); color: var(--ink); padding: 12px 18px; border-radius: 3px; font: 600 15px var(--text); text-decoration: none }
+  footer { padding: 40px 0 64px; color: var(--muted); font-size: 13px }
+</style>
+</head>
+<body>
+<header class="bar"><div class="wrap">
+  <img src="kit/lockup-horizontal.svg" alt="Telumera">
+  <nav><a href="#mark">Mark</a><a href="#small">Small sizes</a><a href="#lockups">Lockups</a><a href="#colour">Colour</a><a href="#type">Type</a><a href="#icons">Modules</a><a href="#voice">Voice</a><a href="dashboard-proposal.html">Dashboard proposal →</a></nav>
+</div></header>
+
+<section class="hero"><div class="wrap">
+  <div>
+    <span class="eyebrow">Brand guide · v1 · approved 2026-10-13</span>
+    <h1>Analytics you can <em>trace</em> back to the source.</h1>
+    <p>Telumera is a self-hosted, privacy-first platform for understanding websites: who visits, how fast it is, what breaks, what changed.</p>
+  </div>
+  <img class="mark" src="kit/mark-reversed.svg" alt="Telumera mark">
+</div></section>
+
+<section class="s" id="mark"><div class="wrap">
+  <div class="head"><span class="num">01 — The mark</span><div>
+    <h2>Probe</h2>
+    <p>A T drawn in parallel lines, like signal traces on a board. Two outlines frame a single centre line: the probe. At the foot the lines step back and the probe runs furthest. That is the brand's whole idea: everything we show you can be followed down to where it was measured.</p>
+  </div></div>
+  <div class="construct">
+    <div class="panel">
+      <svg class="grid" viewBox="0 0 256 256" aria-label="Construction of the mark">
+        <g stroke="#FF5A1F" stroke-width=".6" opacity=".55">
+          <path d="M20 0V256M236 0V256M88 0V256M168 0V256M0 28H256M0 108H256M0 188H256M0 206H256M0 224H256" stroke-dasharray="3 3"/>
+        </g>
+        <image href="kit/mark-signal.svg" width="256" height="256"/>
+        <g font-family="Red Hat Mono" font-size="7" fill="#5C676D">
+          <text x="22" y="22">crossbar 216 × 80</text>
+          <text x="172" y="150">stem 80</text>
+          <text x="172" y="203">steps of 17.5</text>
+        </g>
+      </svg>
+    </div>
+    <div class="facts">
+      <div><b>Grid</b><span>256 units. Crossbar 216 × 80, stem 80 wide: the bar is exactly as tall as the stem is wide.</span></div>
+      <div><b>Lines</b><span>Five lines, 10 units thick, on a 17.5 pitch. Gaps are slightly narrower than lines so the mark holds together as one shape.</span></div>
+      <div><b>Probe</b><span>The centre line is the only one that runs into the crossbar's middle and the only one that can take colour. Use Signal on it, or nothing.</span></div>
+      <div><b>Foot</b><span>Outer lines stop at 188, inner at 206, probe at 224. Three equal steps: never change their order or spacing.</span></div>
+      <div><b>Optics</b><span>The whole drawing sits 4 units above centre so it doesn't look like it's sinking.</span></div>
+    </div>
+  </div>
+</div></section>
+
+<section class="s" id="small"><div class="wrap">
+  <div class="head"><span class="num">02 — Small sizes</span><div>
+    <h2>A separate cut for 16 to 32 px</h2>
+    <p>Five lines can't survive at favicon size, so the small cut is drawn on a 16-pixel grid: the outer outline plus the probe, one pixel each, one pixel apart. It snaps to whole pixels at 16, 32 and 48 px.</p>
+  </div></div>
+  <div class="sizes">
+    <div class="panel"><div class="row"><img src="kit/mark-signal.svg" width="96"><img src="kit/mark-signal.svg" width="64"><img src="kit/mark-signal.svg" width="48"></div><span class="cap">Full mark · 48 px and up</span></div>
+    <div class="panel"><div class="row"><img src="kit/mark-small.svg" width="48"><img src="kit/mark-small.svg" width="32"><img src="kit/mark-small.svg" width="16"></div><span class="cap">Small cut · 48 · 32 · 16 px</span></div>
+    <div class="panel"><img class="px" src="kit/mark-small.svg" width="128" alt="Small cut enlarged on its pixel grid"><span class="cap">Small cut on its 16-px grid</span></div>
+    <div class="panel"><div class="row"><img src="kit/app-icon.svg" width="88"><img src="kit/app-icon.svg" width="48"><img src="kit/app-icon.svg" width="32"></div><div class="tab"><img src="kit/favicon.svg" width="16">Telumera</div><span class="cap">App icon · favicon</span></div>
+  </div>
+</div></section>
+
+<section class="s" id="lockups"><div class="wrap">
+  <div class="head"><span class="num">03 — Lockups</span><div>
+    <h2>Mark and name, fixed together</h2>
+    <p>The name is set in Chakra Petch Regular, uppercase, letter-spaced +260 and converted to outlines. The cap height is half the mark's height. The gap between mark and name equals the crossbar's height.</p>
+  </div></div>
+  <div class="lockups">
+    <div class="panel"><img class="clear" src="kit/lockup-horizontal.svg" style="width:min(420px,100%)" alt="Horizontal lockup"><span class="cap">Horizontal · default</span></div>
+    <div class="panel"><img src="kit/lockup-stacked.svg" style="width:min(180px,60%)" alt="Stacked lockup"><span class="cap">Stacked · square spaces</span></div>
+    <div class="panel lk-dark"><img src="kit/lockup-horizontal-reversed.svg" style="width:min(420px,100%)" alt="Horizontal lockup, reversed"><span class="cap">Reversed · on Graphite</span></div>
+    <div class="panel"><img src="kit/lockup-horizontal-mono.svg" style="width:min(300px,100%)" alt="One-colour lockup"><span class="cap">One colour · print, stamps, engraving</span></div>
+  </div>
+  <div class="rules">
+    <div class="panel"><h3>Clear space</h3><p>Keep a free margin equal to the crossbar's height (the dashed box above) on all sides.</p></div>
+    <div class="panel"><h3>Minimum size</h3><p>Horizontal lockup 120 px / 30 mm wide. Full mark 40 px. Below that, use the small cut.</p></div>
+    <div class="panel"><h3>Backgrounds</h3><p>Bone, white or Graphite. On photos, place the mark on a solid Graphite or Bone plate.</p></div>
+  </div>
+</div></section>
+
+<section class="s" id="colour"><div class="wrap">
+  <div class="head"><span class="num">04 — Colour</span><div>
+    <h2>Graphite, Bone and one signal</h2>
+    <p>The brand is almost monochrome. Signal orange is a marker, not a fill: the probe line, the primary chart series, focus rings, the active item. If a screen has more than a few touches of Signal, it has too many.</p>
+  </div></div>
+  <div class="core">
+    <div class="sw" style="background:#0E1316;color:#EEECE5;border-color:#0E1316"><h3>Graphite</h3><code>#0E1316<br>RGB 14 19 22<br>≈ CMYK 70 55 50 85</code></div>
+    <div class="sw" style="background:#EEECE5;color:#0E1316"><h3>Bone</h3><code>#EEECE5<br>RGB 238 236 229<br>≈ CMYK 5 4 8 0</code></div>
+    <div class="sw" style="background:#FF5A1F;color:#0E1316;border-color:#FF5A1F"><h3>Signal</h3><code>#FF5A1F<br>≈ Pantone 1655 C<br>text on Bone: #B53A0A</code></div>
+  </div>
+  <div class="ramp" aria-label="Neutral ramp">
+    <div style="background:#0E1316;color:#B9BFC1">900</div><div style="background:#171E22;color:#B9BFC1">800</div><div style="background:#242D32;color:#B9BFC1">700</div><div style="background:#3A454B;color:#D9DAD6">600</div><div style="background:#5C676D;color:#EEECE5">500</div>
+    <div style="background:#8A9398;color:#0E1316">400</div><div style="background:#B9BFC1;color:#0E1316">300</div><div style="background:#D9DAD6;color:#0E1316">200</div><div style="background:#EEECE5;color:#0E1316">100</div><div style="background:#F7F6F2;color:#0E1316">50</div>
+  </div>
+  <div class="sets">
+    <div class="panel"><span class="cap">Data series, in this order</span>
+      <div class="chips"><span class="chip"><i style="background:#FF5A1F"></i>Signal</span><span class="chip"><i style="background:#3A454B"></i>Graphite 600</span><span class="chip"><i style="background:#2B9EB3"></i>Cyan #2B9EB3</span><span class="chip"><i style="background:#8F7CF2"></i>Iris #8F7CF2</span><span class="chip"><i style="background:#B9BFC1"></i>Comparison</span></div>
+    </div>
+    <div class="panel"><span class="cap">Status — always with an icon and a word</span>
+      <div class="chips"><span class="chip"><i style="background:#2E9E6A"></i>OK #2E9E6A</span><span class="chip"><i style="background:#E0A526"></i>Degraded #E0A526</span><span class="chip"><i style="background:#E5484D"></i>Failing #E5484D</span></div>
+    </div>
+  </div>
+  <p class="note">Signal is never used for status. Orange next to a warning reads as a warning, so errors and alerts use their own red and amber and always include a label.</p>
+</div></section>
+
+<section class="s" id="type"><div class="wrap">
+  <div class="head"><span class="num">05 — Typography</span><div>
+    <h2>Engineered for headings, plain for reading</h2>
+    <p>Chakra Petch gives headings and big numbers their cut corners. Red Hat Text carries every interface label and paragraph. Red Hat Mono is for raw values: event IDs, tokens, query timings. All three are free (OFL) and allow logo use.</p>
+  </div></div>
+  <div class="type">
+    <div class="panel"><span class="cap">Display · Chakra Petch 500</span><div class="spec" style="font:500 56px/1.05 var(--display)">12,480 visitors</div></div>
+    <div class="panel"><span class="cap">Interface · Red Hat Text 400/500</span><div class="spec" style="font:400 18px/1.55 var(--text);max-width:60ch">Accepted 41,203 events; 312 were marked as bots and kept for audit. Sampling is off. Numbers on this page come from the raw stream, not an estimate.</div></div>
+    <div class="panel"><span class="cap">Data · Red Hat Mono 400</span><div class="spec" style="font:400 15px/1.6 var(--mono)">evt_01J9Z4K3 · page_view · /blog/self-hosting · 182 ms</div></div>
+  </div>
+  <div class="scale">
+    <div><span class="cap">Display 56</span><span style="font:500 56px/1 var(--display)">Overview</span></div>
+    <div><span class="cap">H1 32</span><span style="font:500 32px/1.1 var(--display)">Top pages</span></div>
+    <div><span class="cap">H2 20</span><span style="font:500 20px/1.2 var(--display)">Sources this week</span></div>
+    <div><span class="cap">Body 15</span><span style="font:400 15px/1.5 var(--text)">Visitors are counted once per day per site, without cookies.</span></div>
+    <div><span class="cap">Label 12</span><span style="font:500 12px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase">Bounce rate</span></div>
+  </div>
+</div></section>
+
+<section class="s dark" id="icons"><div class="wrap">
+  <div class="head"><span class="num">06 — Module icons</span><div>
+    <h2>One icon per module, today and later</h2>
+    <p>Every module on the roadmap gets an icon drawn the way the mark is drawn: straight lines, square corners, one stroke weight, and a single accent line that lights up in Signal when the module is active.</p>
+  </div></div>
+  <div class="icons" id="iconGrid"></div>
+  <div class="iconrules">
+    <p><b style="color:var(--paper)">24-unit grid, 1.5 stroke.</b> Miter joins, flat ends. No curves except where the object is round (gauge).</p>
+    <p><b style="color:var(--paper)">One accent per icon.</b> The accent is the "probe": the line that carries the meaning. Grey when idle, Signal when active.</p>
+    <p><b style="color:var(--paper)">Planned modules are shown, not hidden.</b> They appear in navigation as dimmed and labelled "Planned", so the platform's direction is visible.</p>
+  </div>
+</div></section>
+
+<section class="s" id="misuse"><div class="wrap">
+  <div class="head"><span class="num">07 — Don't</span><div>
+    <h2>Keep the mark intact</h2>
+    <p>The steps at the foot and the single coloured line are the mark. Most mistakes break one of those two.</p>
+  </div></div>
+  <div class="misuse">
+    <div class="panel"><img src="kit/mark-signal.svg" style="transform:scaleX(1.4)" alt=""><span class="x">Don't stretch or squash it</span></div>
+    <div class="panel"><img src="kit/mark-signal.svg" style="filter:hue-rotate(160deg) saturate(2)" alt=""><span class="x">Don't recolour the probe</span></div>
+    <div class="panel"><img src="kit/mark-signal.svg" style="transform:rotate(180deg)" alt=""><span class="x">Don't rotate or flip it</span></div>
+    <div class="panel"><img src="kit/mark-small.svg" style="image-rendering:auto" alt=""><span class="x">Don't use the small cut above 48 px</span></div>
+  </div>
+</div></section>
+
+<section class="s" id="voice"><div class="wrap">
+  <div class="head"><span class="num">08 — Voice</span><div>
+    <h2>Precise, plain, honest about uncertainty</h2>
+    <p>The product's promise is that numbers can be audited, so the words have to be auditable too.</p>
+  </div></div>
+  <div class="voice">
+    <div class="panel"><h3>Say what was measured</h3><p>Name the thing and how it was counted.</p><div class="say"><span class="y">12,480 visitors, counted once per day</span><span class="n">12.5K happy users!</span></div></div>
+    <div class="panel"><h3>Show the doubt</h3><p>When confidence drops, say so next to the number.</p><div class="say"><span class="y">Partial: 6% of events still processing</span><span class="n">Data may be inaccurate</span></div></div>
+    <div class="panel"><h3>Calm, not cute</h3><p>A little character, never at the cost of clarity.</p><div class="say"><span class="y">No visits yet. Add the snippet and we'll start counting.</span><span class="n">Oops! Nothing here 🙈</span></div></div>
+  </div>
+</div></section>
+
+<section class="s" id="files"><div class="wrap">
+  <div class="head"><span class="num">09 — Files</span><div>
+    <h2>Kit</h2>
+    <p>All artwork is filled vector geometry (no strokes, no live text). Source of truth: docs/brand/README.md; regenerate with tools/build-kit.cjs.</p>
+  </div></div>
+  <div class="files" id="fileList"></div>
+  <a class="cta" href="dashboard-proposal.html">See the dashboard in this brand →</a>
+</div></section>
+<footer><div class="wrap">Telumera brand guide · v1 · approved 2026-10-13</div></footer>
+
+<script src="kit/icons.js"></script>
+<script>
+  document.getElementById('iconGrid').innerHTML = TELUMERA_ICONS.map(ic =>
+    `<div class="${ic.live ? 'live' : ''}">${telumeraIcon(ic, 32)}<span>${ic.name}</span><small>${ic.id} · ${ic.live ? 'Live' : 'Planned'}</small></div>`).join('')
+  const files = ['mark.svg','mark-signal.svg','mark-reversed.svg','mark-white.svg','mark-small.svg','mark-small-mono.svg','favicon.svg','app-icon.svg','wordmark.svg','lockup-horizontal.svg','lockup-horizontal-reversed.svg','lockup-horizontal-mono.svg','lockup-stacked.svg','lockup-stacked-reversed.svg','icons.js']
+  document.getElementById("fileList").innerHTML = files.map(f => `<a href="kit/${f}" download>${f}<span>↓</span></a>`).join('')
+</script>
+</body>
+</html>

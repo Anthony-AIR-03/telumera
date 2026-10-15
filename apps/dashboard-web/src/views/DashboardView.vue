@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { apiClient } from '@/lib/api-client'
 import AppButton from '@/components/AppButton.vue'
 import AppBadge from '@/components/AppBadge.vue'
+import PageHeader from '@/components/PageHeader.vue'
 import StateMessage from '@/components/StateMessage.vue'
 
 interface WorkspaceSummary {
@@ -55,17 +56,16 @@ onMounted(loadWorkspaces)
 </script>
 
 <template>
-  <main>
-    <h1 class="font-display text-xl font-bold text-neutral-900">
-      {{ t('workspaces.title') }}
-    </h1>
+  <div>
+    <PageHeader :title="t('workspaces.title')" />
 
-    <form class="mt-4 flex gap-2" @submit.prevent="createWorkspace">
+    <form class="mt-6 flex max-w-xl flex-wrap gap-2" @submit.prevent="createWorkspace">
       <input
         v-model="newWorkspaceName"
         :placeholder="t('workspaces.namePlaceholder')"
+        :aria-label="t('workspaces.namePlaceholder')"
         required
-        class="flex-1 rounded-[9px] border border-neutral-300 px-3 py-2 text-sm placeholder-neutral-400 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+        class="field min-w-0 flex-1"
       />
       <AppButton type="submit" :loading="creating">{{ t('workspaces.create') }}</AppButton>
     </form>
@@ -79,23 +79,20 @@ onMounted(loadWorkspaces)
       class="mt-6"
     />
 
-    <ul
-      v-else
-      class="mt-6 divide-y divide-neutral-200 rounded-[14px] border border-neutral-200 bg-white shadow-[0_1px_2px_rgba(15,21,18,0.04),0_1px_1px_rgba(15,21,18,0.03)]"
-    >
+    <ul v-else class="card mt-6 divide-y divide-line-2">
       <li
         v-for="workspace in workspaces"
         :key="workspace.id"
-        class="flex items-center justify-between px-5 py-3.5"
+        class="flex items-center justify-between gap-3 px-5 py-3.5"
       >
         <RouterLink
           :to="`/workspaces/${workspace.id}`"
-          class="text-sm font-semibold text-brand-700 hover:text-brand-800"
+          class="text-sm font-medium text-fg hover:text-signal-text hover:underline"
         >
           {{ workspace.name }}
         </RouterLink>
         <AppBadge>{{ workspace.role }}</AppBadge>
       </li>
     </ul>
-  </main>
+  </div>
 </template>

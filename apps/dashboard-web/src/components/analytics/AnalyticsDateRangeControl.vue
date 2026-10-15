@@ -53,70 +53,60 @@ async function copyShareableLink() {
 </script>
 
 <template>
-  <div class="flex flex-wrap items-center gap-2.5">
-    <div
-      role="group"
-      :aria-label="t('analytics.dateRange.presetGroup')"
-      class="flex items-center gap-0.5 rounded-[9px] border border-neutral-300 bg-white p-1"
-    >
+  <div class="flex flex-wrap items-center gap-2">
+    <div class="seg" role="group" :aria-label="t('analytics.dateRange.presetGroup')">
       <button
         v-for="days in [7, 30, 90] as const"
         :key="days"
         type="button"
         :aria-pressed="activePresetDays === days"
-        class="pointer-coarse:min-h-11 rounded-[7px] px-3 py-1.5 text-sm font-semibold"
-        :class="
-          activePresetDays === days
-            ? 'bg-brand-50 font-bold text-brand-700'
-            : 'text-neutral-600 hover:bg-neutral-50'
-        "
+        class="pointer-coarse:min-h-10"
         @click="applyPreset(days)"
       >
         {{ t('analytics.dateRange.preset', { days }) }}
       </button>
     </div>
 
-    <input
-      type="date"
-      :value="from"
-      :max="to"
-      :aria-label="t('analytics.dateRange.from')"
-      class="pointer-coarse:min-h-11 rounded-[9px] border border-neutral-300 px-3 py-1.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
-      @change="onFromInput"
-    />
-    <span class="text-sm text-neutral-400" aria-hidden="true">&rarr;</span>
-    <input
-      type="date"
-      :value="to"
-      :min="from"
-      :aria-label="t('analytics.dateRange.to')"
-      class="pointer-coarse:min-h-11 rounded-[9px] border border-neutral-300 px-3 py-1.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
-      @change="onToInput"
-    />
+    <div class="flex items-center gap-1.5">
+      <input
+        type="date"
+        :value="from"
+        :max="to"
+        :aria-label="t('analytics.dateRange.from')"
+        class="field py-1.5 font-mono text-xs pointer-coarse:min-h-11"
+        @change="onFromInput"
+      />
+      <span class="text-muted" aria-hidden="true">→</span>
+      <input
+        type="date"
+        :value="to"
+        :min="from"
+        :aria-label="t('analytics.dateRange.to')"
+        class="field py-1.5 font-mono text-xs pointer-coarse:min-h-11"
+        @change="onToInput"
+      />
+    </div>
 
     <button
       type="button"
-      class="pointer-coarse:min-h-11 inline-flex items-center gap-1.5 rounded-[9px] border border-neutral-200 bg-white px-2.5 py-1.5 text-xs font-semibold"
-      :class="linkCopied ? 'text-brand-700' : 'text-neutral-600 hover:bg-neutral-50'"
+      class="inline-flex min-h-[34px] items-center gap-1.5 rounded-[3px] border border-line bg-surface px-2.5 text-xs font-medium pointer-coarse:min-h-11"
+      :class="linkCopied ? 'text-fg' : 'text-fg-2 hover:border-fg-2'"
       @click="copyShareableLink"
     >
-      <svg width="14" height="14" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-        <path
-          d="M8.5 11.5L11.5 8.5"
-          stroke="currentColor"
-          stroke-width="1.6"
-          stroke-linecap="round"
-        />
-        <path
-          d="M9.8 6.3L11 5.1a2.6 2.6 0 013.7 3.7l-1.2 1.2M10.2 13.7L9 14.9a2.6 2.6 0 01-3.7-3.7l1.2-1.2"
-          stroke="currentColor"
-          stroke-width="1.6"
-          stroke-linecap="round"
-        />
+      <svg
+        width="14"
+        height="14"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.5"
+        aria-hidden="true"
+      >
+        <path d="M10 14L14 10M11 6.5L13 4.5H19.5V11L17.5 13M13 17.5L11 19.5H4.5V13L6.5 11" />
       </svg>
-      {{
+      <span aria-live="polite">{{
         linkCopied ? t('analytics.dateRange.linkCopied') : t('analytics.dateRange.shareableLink')
-      }}
+      }}</span>
     </button>
   </div>
 </template>

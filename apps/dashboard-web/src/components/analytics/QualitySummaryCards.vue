@@ -57,7 +57,7 @@ const cards = computed(() => [
 </script>
 
 <template>
-  <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+  <div class="card grid grid-cols-2 gap-px overflow-hidden bg-line-2 sm:grid-cols-3 lg:grid-cols-6">
     <MetricCard
       v-for="card in cards"
       :key="card.label"

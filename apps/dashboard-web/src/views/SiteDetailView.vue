@@ -7,6 +7,7 @@ import { roleAtLeast } from '@/lib/roles'
 import AppButton from '@/components/AppButton.vue'
 import AppBadge from '@/components/AppBadge.vue'
 import AppToggle from '@/components/AppToggle.vue'
+import PageHeader from '@/components/PageHeader.vue'
 import StateMessage from '@/components/StateMessage.vue'
 
 interface Site {
@@ -150,39 +151,46 @@ async function copySnippet() {
 </script>
 
 <template>
-  <main>
-    <RouterLink
-      v-if="site"
-      :to="`/workspaces/${site.workspaceId}`"
-      class="text-xs font-semibold text-neutral-400 hover:text-neutral-700"
+  <div>
+    <PageHeader
+      :title="site?.name ?? siteId"
+      :crumbs="
+        site
+          ? [
+              { label: t('common.workspace'), to: `/workspaces/${site.workspaceId}` },
+              { label: site.canonicalDomain },
+            ]
+          : []
+      "
     >
-      {{ t('common.backToWorkspace') }}
-    </RouterLink>
-    <div class="mt-2 flex items-center justify-between">
-      <h1 class="font-display text-xl font-bold text-neutral-900">
-        {{ site?.name ?? siteId }}
-      </h1>
-      <RouterLink v-if="site" :to="`/sites/${siteId}/analytics`">
-        <AppButton variant="secondary">{{ t('sites.viewAnalytics') }}</AppButton>
-      </RouterLink>
-    </div>
+      <template v-if="site" #tools>
+        <RouterLink
+          :to="`/sites/${siteId}/analytics`"
+          class="inline-flex min-h-10 items-center gap-2 rounded-[3px] border border-line bg-surface px-3.5 py-2 text-sm font-semibold hover:border-fg-2"
+        >
+          {{ t('sites.viewAnalytics') }}
+          <span aria-hidden="true">→</span>
+        </RouterLink>
+      </template>
+    </PageHeader>
 
     <StateMessage v-if="error" state="error" :message="error" class="mt-6" />
     <StateMessage v-else-if="loading" state="loading" :message="t('common.loading')" class="mt-6" />
 
     <template v-else>
       <section class="mt-8">
-        <h2 class="font-display text-sm font-bold text-neutral-900">{{ t('tokens.title') }}</h2>
-        <AppButton class="mt-3" :disabled="!canManage" :loading="busy" @click="rotateToken">{{
-          t('tokens.rotate')
-        }}</AppButton>
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <h2 class="font-display text-lg font-medium">{{ t('tokens.title') }}</h2>
+          <AppButton :disabled="!canManage" :loading="busy" @click="rotateToken">{{
+            t('tokens.rotate')
+          }}</AppButton>
+        </div>
 
-        <ul
-          class="mt-4 divide-y divide-neutral-200 rounded-[14px] border border-neutral-200 bg-white shadow-[0_1px_2px_rgba(15,21,18,0.04),0_1px_1px_rgba(15,21,18,0.03)]"
-        >
-          <li v-for="token in tokens" :key="token.id" class="flex items-center gap-3 px-5 py-3.5">
+        <ul class="card mt-3 divide-y divide-line-2">
+          <li v-for="token in tokens" :key="token.id" class="flex items-center gap-3 px-5 py-3">
             <code
-              class="flex-1 overflow-hidden text-ellipsis whitespace-nowrap rounded bg-neutral-100 px-2 py-1 font-mono text-xs text-neutral-700"
+              class="min-w-0 flex-1 truncate font-mono text-xs"
+              :class="token.revokedAt ? 'text-muted line-through' : 'text-fg-2'"
             >
               {{ token.token }}
             </code>
@@ -201,57 +209,48 @@ async function copySnippet() {
       </section>
 
       <section class="mt-8">
-        <h2 class="font-display text-sm font-bold text-neutral-900">{{ t('install.title') }}</h2>
-        <p class="mt-1 text-sm text-neutral-500">{{ t('install.blurb') }}</p>
+        <h2 class="font-display text-lg font-medium">{{ t('install.title') }}</h2>
+        <p class="mt-1 max-w-2xl text-sm text-fg-2">{{ t('install.blurb') }}</p>
 
-        <div
-          class="mt-4 rounded-[14px] border border-neutral-200 bg-white p-5 shadow-[0_1px_2px_rgba(15,21,18,0.04),0_1px_1px_rgba(15,21,18,0.03)]"
-        >
-          <div class="flex items-center gap-2">
-            <button
-              v-for="flavor in ['script', 'esm'] as const"
-              :key="flavor"
-              type="button"
-              class="rounded-[9px] px-2.5 py-1 text-xs font-semibold"
-              :class="
-                snippetFlavor === flavor
-                  ? 'bg-brand-50 text-brand-700'
-                  : 'text-neutral-500 hover:text-neutral-700'
-              "
-              @click="snippetFlavor = flavor"
-            >
-              {{ t(`install.flavor.${flavor}`) }}
-            </button>
+        <div class="card mt-3 p-4 sm:p-5">
+          <div class="flex flex-wrap items-center gap-2">
+            <div class="seg" role="group" :aria-label="t('install.flavorLabel')">
+              <button
+                v-for="flavor in ['script', 'esm'] as const"
+                :key="flavor"
+                type="button"
+                :aria-pressed="snippetFlavor === flavor"
+                @click="snippetFlavor = flavor"
+              >
+                {{ t(`install.flavor.${flavor}`) }}
+              </button>
+            </div>
             <AppButton class="ml-auto" variant="secondary" @click="copySnippet">
               {{ copied ? t('install.copied') : t('install.copy') }}
             </AppButton>
           </div>
           <pre
-            class="mt-3 overflow-x-auto rounded-[9px] bg-neutral-100 p-3 font-mono text-xs text-neutral-700"
+            class="mt-3 overflow-x-auto rounded-[3px] border border-line-2 bg-surface p-3 font-mono text-xs leading-relaxed text-fg-2"
           ><code>{{ snippet }}</code></pre>
-          <p v-if="!activeToken" class="mt-2 text-xs text-neutral-400">
+          <p v-if="!activeToken" class="mt-2 text-xs text-muted">
             {{ t('install.noToken') }}
           </p>
         </div>
       </section>
 
       <section class="mt-8">
-        <h2 class="font-display text-sm font-bold text-neutral-900">
-          {{ t('modules.title') }}
-        </h2>
-        <ul
-          class="mt-4 divide-y divide-neutral-200 rounded-[14px] border border-neutral-200 bg-white shadow-[0_1px_2px_rgba(15,21,18,0.04),0_1px_1px_rgba(15,21,18,0.03)]"
-        >
+        <h2 class="font-display text-lg font-medium">{{ t('modules.title') }}</h2>
+        <ul class="card mt-3 divide-y divide-line-2">
           <li
             v-for="module in modules"
             :key="module.module"
-            class="flex items-center justify-between px-5 py-3.5"
+            class="flex items-center justify-between gap-3 px-5 py-3.5"
           >
-            <span class="text-sm text-neutral-900">{{ module.module }}</span>
+            <span class="text-sm">{{ module.module }}</span>
             <AppToggle
               :model-value="module.enabled"
               :disabled="!canManage || busy"
-              class="text-sm text-neutral-600"
+              class="font-mono text-xs text-fg-2"
               @update:model-value="toggleModule(module)"
             >
               {{ module.enabled ? t('modules.enabled') : t('modules.disabled') }}
@@ -260,5 +259,5 @@ async function copySnippet() {
         </ul>
       </section>
     </template>
-  </main>
+  </div>
 </template>
