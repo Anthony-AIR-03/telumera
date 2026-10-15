@@ -35,7 +35,7 @@ watch(() => [props.siteId, props.from, props.to], load, { immediate: true })
 
 /**
  * Brand data-series order (docs/brand/README.md §4): Signal, Graphite 600, Cyan, Iris. Anything past
- * four categories folds into one "Other" segment in the comparison grey, so the bar never needs a
+ * four categories folds into one "Other" segment in the comparison grey, so the ring never needs a
  * fifth hue. Every segment is paired with a text legend and its share, never colour alone.
  */
 const SERIES = [
@@ -78,6 +78,32 @@ const breakdowns = computed(() => [
   },
   { key: 'os', title: t('analytics.technology.os'), segments: aggregate('osCategory') },
 ])
+
+/**
+ * Ring geometry. Square (butt) ends and a 2px surface gap between segments keep the ring in the
+ * brand's square vocabulary; it starts at 12 o'clock and runs clockwise in legend order.
+ */
+const R = 40
+const C = 50
+const STROKE = 12
+const CIRC = 2 * Math.PI * R
+const GAP = 2
+
+function arcs(segments: Segment[]) {
+  const total = segments.reduce((a, s) => a + s.value, 0) || 1
+  const gap = segments.length > 1 ? GAP : 0
+  let offset = 0
+  return segments.map((s) => {
+    const len = (s.value / total) * CIRC
+    const arc = {
+      ...s,
+      dasharray: `${Math.max(len - gap, 0)} ${CIRC - len + gap}`,
+      dashoffset: -offset,
+    }
+    offset += len
+    return arc
+  })
+}
 </script>
 
 <template>
@@ -90,22 +116,43 @@ const breakdowns = computed(() => [
       :message="t('analytics.technology.empty')"
     />
 
-    <div v-else class="grid grid-cols-1 gap-4 md:grid-cols-3">
+    <div v-else class="grid grid-cols-1 gap-4 xl:grid-cols-3">
       <section v-for="b in breakdowns" :key="b.key" class="card">
         <header class="flex items-baseline justify-between gap-3 px-5 pt-4">
           <h2 class="font-display text-[17px] font-medium">{{ b.title }}</h2>
           <span class="font-mono text-xs text-muted">{{ t('analytics.technology.meta') }}</span>
         </header>
-        <div class="grid gap-3.5 px-5 pt-3.5 pb-[18px]">
-          <div class="flex h-2.5 gap-0.5 overflow-hidden rounded-[2px]" aria-hidden="true">
-            <i
-              v-for="s in b.segments"
-              :key="s.label"
-              class="block"
-              :style="{ flex: s.value, background: s.color }"
-            />
+        <div class="flex items-center gap-5 px-5 pt-3.5 pb-[18px]">
+          <div class="relative size-[104px] flex-none">
+            <svg viewBox="0 0 100 100" class="size-full -rotate-90" aria-hidden="true">
+              <circle
+                v-for="arc in arcs(b.segments)"
+                :key="arc.label"
+                :cx="C"
+                :cy="C"
+                :r="R"
+                fill="none"
+                :stroke-width="STROKE"
+                :stroke-dasharray="arc.dasharray"
+                :stroke-dashoffset="arc.dashoffset"
+                :style="{ stroke: arc.color }"
+              >
+                <title>{{ arc.label }} · {{ arc.percent }}%</title>
+              </circle>
+            </svg>
+            <div
+              v-if="b.segments.length"
+              class="absolute inset-0 grid place-content-center text-center"
+            >
+              <b class="font-mono text-lg leading-none font-medium tabular-nums"
+                >{{ b.segments[0]!.percent }}%</b
+              >
+              <span class="mt-1 max-w-[64px] truncate text-[11px] text-muted">{{
+                b.segments[0]!.label
+              }}</span>
+            </div>
           </div>
-          <ul class="grid gap-2 text-[13px]">
+          <ul class="grid max-w-[320px] min-w-0 flex-1 gap-2 text-[13px]">
             <li
               v-for="s in b.segments"
               :key="s.label"

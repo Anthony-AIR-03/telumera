@@ -163,8 +163,8 @@ Top to bottom, matching the approved proposal:
   forwarder can't carry a WebSocket). Newly appearing paths flash `signal-soft` once.
 - **Breakdown tabs**: underline tabs, active = 2px Signal underline, tab in `?tab=`. Pages (searchable,
   sortable, paginated), Sources (`AcquisitionTable`, "No referrer" for direct/same-site/unparseable),
-  Technology (one stacked bar + legend per dimension, brand series order, beyond four categories folds
-  into "Other"), Geography (map + table), Events.
+  Technology (one ring per dimension: square ends, 2px gaps, top share in mono at the centre, legend
+  beside it, brand series order, beyond four categories folds into "Other"), Geography (map + table), Events.
 - **`GeographyMap.vue`**: equirectangular choropleth from the vendored, pre-projected
   `src/assets/world-countries.json` (`scripts/build-world-map.mjs`), lazy-loaded. Sqrt scale on a
   neutral `bar → fg-2` ramp mixed in CSS (`color-mix`, set via `style`, not the `fill` attribute), so
