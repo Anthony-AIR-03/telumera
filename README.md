@@ -77,7 +77,7 @@ in [`docs/architecture`](docs/architecture).
 ## Tech stack
 
 **Front-end:** Vue 3, TypeScript, Vite · **Back-end:** C#, ASP.NET Core (.NET), Dapr, SignalR ·
-**Data:** PostgreSQL, ClickHouse, RabbitMQ, Redis, MinIO · **Observability:** OpenTelemetry ·
+**Data:** PostgreSQL, ClickHouse, RabbitMQ, Redis, SeaweedFS (S3-compatible object storage, [why not MinIO](docs/adr/0007-object-storage-seaweedfs-over-minio.md)) · **Observability:** OpenTelemetry ·
 **Infrastructure:** Docker Compose, Bicep (Azure), GitHub Actions, GitHub Container Registry
 
 ## How it's built and shipped
