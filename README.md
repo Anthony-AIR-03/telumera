@@ -4,7 +4,7 @@
 
 **A self-hosted, privacy-first analytics and developer-intelligence platform, built module by module.**
 
-[🌐 Live at telumera.nl](https://telumera.nl) · [💼 Portfolio write-up](https://anthony-air.nl/projects/telumera) · [📖 Case study](https://anthony-air.nl/projects/telumera/case-study/product-analytics)
+[🌐 Live at telumera.nl](https://telumera.nl) · [💼 Portfolio write-up](https://anthony-air.nl/projects/telumera) · [📖 Case study](https://anthony-air.nl/projects/telumera/case-study/product-analytics) · [🎨 Brand](docs/brand/README.md)
 
 ![Vue.js](https://img.shields.io/badge/Vue.js-4FC08D?style=flat-square&logo=vuedotjs&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)
@@ -15,7 +15,7 @@
 ![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat-square&logo=docker&logoColor=white)
 ![GitHub Actions](https://img.shields.io/badge/GitHub%20Actions-2088FF?style=flat-square&logo=githubactions&logoColor=white)
 
-<a href="https://telumera.nl"><img src="docs/case-studies/assets/overview-live-visitors.jpg" alt="Telumera dashboard with live visitors" width="720" /></a>
+<a href="https://telumera.nl"><img src="docs/screenshots/overview.jpg" alt="Telumera analytics for anthony-air.nl over 30 days: the audit strip with accepted, duplicate and bot counts, five KPI cards and visitors per day against the previous period" width="720" /></a>
 
 </div>
 
@@ -108,7 +108,13 @@ The full quick-start, secrets model and debugging guide are in
 
 | Geography | Data quality |
 |---|---|
-| ![Country breakdown from GeoIP](docs/case-studies/assets/geography.jpg) | ![Data-quality view with raw vs. processed counts](docs/case-studies/assets/data-quality.jpg) |
+| ![Visitors by country on a world map, from GeoIP](docs/screenshots/geography.jpg) | ![Data quality: acceptance, rejection, duplicate and bot rates, delayed events, dead-letter queue and collector outcomes by day](docs/screenshots/data-quality.jpg) |
+| **Technology** | |
+| ![Device, browser and OS as share-of-session rings, under the live-visitors panel and the module roadmap](docs/screenshots/technology.jpg) | |
+
+The dashboard uses the Telumera brand (v1): the Probe mark, a Graphite rail, Bone surfaces and Signal
+orange as the only accent, set in Chakra Petch, Red Hat Text and Red Hat Mono. See
+[`docs/brand`](docs/brand/README.md) and [`docs/design/housestyle.md`](docs/design/housestyle.md).
 
 ## Repository layout
 
