@@ -22,4 +22,10 @@ public sealed class Site
     public required string Environment { get; set; }
 
     public DateTimeOffset CreatedAt { get; init; }
+
+    /// <summary>
+    /// Set by POST /sites/{id}/archive: the site's tokens are revoked so the collector rejects it, but
+    /// the site and its collected analytics stay readable. Permanent removal is DELETE /sites/{id}.
+    /// </summary>
+    public DateTimeOffset? ArchivedAt { get; set; }
 }
