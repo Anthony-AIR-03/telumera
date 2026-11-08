@@ -151,6 +151,27 @@ public sealed class SiteProjection(SiteRegistryClient client, ILogger<SiteProjec
         }
     }
 
+    /// <summary>
+    /// Applies site.archived.v1 / site.deleted.v1: drops the site and all its tokens, so its token no
+    /// longer resolves from cache and its origins leave the CORS allowlist. The cache-miss fallback
+    /// won't bring it back — site-registry no longer returns revoked or deleted tokens.
+    /// </summary>
+    public void RemoveSite(Guid siteId)
+    {
+        if (!_sitesById.TryRemove(siteId, out var record))
+        {
+            return;
+        }
+
+        lock (record.Tokens)
+        {
+            foreach (var token in record.Tokens)
+            {
+                _siteIdByToken.TryRemove(token, out _);
+            }
+        }
+    }
+
     /// <summary>Applies a site.key.rotated.v1 event (Action is "issued" or "revoked", see site-registry's README).</summary>
     public void ApplyKeyRotated(Guid siteId, string token, string action)
     {
