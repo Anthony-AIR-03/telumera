@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { apiClient } from '@/lib/api-client'
 import { roleAtLeast } from '@/lib/roles'
+import { normalizeSiteDomain } from '@/lib/site-domain'
 import AppButton from '@/components/AppButton.vue'
 import AppBadge from '@/components/AppBadge.vue'
 import PageHeader from '@/components/PageHeader.vue'
@@ -75,14 +76,20 @@ async function createSite() {
     return
   }
 
+  const domain = normalizeSiteDomain(newSiteDomain.value)
+  if (!domain) {
+    error.value = t('sites.domainInvalid')
+    return
+  }
+
   creatingSite.value = true
   error.value = null
   try {
     await apiClient.post('/sites', {
       WorkspaceId: workspaceId,
       Name: newSiteName.value.trim(),
-      CanonicalDomain: newSiteDomain.value.trim(),
-      AllowedOrigins: [`https://${newSiteDomain.value.trim()}`],
+      CanonicalDomain: domain,
+      AllowedOrigins: [`https://${domain}`],
       Environment: 'production',
     })
     newSiteName.value = ''
