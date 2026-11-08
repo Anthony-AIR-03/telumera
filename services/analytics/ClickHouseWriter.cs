@@ -571,6 +571,26 @@ public sealed class ClickHouseWriter
         return body.Length == 0 ? [] : body.Split('\n')[0].Split('\t');
     }
 
+    /// <summary>Every table holding per-site rows — kept in step with <see cref="EnsureSchemaAsync"/>.</summary>
+    private static readonly string[] SiteScopedTables =
+    [
+        "events", "sessions", "daily_site_rollup", "daily_page_rollup", "daily_acquisition_rollup",
+        "daily_technology_rollup", "daily_geography_rollup", "event_quality_daily",
+    ];
+
+    /// <summary>
+    /// Purges everything stored for a deleted site (site.deleted.v1). ClickHouse runs ALTER … DELETE
+    /// as a background mutation, so the rows disappear shortly after this returns. Safe to repeat on
+    /// redelivery. The site id comes from a parsed Guid, so it can't inject into the query.
+    /// </summary>
+    public async Task DeleteSiteDataAsync(Guid siteId, CancellationToken cancellationToken = default)
+    {
+        foreach (var table in SiteScopedTables)
+        {
+            await ExecuteAsync($"ALTER TABLE {table} DELETE WHERE site_id = '{siteId:D}'", cancellationToken);
+        }
+    }
+
     private async Task ExecuteAsync(string query, CancellationToken cancellationToken, string? body = null)
     {
         var url = $"{_baseUrl}?database={Uri.EscapeDataString(_database)}&query={Uri.EscapeDataString(query)}";

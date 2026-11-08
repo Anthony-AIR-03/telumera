@@ -217,8 +217,36 @@ app.MapPost("/subscriptions/quality-events", async (
 .WithTopic("pubsub", "quality-events")
 .WithName("HandleQualityEvents");
 
+// site.deleted.v1 → purge the site's rows from every ClickHouse table. Archived sites keep their
+// data, so site.archived.v1 (and every other site-events type) is ignored here.
+app.MapPost("/subscriptions/site-events", async (HttpContext httpContext, ClickHouseWriter clickHouse, ILogger<Program> logger) =>
+{
+    using var document = await JsonDocument.ParseAsync(httpContext.Request.Body, cancellationToken: httpContext.RequestAborted);
+    var root = document.RootElement;
+    if (root.GetProperty("type").GetString() != EventTypes.SiteDeletedV1)
+    {
+        return Results.Ok();
+    }
+
+    var envelope = root.GetProperty("data").Deserialize<EventEnvelope<SiteDeletedPayload>>(subscriptionJsonOptions);
+    if (envelope is null)
+    {
+        logger.LogWarning("Could not deserialize a site.deleted.v1 payload.");
+        return Results.Ok(); // malformed, not retryable
+    }
+
+    await clickHouse.DeleteSiteDataAsync(envelope.Data.SiteId, httpContext.RequestAborted);
+    logger.LogInformation("Purged analytics data for deleted site {SiteId}.", envelope.Data.SiteId);
+    return Results.Ok();
+})
+.WithTopic("pubsub", "site-events")
+.WithName("HandleSiteEvents");
+
 app.MapSubscribeHandler();
 
 app.Run();
 
 public partial class Program;
+
+/// <summary>Consumer-side shape of site.deleted.v1's payload (site-registry's SiteLifecycleEventData).</summary>
+internal sealed record SiteDeletedPayload(Guid SiteId, Guid WorkspaceId);
