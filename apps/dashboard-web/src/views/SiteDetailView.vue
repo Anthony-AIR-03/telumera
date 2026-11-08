@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { apiClient } from '@/lib/api-client'
 import { roleAtLeast } from '@/lib/roles'
@@ -17,6 +17,7 @@ interface Site {
   canonicalDomain: string
   environment: string
   createdAt: string
+  archivedAt: string | null
   role: string
 }
 
@@ -107,6 +108,51 @@ onMounted(loadAll)
 /** Rotate/revoke/toggle all require Developer+ server-side (see services/site-registry/README.md). */
 const canManage = computed(() => roleAtLeast(site.value?.role ?? null, 'Developer'))
 
+// --- Remove site: archive (keeps data) or hard delete. Admin+ server-side. ---
+const router = useRouter()
+const canRemove = computed(() => roleAtLeast(site.value?.role ?? null, 'Admin'))
+const isArchived = computed(() => Boolean(site.value?.archivedAt))
+const confirming = ref<'archive' | 'delete' | null>(null)
+const deleteConfirmText = ref('')
+const deleteConfirmed = computed(
+  () => deleteConfirmText.value.trim().toLowerCase() === site.value?.canonicalDomain.toLowerCase(),
+)
+
+function startConfirm(action: 'archive' | 'delete') {
+  confirming.value = action
+  deleteConfirmText.value = ''
+}
+
+async function archiveSite() {
+  busy.value = true
+  error.value = null
+  try {
+    await apiClient.post(`/sites/${siteId}/archive`)
+    confirming.value = null
+    await loadAll()
+  } catch {
+    error.value = t('removeSite.archiveError')
+  } finally {
+    busy.value = false
+  }
+}
+
+async function deleteSite() {
+  if (!site.value || !deleteConfirmed.value) {
+    return
+  }
+  const workspaceId = site.value.workspaceId
+  busy.value = true
+  error.value = null
+  try {
+    await apiClient.delete(`/sites/${siteId}`)
+    await router.push(`/workspaces/${workspaceId}`)
+  } catch {
+    error.value = t('removeSite.deleteError')
+    busy.value = false
+  }
+}
+
 // --- Install snippet (M01.8) ---
 const collectorOrigin = import.meta.env.VITE_COLLECTOR_ORIGIN ?? 'http://localhost:5103'
 const snippetFlavor = ref<'script' | 'esm'>('script')
@@ -181,7 +227,7 @@ async function copySnippet() {
       <section class="mt-8">
         <div class="flex flex-wrap items-center justify-between gap-3">
           <h2 class="font-display text-lg font-medium">{{ t('tokens.title') }}</h2>
-          <AppButton :disabled="!canManage" :loading="busy" @click="rotateToken">{{
+          <AppButton :disabled="!canManage || isArchived" :loading="busy" @click="rotateToken">{{
             t('tokens.rotate')
           }}</AppButton>
         </div>
@@ -257,6 +303,78 @@ async function copySnippet() {
             </AppToggle>
           </li>
         </ul>
+      </section>
+
+      <section class="mt-8">
+        <h2 class="font-display text-lg font-medium">{{ t('removeSite.title') }}</h2>
+        <p class="mt-1 max-w-2xl text-sm text-fg-2">
+          {{ isArchived ? t('removeSite.archivedNote') : t('removeSite.blurb') }}
+        </p>
+
+        <div class="card mt-3 p-4 sm:p-5">
+          <div v-if="confirming === null" class="flex flex-wrap items-center gap-2">
+            <AppButton
+              v-if="!isArchived"
+              variant="secondary"
+              :disabled="!canRemove || busy"
+              @click="startConfirm('archive')"
+            >
+              {{ t('removeSite.archive') }}
+            </AppButton>
+            <AppButton
+              variant="danger"
+              :disabled="!canRemove || busy"
+              @click="startConfirm('delete')"
+            >
+              {{ t('removeSite.delete') }}
+            </AppButton>
+            <p v-if="!canRemove" class="text-xs text-muted">{{ t('removeSite.adminOnly') }}</p>
+          </div>
+
+          <div v-else-if="confirming === 'archive'">
+            <p class="max-w-2xl text-sm">{{ t('removeSite.archiveConfirm') }}</p>
+            <div class="mt-3 flex flex-wrap gap-2">
+              <AppButton :loading="busy" @click="archiveSite">
+                {{ t('removeSite.archiveConfirmButton') }}
+              </AppButton>
+              <AppButton variant="secondary" :disabled="busy" @click="confirming = null">
+                {{ t('removeSite.cancel') }}
+              </AppButton>
+            </div>
+          </div>
+
+          <form v-else @submit.prevent="deleteSite">
+            <p class="max-w-2xl text-sm">
+              {{ t('removeSite.deleteConfirm', { domain: site?.canonicalDomain }) }}
+            </p>
+            <div class="mt-3 flex flex-wrap gap-2">
+              <input
+                v-model="deleteConfirmText"
+                :placeholder="site?.canonicalDomain"
+                :aria-label="t('removeSite.deleteConfirmLabel')"
+                autocomplete="off"
+                spellcheck="false"
+                class="field min-w-0 flex-1 font-mono text-sm"
+              />
+              <AppButton
+                type="submit"
+                variant="danger"
+                :disabled="!deleteConfirmed"
+                :loading="busy"
+              >
+                {{ t('removeSite.deleteConfirmButton') }}
+              </AppButton>
+              <AppButton
+                type="button"
+                variant="secondary"
+                :disabled="busy"
+                @click="confirming = null"
+              >
+                {{ t('removeSite.cancel') }}
+              </AppButton>
+            </div>
+          </form>
+        </div>
       </section>
     </template>
   </div>

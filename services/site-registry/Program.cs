@@ -173,7 +173,9 @@ app.MapGet("/workspaces/{workspaceId:guid}/sites", async (Guid workspaceId, Site
 
     var sites = await db.Sites
         .Where(s => s.WorkspaceId == workspaceId)
-        .Select(s => new SiteSummaryDto(s.Id, s.Name, s.CanonicalDomain, s.Environment, s.CreatedAt))
+        .OrderBy(s => s.ArchivedAt != null)
+        .ThenBy(s => s.CreatedAt)
+        .Select(s => new SiteSummaryDto(s.Id, s.Name, s.CanonicalDomain, s.Environment, s.CreatedAt, s.ArchivedAt))
         .ToListAsync();
 
     return Results.Ok(sites);
@@ -197,9 +199,78 @@ app.MapGet("/sites/{id:guid}", async (Guid id, SiteRegistryDbContext db, HttpCon
         return Results.StatusCode(StatusCodes.Status403Forbidden);
     }
 
-    return Results.Ok(new SiteDetailDto(site.Id, site.WorkspaceId, site.Name, site.CanonicalDomain, site.Environment, site.CreatedAt, role.Value));
+    return Results.Ok(new SiteDetailDto(site.Id, site.WorkspaceId, site.Name, site.CanonicalDomain, site.Environment, site.CreatedAt, site.ArchivedAt, role.Value));
 })
 .WithName("GetSite")
+.RequireAuthorization("ApiScope");
+
+// Archive: Admin+. Revokes every active token (so the collector rejects the site through the same
+// path as a manual revoke) and marks the site archived; its analytics data is untouched. Idempotent.
+app.MapPost("/sites/{id:guid}/archive", async (Guid id, SiteRegistryDbContext db, HttpContext httpContext, MembershipClient membershipClient) =>
+{
+    var site = await db.Sites.FindAsync(id);
+    if (site is null)
+    {
+        return Results.NotFound();
+    }
+
+    var callerObjectId = httpContext.User.GetObjectId()
+        ?? throw new InvalidOperationException("Token has no oid claim.");
+    var role = await membershipClient.GetRoleAsync(site.WorkspaceId, callerObjectId);
+    if (role is null || role < Role.Admin)
+    {
+        return Results.StatusCode(StatusCodes.Status403Forbidden);
+    }
+
+    if (site.ArchivedAt is null)
+    {
+        var now = DateTimeOffset.UtcNow;
+        site.ArchivedAt = now;
+
+        var activeTokens = await db.SiteTokens.Where(t => t.SiteId == id && t.RevokedAt == null).ToListAsync();
+        foreach (var token in activeTokens)
+        {
+            token.RevokedAt = now;
+            AddSiteKeyRotatedOutboxEvent(db, site, token, "revoked");
+        }
+
+        AddSiteLifecycleOutboxEvent(db, site, EventTypes.SiteArchivedV1);
+        await db.SaveChangesAsync();
+    }
+
+    return Results.Ok(new SiteDetailDto(site.Id, site.WorkspaceId, site.Name, site.CanonicalDomain, site.Environment, site.CreatedAt, site.ArchivedAt, role.Value));
+})
+.WithName("ArchiveSite")
+.RequireAuthorization("ApiScope");
+
+// Hard delete: Admin+. Removes the site, its tokens and module settings in one transaction together
+// with a site.deleted.v1 outbox row; the collector drops it from its projection and analytics purges
+// the site's ClickHouse data when that event arrives. Cannot be undone.
+app.MapDelete("/sites/{id:guid}", async (Guid id, SiteRegistryDbContext db, HttpContext httpContext, MembershipClient membershipClient) =>
+{
+    var site = await db.Sites.FindAsync(id);
+    if (site is null)
+    {
+        return Results.NotFound();
+    }
+
+    var callerObjectId = httpContext.User.GetObjectId()
+        ?? throw new InvalidOperationException("Token has no oid claim.");
+    var role = await membershipClient.GetRoleAsync(site.WorkspaceId, callerObjectId);
+    if (role is null || role < Role.Admin)
+    {
+        return Results.StatusCode(StatusCodes.Status403Forbidden);
+    }
+
+    db.SiteTokens.RemoveRange(db.SiteTokens.Where(t => t.SiteId == id));
+    db.SiteModuleSettings.RemoveRange(db.SiteModuleSettings.Where(m => m.SiteId == id));
+    db.Sites.Remove(site);
+    AddSiteLifecycleOutboxEvent(db, site, EventTypes.SiteDeletedV1);
+    await db.SaveChangesAsync();
+
+    return Results.NoContent();
+})
+.WithName("DeleteSite")
 .RequireAuthorization("ApiScope");
 
 // Tokens are a sub-resource of a site — see SiteToken.cs and services/site-registry/README.md for
@@ -246,6 +317,11 @@ app.MapPost("/sites/{id:guid}/tokens/rotate", async (Guid id, SiteRegistryDbCont
     if (role is null || role < Role.Developer)
     {
         return Results.StatusCode(StatusCodes.Status403Forbidden);
+    }
+
+    if (site.ArchivedAt is not null)
+    {
+        return Results.Problem("This site is archived; it can't get new tokens.", statusCode: StatusCodes.Status409Conflict);
     }
 
     var newToken = new SiteToken
@@ -488,6 +564,21 @@ static void AddSiteKeyRotatedOutboxEvent(SiteRegistryDbContext db, Site site, Si
     });
 }
 
+// site.archived.v1 / site.deleted.v1 share one payload: which site, in which workspace.
+static void AddSiteLifecycleOutboxEvent(SiteRegistryDbContext db, Site site, string eventType)
+{
+    db.OutboxEvents.Add(new OutboxEvent
+    {
+        Id = Guid.NewGuid(),
+        EventType = eventType,
+        TenantId = site.WorkspaceId,
+        SiteId = site.Id,
+        CorrelationId = CurrentCorrelationId(),
+        DataJson = JsonSerializer.Serialize(new SiteLifecycleEventData(site.Id, site.WorkspaceId)),
+        CreatedAt = DateTimeOffset.UtcNow,
+    });
+}
+
 internal sealed record CreateSiteRequest(
     [property: Required] Guid WorkspaceId,
     [property: Required, MinLength(1), MaxLength(200)] string Name,
@@ -499,9 +590,12 @@ internal sealed record CreateSiteResponse(
     Guid Id, Guid WorkspaceId, string Name, string CanonicalDomain, string[] AllowedOrigins,
     string Environment, DateTimeOffset CreatedAt, string InitialToken);
 
-internal sealed record SiteSummaryDto(Guid Id, string Name, string CanonicalDomain, string Environment, DateTimeOffset CreatedAt);
+internal sealed record SiteSummaryDto(Guid Id, string Name, string CanonicalDomain, string Environment, DateTimeOffset CreatedAt, DateTimeOffset? ArchivedAt);
 
-internal sealed record SiteDetailDto(Guid Id, Guid WorkspaceId, string Name, string CanonicalDomain, string Environment, DateTimeOffset CreatedAt, Role Role);
+internal sealed record SiteDetailDto(Guid Id, Guid WorkspaceId, string Name, string CanonicalDomain, string Environment, DateTimeOffset CreatedAt, DateTimeOffset? ArchivedAt, Role Role);
+
+/// <summary>Payload of site.archived.v1 and site.deleted.v1 (ADR 0002).</summary>
+internal sealed record SiteLifecycleEventData(Guid SiteId, Guid WorkspaceId);
 
 internal sealed record SiteTokenDto(Guid Id, string Token, DateTimeOffset CreatedAt, DateTimeOffset? RevokedAt);
 

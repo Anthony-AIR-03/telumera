@@ -259,6 +259,76 @@ public sealed class WorkspaceAndSiteFlowTests
         Assert.Equal(HttpStatusCode.Unauthorized, createSite.StatusCode);
     }
 
+    [SkippableFact]
+    public async Task ArchiveSite_RevokesAllTokens_AndBlocksRotation()
+    {
+        Skip.If(string.IsNullOrWhiteSpace(AccessToken),
+            "TELUMERA_TEST_ACCESS_TOKEN not set — run infrastructure/compose/scripts/get-dev-token.sh " +
+            "(or .ps1) and export the result to run this test.");
+
+        var site = await CreateWorkspaceAndSiteAsync("Archive Test", "archive.example");
+
+        var archiveResponse = await PostAsync<object?>(SiteRegistry, $"/sites/{site.Id}/archive", null);
+        archiveResponse.EnsureSuccessStatusCode();
+        var archived = await archiveResponse.Content.ReadFromJsonAsync<SiteDetailDto>();
+        Assert.NotNull(archived?.ArchivedAt);
+
+        var tokens = await (await GetAsync(SiteRegistry, $"/sites/{site.Id}/tokens")).Content.ReadFromJsonAsync<List<SiteTokenDto>>();
+        Assert.All(tokens!, t => Assert.NotNull(t.RevokedAt));
+
+        // Archiving twice is a no-op; rotating on an archived site is refused.
+        (await PostAsync<object?>(SiteRegistry, $"/sites/{site.Id}/archive", null)).EnsureSuccessStatusCode();
+        var rotate = await PostAsync<object?>(SiteRegistry, $"/sites/{site.Id}/tokens/rotate", null);
+        Assert.Equal(HttpStatusCode.Conflict, rotate.StatusCode);
+
+        Assert.True(await WaitUntilOutboxEventPublishedAsync(site.Id, "site.archived.v1", TimeSpan.FromSeconds(15)),
+            "Expected a site.archived.v1 outbox row to be published within 15s.");
+    }
+
+    [SkippableFact]
+    public async Task DeleteSite_RemovesIt_AndPublishesSiteDeleted()
+    {
+        Skip.If(string.IsNullOrWhiteSpace(AccessToken),
+            "TELUMERA_TEST_ACCESS_TOKEN not set — run infrastructure/compose/scripts/get-dev-token.sh " +
+            "(or .ps1) and export the result to run this test.");
+
+        var site = await CreateWorkspaceAndSiteAsync("Delete Test", "delete.example");
+
+        var deleteResponse = await SendAsync(SiteRegistry, HttpMethod.Delete, $"/sites/{site.Id}");
+        Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);
+
+        Assert.Equal(HttpStatusCode.NotFound, (await GetAsync(SiteRegistry, $"/sites/{site.Id}")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await SendAsync(SiteRegistry, HttpMethod.Delete, $"/sites/{site.Id}")).StatusCode);
+
+        Assert.True(await WaitUntilOutboxEventPublishedAsync(site.Id, "site.deleted.v1", TimeSpan.FromSeconds(15)),
+            "Expected a site.deleted.v1 outbox row to be published within 15s.");
+    }
+
+    private static async Task<CreateSiteResponseDto> CreateWorkspaceAndSiteAsync(string name, string domain)
+    {
+        var workspaceResponse = await PostAsync(IdentityWorkspace, "/workspaces", new { Name = $"{name} Workspace" });
+        workspaceResponse.EnsureSuccessStatusCode();
+        var workspace = await workspaceResponse.Content.ReadFromJsonAsync<WorkspaceDto>();
+
+        var siteResponse = await PostAsync(SiteRegistry, "/sites", new
+        {
+            WorkspaceId = workspace!.Id,
+            Name = $"{name} Site",
+            CanonicalDomain = domain,
+            AllowedOrigins = new[] { $"https://{domain}" },
+            Environment = "production",
+        });
+        siteResponse.EnsureSuccessStatusCode();
+        return (await siteResponse.Content.ReadFromJsonAsync<CreateSiteResponseDto>())!;
+    }
+
+    private static Task<HttpResponseMessage> SendAsync(HttpClient client, HttpMethod method, string path)
+    {
+        var request = new HttpRequestMessage(method, path);
+        request.Headers.Authorization = new("Bearer", AccessToken);
+        return client.SendAsync(request);
+    }
+
     private static Task<HttpResponseMessage> PostAsync<T>(HttpClient client, string path, T body)
     {
         var request = new HttpRequestMessage(HttpMethod.Post, path) { Content = JsonContent.Create(body) };
@@ -318,4 +388,6 @@ public sealed class WorkspaceAndSiteFlowTests
     private sealed record SiteTokenDto(Guid Id, string Token, DateTimeOffset CreatedAt, DateTimeOffset? RevokedAt);
 
     private sealed record SiteModuleSettingDto(string Module, bool Enabled, DateTimeOffset UpdatedAt);
+
+    private sealed record SiteDetailDto(Guid Id, Guid WorkspaceId, string Name, DateTimeOffset? ArchivedAt);
 }

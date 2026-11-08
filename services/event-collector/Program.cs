@@ -264,6 +264,13 @@ app.MapPost("/subscriptions/site-events", async (HttpContext httpContext, SitePr
             }
             break;
 
+        case EventTypes.SiteArchivedV1 or EventTypes.SiteDeletedV1:
+            if (data.Deserialize<EventEnvelope<SiteLifecyclePayload>>(subscriptionJsonOptions) is { } removed)
+            {
+                projection.RemoveSite(removed.Data.SiteId);
+            }
+            break;
+
         default:
             logger.LogDebug("Ignoring unrecognized event type {EventType} on site-events.", eventType);
             break;
@@ -324,5 +331,8 @@ internal sealed record SiteSettingsChangedPayload(Guid SiteId, string Module, bo
 
 /// <summary>Consumer-side shape of site.key.rotated.v1's payload.</summary>
 internal sealed record SiteKeyRotatedPayload(Guid SiteId, Guid TokenId, string Token, string Action);
+
+/// <summary>Consumer-side shape of site.archived.v1 / site.deleted.v1's payload.</summary>
+internal sealed record SiteLifecyclePayload(Guid SiteId, Guid WorkspaceId);
 
 public partial class Program;

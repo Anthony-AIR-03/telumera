@@ -83,6 +83,10 @@ namespace Telumera.Services.SiteRegistry.Api.Migrations
                         .HasColumnType("text[]")
                         .HasColumnName("allowed_origins");
 
+                    b.Property<DateTimeOffset?>("ArchivedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("archived_at");
+
                     b.Property<string>("CanonicalDomain")
                         .IsRequired()
                         .HasMaxLength(253)

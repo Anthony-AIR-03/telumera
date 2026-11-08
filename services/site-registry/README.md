@@ -41,6 +41,21 @@ name (`"Analytics"`, not a raw int) via the same `JsonStringEnumConverter` patte
 applied explicitly since outbox payloads are serialized outside the ASP.NET Core request pipeline and
 don't pick up `ConfigureHttpJsonOptions` automatically.
 
+## Archiving and deleting a site
+
+Both are `Admin`+ (one step above creating a site).
+
+- **`POST /sites/{id}/archive`** sets `ArchivedAt`, revokes every active token (each with its own
+  `site.key.rotated.v1` `"revoked"` event, the same path as a manual revoke) and publishes
+  `site.archived.v1`. The site and its analytics stay readable; rotating a token on it returns 409.
+  Archiving again does nothing. There's no un-archive.
+- **`DELETE /sites/{id}`** removes the site, its tokens and module settings in one transaction with a
+  `site.deleted.v1` outbox row, then returns 204. It can't be undone.
+
+Both events carry `{ SiteId, WorkspaceId }`. The event collector drops the site from its projection on
+either one. Analytics purges the site's rows from every ClickHouse table only on `site.deleted.v1`
+(`ClickHouseWriter.DeleteSiteDataAsync`).
+
 ## Auth and membership enforcement
 
 Every endpoint except `/health/live`/`/health/ready` requires a valid Entra ID bearer token with the
