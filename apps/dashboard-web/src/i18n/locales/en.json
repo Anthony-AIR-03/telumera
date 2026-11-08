@@ -43,6 +43,7 @@
     "title": "Sites",
     "namePlaceholder": "Site name",
     "domainPlaceholder": "Canonical domain (e.g. example.com)",
+    "domainInvalid": "Enter just the domain, like example.com.",
     "create": "Add site",
     "empty": "No sites yet — add one above.",
     "loadError": "Couldn't load this site.",

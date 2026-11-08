@@ -84,6 +84,12 @@ app.MapPost("/sites", async (CreateSiteRequest request, SiteRegistryDbContext db
         return Results.ValidationProblem(problemErrors);
     }
 
+    var addressErrors = SiteAddressValidation.Validate(request.CanonicalDomain, request.AllowedOrigins);
+    if (addressErrors.Count > 0)
+    {
+        return Results.ValidationProblem(addressErrors);
+    }
+
     var callerObjectId = httpContext.User.GetObjectId()
         ?? throw new InvalidOperationException("Token has no oid claim.");
     var role = await membershipClient.GetRoleAsync(request.WorkspaceId, callerObjectId);
