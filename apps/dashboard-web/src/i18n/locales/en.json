@@ -47,7 +47,24 @@
     "empty": "No sites yet — add one above.",
     "loadError": "Couldn't load this site.",
     "createError": "Couldn't create the site.",
-    "viewAnalytics": "View analytics"
+    "viewAnalytics": "View analytics",
+    "archived": "Archived"
+  },
+  "removeSite": {
+    "title": "Remove site",
+    "blurb": "Archive stops collection and keeps the data. Delete removes the site and everything collected for it.",
+    "archive": "Archive",
+    "archiveConfirm": "Archiving revokes all of this site's tokens, so it stops collecting right away. Collected analytics stay readable. This can't be undone from the dashboard.",
+    "archiveConfirmButton": "Archive site",
+    "archivedNote": "This site is archived. It no longer collects events; its analytics are kept.",
+    "delete": "Delete permanently",
+    "deleteConfirm": "This deletes the site, its tokens and all of its collected analytics. It can't be undone. Type {domain} to confirm.",
+    "deleteConfirmLabel": "Site domain",
+    "deleteConfirmButton": "Delete site",
+    "cancel": "Cancel",
+    "adminOnly": "Only workspace admins and owners can remove a site.",
+    "archiveError": "Couldn't archive the site.",
+    "deleteError": "Couldn't delete the site."
   },
   "members": {
     "title": "Members",

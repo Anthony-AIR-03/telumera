@@ -22,6 +22,7 @@ interface SiteSummary {
   canonicalDomain: string
   environment: string
   createdAt: string
+  archivedAt: string | null
 }
 
 interface Member {
@@ -176,7 +177,10 @@ onMounted(loadAll)
             >
               {{ site.name }}
             </RouterLink>
-            <AppBadge>{{ site.canonicalDomain }}</AppBadge>
+            <span class="flex items-center gap-2">
+              <AppBadge v-if="site.archivedAt">{{ t('sites.archived') }}</AppBadge>
+              <AppBadge>{{ site.canonicalDomain }}</AppBadge>
+            </span>
           </li>
         </ul>
       </section>
