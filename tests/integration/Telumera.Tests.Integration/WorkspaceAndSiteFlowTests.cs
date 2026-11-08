@@ -188,6 +188,30 @@ public sealed class WorkspaceAndSiteFlowTests
         Assert.Equal(HttpStatusCode.Forbidden, siteResponse.StatusCode);
     }
 
+    [SkippableTheory]
+    [InlineData("https://example.test", "https://https://example.test")]
+    [InlineData("example.test/blog", "https://example.test/blog")]
+    public async Task CreateSite_WithSchemeOrPathInDomain_Returns400(string canonicalDomain, string allowedOrigin)
+    {
+        Skip.If(string.IsNullOrWhiteSpace(AccessToken),
+            "TELUMERA_TEST_ACCESS_TOKEN not set — run infrastructure/compose/scripts/get-dev-token.sh " +
+            "(or .ps1) and export the result to run this test.");
+
+        // The shape check runs before the membership check, so a random WorkspaceId still gets 400.
+        // These are the values the dashboard used to send when a domain was pasted as a URL; the
+        // collector could never match such an origin and rejected every event from the site.
+        var siteResponse = await PostAsync(SiteRegistry, "/sites", new
+        {
+            WorkspaceId = Guid.NewGuid(),
+            Name = "Should Be Rejected",
+            CanonicalDomain = canonicalDomain,
+            AllowedOrigins = new[] { allowedOrigin },
+            Environment = "production",
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, siteResponse.StatusCode);
+    }
+
     [SkippableFact]
     public async Task AddWorkspaceMember_ThenListMembers_RoundTrips()
     {
